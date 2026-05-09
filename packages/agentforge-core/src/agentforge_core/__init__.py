@@ -37,6 +37,11 @@ from agentforge_core.production import (
     reset_run,
     uninstall_run_id_filter,
 )
+from agentforge_core.resolver import (
+    Resolver,
+    parse_model_string,
+    register,
+)
 from agentforge_core.values import (
     AgentState,
     Claim,
@@ -75,6 +80,7 @@ __all__ = [
     "ModuleError",
     "ProviderError",
     "ReasoningStrategy",
+    "Resolver",
     "RunContext",
     "RunIdFilter",
     "RunResult",
@@ -90,6 +96,8 @@ __all__ = [
     "current_run",
     "install_run_id_filter",
     "new_run",
+    "parse_model_string",
+    "register",
     "reset_run",
     "uninstall_run_id_filter",
 ]

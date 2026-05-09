@@ -37,6 +37,7 @@ package = false   # the root is a virtual workspace; not itself published
 
 [dependency-groups]
 dev = [
+    "types-PyYAML>=6.0",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
