@@ -72,13 +72,14 @@ def test_registered_under_providers_bedrock() -> None:
 # ---- Capabilities ----
 
 
-def test_declares_tools_and_json_mode() -> None:
+def test_declares_tools_json_mode_caching_thinking() -> None:
+    """tools+json_mode shipped in chunk 2; caching+thinking in chunk 3.
+    streaming lights up in chunk 4."""
     client = BedrockClient(model_id="anthropic.claude-3-haiku-20240307-v1:0")
     assert client.supports("tools")
     assert client.supports("json_mode")
-    # Other capabilities ship in chunks 3 and 4.
-    assert not client.supports("caching")
-    assert not client.supports("thinking")
+    assert client.supports("caching")
+    assert client.supports("thinking")
     assert not client.supports("streaming")
 
 

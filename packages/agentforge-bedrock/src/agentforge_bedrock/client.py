@@ -115,13 +115,14 @@ class BedrockClient(LLMClient):
     # ------------------------------------------------------------------
 
     def capabilities(self) -> set[str]:
-        """Bedrock's Converse API supports tools and JSON mode (via
-        prompt). Caching, thinking, and streaming light up in chunks
-        3 and 4."""
-        return {"tools", "json_mode"}
+        """Bedrock's Converse API supports tools, JSON mode (via prompt),
+        prompt caching (cachePoint blocks), and Anthropic extended
+        thinking (additionalModelRequestFields.thinking). Streaming
+        ships in chunk 4."""
+        return {"tools", "json_mode", "caching", "thinking"}
 
     # ------------------------------------------------------------------
-    # LLMClient.call
+    # LLMClient.call (+ optional capability variants)
     # ------------------------------------------------------------------
 
     async def call(
@@ -131,10 +132,77 @@ class BedrockClient(LLMClient):
         tools: list[ToolSpec] | None = None,
     ) -> LLMResponse:
         """Issue a Bedrock Converse request and normalise the response."""
-        client = await self._ensure_client()
         request = self._build_converse_request(system, messages, tools)
+        return await self._invoke_request(request)
 
-        async def _invoke() -> dict[str, Any]:
+    async def call_with_cache(
+        self,
+        system: str,
+        messages: list[Message],
+        tools: list[ToolSpec] | None = None,
+        *,
+        cache_breakpoints: list[int],
+    ) -> LLMResponse:
+        """Same as `call`, but inserts a Bedrock cachePoint block after
+        the content of each indexed message in `messages`.
+
+        Bedrock requires the prefix preceding a cache point to meet a
+        per-model minimum (1024 tokens for current Anthropic Claude
+        models). Smaller prefixes are silently un-cached. The response
+        surfaces cache reads/writes via `usage.cache_read_tokens` and
+        `usage.cache_write_tokens`.
+        """
+        request = self._build_converse_request(system, messages, tools)
+        _inject_cache_points(request, cache_breakpoints)
+        return await self._invoke_request(request)
+
+    async def call_with_thinking(
+        self,
+        system: str,
+        messages: list[Message],
+        tools: list[ToolSpec] | None = None,
+        *,
+        thinking_budget_tokens: int,
+    ) -> LLMResponse:
+        """Same as `call`, but enables Anthropic extended thinking via
+        Bedrock's `additionalModelRequestFields.thinking`.
+
+        `thinking_budget_tokens` caps the model's internal reasoning
+        budget. Bedrock surfaces reasoning as `reasoningContent` blocks
+        in the response; we strip them from `LLMResponse.content` (the
+        public answer) so callers continue to see only the assistant's
+        final text. A future feature may surface the reasoning blocks
+        on a dedicated field.
+        """
+        if thinking_budget_tokens < 1:
+            raise ValueError("thinking_budget_tokens must be >= 1")
+        request = self._build_converse_request(system, messages, tools)
+        request.setdefault("additionalModelRequestFields", {})["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": thinking_budget_tokens,
+        }
+        return await self._invoke_request(request)
+
+    async def close(self) -> None:
+        """Release the aioboto3 client + session."""
+        if self._client_cm is not None:
+            try:
+                await self._client_cm.__aexit__(None, None, None)
+            finally:
+                self._client_cm = None
+                self._client = None
+
+    # ------------------------------------------------------------------
+    # Internal — request build / response normalise
+    # ------------------------------------------------------------------
+
+    async def _invoke_request(self, request: dict[str, Any]) -> LLMResponse:
+        """Send a built Bedrock request through retry + error-mapping,
+        then normalise to `LLMResponse`. Shared by `call`,
+        `call_with_cache`, and `call_with_thinking`."""
+        client = await self._ensure_client()
+
+        async def _do() -> dict[str, Any]:
             try:
                 return cast(
                     "dict[str, Any]",
@@ -150,21 +218,8 @@ class BedrockClient(LLMClient):
             except Exception as exc:
                 raise map_unexpected(exc) from exc
 
-        response = await with_retry(_invoke, max_retries=self._max_retries)
+        response = await with_retry(_do, max_retries=self._max_retries)
         return self._normalise_response(response)
-
-    async def close(self) -> None:
-        """Release the aioboto3 client + session."""
-        if self._client_cm is not None:
-            try:
-                await self._client_cm.__aexit__(None, None, None)
-            finally:
-                self._client_cm = None
-                self._client = None
-
-    # ------------------------------------------------------------------
-    # Internal — request build / response normalise
-    # ------------------------------------------------------------------
 
     async def _ensure_client(self) -> Any:
         """Lazily instantiate the aioboto3 Bedrock Runtime client."""
@@ -223,6 +278,11 @@ class BedrockClient(LLMClient):
                         arguments=tu.get("input", {}) or {},
                     )
                 )
+            # `reasoningContent` blocks (extended thinking) are dropped
+            # from the public answer text. The model's reasoning is
+            # still counted in usage.outputTokens by Bedrock; surfacing
+            # the reasoning trace itself is reserved for a future
+            # feature so the public LLMResponse stays simple.
 
         usage_raw = raw.get("usage", {}) or {}
         input_tokens = int(usage_raw.get("inputTokens", 0))
@@ -257,6 +317,26 @@ class BedrockClient(LLMClient):
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
+
+
+def _inject_cache_points(request: dict[str, Any], breakpoints: list[int]) -> None:
+    """Append a Bedrock cachePoint block after each indexed message's
+    content list. Indices outside `[0, len(messages))` are dropped.
+
+    Bedrock allows multiple cache points; the limit varies by model
+    (today: 4 for current Anthropic Claude). We don't enforce that —
+    if a caller exceeds the limit, Bedrock returns a ValidationError
+    which our error mapper surfaces as `ProviderError`.
+    """
+    bedrock_messages: list[dict[str, Any]] = request.get("messages", [])
+    n_messages = len(bedrock_messages)
+    seen: set[int] = set()
+    for idx in breakpoints:
+        if idx in seen or not 0 <= idx < n_messages:
+            continue
+        seen.add(idx)
+        content = bedrock_messages[idx].setdefault("content", [])
+        content.append({"cachePoint": {"type": "default"}})
 
 
 def _message_to_bedrock(message: Message) -> dict[str, Any]:
