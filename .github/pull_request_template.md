@@ -2,27 +2,12 @@
 
 <one-paragraph description of what this PR does and why>
 
-## Feature
-
-Closes feat-NNN. See `docs/features/feat-NNN-*.md` (in the design workspace).
-
-## Design principles cited
-
-- P<N>: <one-line how this PR honours it>
-- ADR-<NNNN>: <one-line how>
-
 ## Tests added
 
 - Unit: <count>
 - Integration: <count>
 - Conformance: <count>
-- Coverage on diff: <pct>%
-
-## Bugs carried (per `.claude/development-pipeline.md` §5)
-
-- [BUG-CARRIED] feat-PRIOR: <description> — fixed in <commit-sha>
-
-(or "None")
+- Coverage on diff: <pct>% (gate is 90%)
 
 ## Pre-commit hook output
 
@@ -30,7 +15,7 @@ Closes feat-NNN. See `docs/features/feat-NNN-*.md` (in the design workspace).
 ✅ ruff format
 ✅ ruff check
 ✅ mypy --strict
-✅ bandit
+✅ bandit -c pyproject.toml
 ✅ pytest unit
 ✅ pytest integration
 ✅ coverage >= 90%
@@ -38,11 +23,12 @@ Closes feat-NNN. See `docs/features/feat-NNN-*.md` (in the design workspace).
 
 ## Checklist
 
-- [ ] Branch is `feat/NNN-slug` (one feature, one PR)
+- [ ] Branch follows convention: `feat/<NNN>-<slug>`, `fix/<slug>`,
+      `docs/<slug>`, or `chore/<slug>`
+- [ ] One feature / fix / chore — not mixed
 - [ ] Conventional Commits format on every commit
-- [ ] Feature doc Status updated
-- [ ] AGENTS.md updated if conventions changed
-- [ ] ADR written if a load-bearing decision was made
-- [ ] `.claude/state/current.md` reflects current state
-- [ ] `.claude/state/log.md` has milestone entries for this branch
-- [ ] No `--no-verify` used (or explicit user approval logged)
+      (`feat:` / `fix:` / `docs:` / `test:` / `refactor:` / `chore:` /
+      `perf:` / `revert:`)
+- [ ] `AGENTS.md` updated if conventions changed
+- [ ] `CHANGELOG.md` entry added under `[Unreleased]`
+- [ ] No `--no-verify` used (or explicit reason in commit message)

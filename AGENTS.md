@@ -1,85 +1,107 @@
 # AGENTS.md — agentforge-py
 
-> Scoped AI rules for the **`agentforge-py`** repository specifically.
-> The project-wide canonical rules live at
-> [`../../AGENTS.md`](../../AGENTS.md). Read both.
+> Repository conventions for any AI assistant editing this repo.
+> Tool-agnostic — `CLAUDE.md` and any future tool-specific rules files
+> defer to this one.
 
-## Read first
+## What this repo is
 
-1. [`../../AGENTS.md`](../../AGENTS.md) — project-wide rules and the
-   12 hard rules (every change must honour at least one design
-   principle, locked contracts, configuration-driven, etc.)
-2. [`../../.claude/state/current.md`](../../.claude/state/current.md)
-   — what feature is in progress, on which branch
-3. [`../../.claude/development-pipeline.md`](../../.claude/development-pipeline.md)
-   — per-feature workflow
+`agentforge-py` is the Python implementation of [AgentForge](https://github.com/Scaffoldic/agentforge-py),
+an open-source plug-and-play framework for building production AI
+agents. The repo is a **uv workspace** with two member packages today:
 
-## Repo-specific shape
-
-This is a **uv workspace** with two member packages today:
-
-- `packages/agentforge-core/` — locked ABCs and value types. No I/O,
-  no third-party SDKs except Pydantic.
-- `packages/agentforge/` — the default runtime. Imports from
+- `packages/agentforge-core/` — locked contracts (ABCs, value types,
+  production-rails primitives, resolver, testing utilities). No I/O,
+  no third-party SDKs except Pydantic + python-ulid.
+- `packages/agentforge/` — default runtime (`Agent` orchestrator,
+  `InMemoryStore`, configuration loader). Imports from
   `agentforge-core`; never the reverse.
 
-When a feature adds a new module (e.g. `agentforge-anthropic`,
-`agentforge-memory-postgres`), it lands as a new directory under
-`packages/`. The new member is added to the `[tool.uv.workspace] members`
-glob in the root `pyproject.toml` (already a wildcard, no edit needed).
+When new modules ship (provider clients, persistence drivers, MCP,
+observability, safety, etc. — see `CHANGELOG.md`), each lands as a
+new directory under `packages/`. The workspace glob in the root
+`pyproject.toml` already covers them.
 
-## Hard rules specific to this repo
+## Hard rules
 
-- **`agentforge-core` imports nothing from `agentforge` or any other
-  module.** It's the leaf of the dependency graph.
-- **No magic numbers** — every threshold/timeout/limit comes from a
-  Pydantic config model with a documented default. See
-  [`../../.claude/standards/configuration.md`](../../.claude/standards/configuration.md).
-- **Type hints everywhere** — `mypy --strict` is the gate.
-  `Any` only at genuine boundaries (raw provider responses).
-- **Async by default** — public methods on contracts are `async def`.
-  Sync wrappers only as explicit `*_sync` shims.
-- **No print statements** — use `logging.getLogger(__name__)`.
-- **No `from langchain... import`** anywhere. Wrong framework.
-- **Tests use fixtures from YAML** under `tests/fixtures/`. Never
-  inline test data.
+| # | Rule | Reference |
+|---|---|---|
+| 1 | `agentforge-core` imports nothing from `agentforge` or any other module package. It is the leaf of the dependency graph. | dependency policy |
+| 2 | Contracts in `agentforge-core` (every ABC + the `Finding` Protocol + the locked value types) are **stable surface**. Adding a method to an ABC is a major version bump; adding a field with a safe default is a minor bump. | locked contract layer |
+| 3 | Configuration is data, not code. No dynamic imports from YAML; no Jinja inside config. Env-var interpolation only (`${VAR}`, `${VAR:default}`, `${VAR:?error}`, `$$` → `$`). | `agentforge.config` |
+| 4 | No magic numbers in production code. Every threshold / timeout / limit comes from a Pydantic config model with a documented default. | configuration policy |
+| 5 | Test coverage must be ≥ 90% on every commit. Pre-commit blocks below; CI ratchet rejects regressions on `main`. | `.pre-commit-config.yaml` + `.github/workflows/ci.yml` |
+| 6 | One feature = one branch = one PR. Conventional Commits format (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `perf:`, `revert:`). | PR template |
+| 7 | Never bypass pre-commit with `--no-verify` unless the user explicitly authorises it for a specific commit (and the bypass is documented in the commit message). | pre-commit policy |
+| 8 | Type hints everywhere. `mypy --strict` is the gate. `Any` only at genuine boundaries (raw provider responses); never to paper over untyped internals. | `pyproject.toml > [tool.mypy]` |
+| 9 | Async-first. Public methods on locked contracts are `async def`. Sync callers use the `*_sync` shims (where exposed) or `asyncio.run()`. | locked contract layer |
 
-## Pre-commit
+## Anti-patterns reviewers will reject
 
-Install with `pre-commit install`. The hook config at
-[`.pre-commit-config.yaml`](./.pre-commit-config.yaml) enforces:
+- **`from langchain... import`** anywhere. Wrong framework.
+- **Hand-written JSON schemas** for tools — use Pydantic models on the
+  `Tool` ABC's `input_schema` class attribute (or the `@tool`
+  decorator once feat-004 ships).
+- **API keys as YAML literals** — use `${ENV_VAR}`.
+- **Catching exceptions to "make robust"** — let them surface; the
+  framework records them as observations and the LLM recovers.
+- **Wrappers around `Agent.run()` to add cross-cutting features** —
+  use the hook system (`on_step` / `on_finish`) once feat-009 ships
+  observability backends.
+- **Module-level singleton config** (`dspy.configure(...)` style) —
+  use dependency injection.
+- **Threading for I/O** — use `asyncio`.
 
-- `ruff format` + `ruff check --fix`
-- `mypy --strict`
-- `bandit -q -r packages/*/src/`
-- `pytest tests/unit -q -x` (and per-package unit tests)
-- `pytest tests/integration -q -x -m "not live"`
-- `pytest --cov --cov-fail-under=90`
+## Workflow
 
-Failure blocks the commit. Never bypass with `--no-verify` unless the
-user explicitly authorises.
-
-## Anti-patterns to avoid (will be flagged by reviewers and AI)
-
-- LangChain idioms (`Runnable`, `LCEL`, `RunnablePassthrough`)
-- Hand-written JSON schemas — use Pydantic and the `@tool` decorator
-- API keys as YAML literals — use `${ENV_VAR}`
-- Catching exceptions to "make robust" — let them surface
-- Wrappers around `Agent.run()` to add cross-cutting features — use hooks
-- Module-level singleton config (`dspy.configure(...)` style) — use DI
-- Threading for I/O — use `asyncio`
+- Branch from `main`. Conventional branch names: `feat/<NNN>-<slug>`,
+  `fix/<slug>`, `docs/<slug>`, `chore/<slug>`.
+- Every commit goes through pre-commit (`pre-commit install` after a
+  fresh clone). The hook runs ruff / mypy / bandit / pytest /
+  coverage. Failures block.
+- One feature = one PR. Squash-merge to `main`.
+- CI runs the same checks plus a multi-OS test matrix (Linux, macOS,
+  Windows) on Python 3.13.
 
 ## How to add a new module package
 
-1. Create `packages/agentforge-<X>/` with the same structure as
-   existing members (`pyproject.toml`, `src/agentforge_<x>/`, `tests/`).
+1. Create `packages/agentforge-<X>/` with the structure used by
+   existing members (`pyproject.toml`, `src/agentforge_<x>/`,
+   `tests/unit/`).
 2. Declare entry points in the new `pyproject.toml` under
    `[project.entry-points."agentforge.<category>"]`.
 3. Pin against `agentforge-core ~= <current major>`.
-4. Add at least one test in the new `tests/` directory.
-5. Update the workspace's `agentforge` aggregate optional-dependencies
-   in `packages/agentforge/pyproject.toml` if the new module belongs to
-   a curated extra (`[anthropic]`, `[full]`, etc.).
+4. Add at least one test.
+5. If the module belongs to a curated extra (`[anthropic]`, `[full]`,
+   etc.), update `packages/agentforge/pyproject.toml`'s
+   `[project.optional-dependencies]`.
+
+## Pre-commit (local)
+
+```bash
+uv sync --group dev
+uv run pre-commit install
+```
+
+The hook runs:
+
+- `ruff format` (pinned to `v0.15.12` — matches the venv and CI)
+- `ruff check --fix`
+- `mypy --strict` on `packages/*/src/`
+- `bandit -c pyproject.toml -r packages/*/src/`
+- `pytest -q -x -m "not live"` (per-package + workspace tests)
+- `pytest --cov --cov-fail-under=90`
+
+## Reading order on a fresh clone
+
+1. This file.
+2. `README.md` — quickstart, repo layout, install + dev commands.
+3. `CHANGELOG.md` — what's shipped and what's coming.
+4. `packages/agentforge-core/src/agentforge_core/` — the locked
+   contract layer. Start with `contracts/` then `values/` then
+   `production/`.
+5. `packages/agentforge/src/agentforge/agent.py` — the orchestrator
+   that ties everything together.
 
 <!-- agentforge:custom -->
 <!-- Project-specific instructions go below this line. Survives upgrades. -->
