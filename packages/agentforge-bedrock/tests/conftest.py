@@ -6,6 +6,7 @@ the `BedrockClient` via the `session=` constructor kwarg.
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -25,8 +26,10 @@ class _FakeBedrockClient:
     def __init__(self, responses: list[Any] | None = None) -> None:
         self.responses: list[Any] = list(responses or [])
         self.stream_responses: list[Any] = []
+        self.invoke_responses: list[Any] = []
         self.calls: list[dict[str, Any]] = []
         self.stream_calls: list[dict[str, Any]] = []
+        self.invoke_calls: list[dict[str, Any]] = []
         self.exceptions: list[Exception | None] = []
 
     async def converse(self, **kwargs: Any) -> dict[str, Any]:
@@ -53,6 +56,30 @@ class _FakeBedrockClient:
         if isinstance(item, list):
             return {"stream": _async_iter(item)}
         return item
+
+    async def invoke_model(self, **kwargs: Any) -> dict[str, Any]:
+        self.invoke_calls.append(kwargs)
+        if not self.invoke_responses:
+            raise AssertionError("FakeBedrockClient: no scripted invoke response left")
+        item = self.invoke_responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        # Items can be a dict (auto-wrapped under "body") or a full
+        # boto-shaped response. Dict bodies are JSON-serialised into
+        # bytes wrapped in a fake StreamingBody.
+        if isinstance(item, dict) and "body" not in item:
+            return {"body": _FakeStreamingBody(json.dumps(item).encode("utf-8"))}
+        return item
+
+
+class _FakeStreamingBody:
+    """Mimics aiobotocore's `StreamingBody.read()` coroutine."""
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    async def read(self) -> bytes:
+        return self._data
 
 
 async def _async_iter(items: list[Any]) -> AsyncIterator[Any]:

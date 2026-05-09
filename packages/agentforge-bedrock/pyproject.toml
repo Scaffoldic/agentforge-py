@@ -47,6 +47,9 @@ Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
 [project.entry-points."agentforge.providers"]
 bedrock = "agentforge_bedrock.client:BedrockClient"
 
+[project.entry-points."agentforge.embeddings"]
+bedrock = "agentforge_bedrock.embedding:BedrockEmbeddingClient"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
