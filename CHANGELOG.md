@@ -9,6 +9,14 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation made self-contained for the public OSS repo: removed
+  `../../` references to a private design workspace from `AGENTS.md`,
+  `README.md`, the PR template, and the pre-commit config. Repo
+  conventions, install instructions, and the contributor workflow now
+  live entirely inside `agentforge-py`.
+
 ### Added
 
 - Repository bootstrap: uv workspace, ruff/mypy/pytest/coverage tooling,
