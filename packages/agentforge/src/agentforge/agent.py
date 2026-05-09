@@ -188,13 +188,22 @@ class Agent:
         started_ms = time.monotonic()
         finish_reason: FinishReason = "completed"
         try:
+            # Construct a fresh BudgetPolicy per run so per-run mutable
+            # state (spent_usd, iteration, error_streak) doesn't leak
+            # across runs of the same Agent instance.
+            run_budget = BudgetPolicy(
+                usd=self._budget.usd,
+                max_tokens=self._budget.max_tokens,
+                max_iterations=self._budget.max_iterations,
+                error_streak_limit=self._budget.error_streak_limit,
+            )
             metadata: dict[str, object] = {}
             if self._llm is not None:
                 metadata[RUNTIME_KEY] = RuntimeContext(
                     llm=self._llm,
                     tools=tuple(self._tools),
                     memory=self._memory,
-                    budget=self._budget,
+                    budget=run_budget,
                     system_prompt=self._system_prompt,
                 )
             state = AgentState(
@@ -220,7 +229,7 @@ class Agent:
             result = RunResult(
                 output=output,
                 steps=tuple(state.steps),
-                cost_usd=self._budget.spent_usd,
+                cost_usd=run_budget.spent_usd,
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 run_id=ctx.run_id,
