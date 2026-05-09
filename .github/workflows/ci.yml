@@ -37,7 +37,10 @@ jobs:
       - name: Mypy strict
         run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
       - name: Bandit
-        run: uv run bandit -q -r packages/agentforge-core/src packages/agentforge/src
+        # -c pyproject.toml so [tool.bandit] (skips B101) is honoured;
+        # without it, the conformance suite's asserts in
+        # agentforge_core.testing.conformance trip B101.
+        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})

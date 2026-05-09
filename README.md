@@ -1,6 +1,6 @@
 # agentforge-py
 
-Python implementation of [AgentForge](https://github.com/) — an open-source,
+Python implementation of [AgentForge](https://github.com/Scaffoldic/agentforge-py) — an open-source,
 plug-and-play framework for building production AI agents.
 
 > **Status:** v0.0 — pre-alpha. The repo is bootstrapped; no features

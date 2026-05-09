@@ -18,14 +18,26 @@ requires-python = ">=3.13"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 
-# The workspace root itself is not installed; the [project] block exists
-# only to satisfy uv. Member packages are the installable units.
+# The workspace root depends on its members so `uv sync` at the root
+# installs every member (and their dependencies) into the shared venv.
+dependencies = [
+    "agentforge-core",
+    "agentforge",
+]
 
 [tool.uv.workspace]
 members = ["packages/*"]
 
+[tool.uv.sources]
+agentforge-core = { workspace = true }
+agentforge = { workspace = true }
+
 [tool.uv]
-dev-dependencies = [
+package = false   # the root is a virtual workspace; not itself published
+
+[dependency-groups]
+dev = [
+    "types-PyYAML>=6.0",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "pytest-cov>=6.0",
