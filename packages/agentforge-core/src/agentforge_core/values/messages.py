@@ -1,8 +1,9 @@
 """Provider-agnostic message and response shapes for the LLM contract.
 
-Every `LLMClient` (feat-003) returns `LLMResponse`; every reasoning
-strategy operates on `list[Message]` regardless of which provider
-backs the agent.
+Every `LLMClient` returns `LLMResponse`; every reasoning strategy
+operates on `list[Message]` regardless of which provider backs the
+agent. Streaming clients yield `StreamChunk`s; embedding clients
+return `EmbeddingResponse`.
 """
 
 from __future__ import annotations
@@ -10,6 +11,11 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+StreamChunkKind = Literal["text", "tool_call", "stop", "thinking"]
+"""Closed enum of stream-chunk kinds. Provider drivers normalise their
+event streams into a sequence of these chunks. Adding a new kind is a
+minor version bump."""
 
 MessageRole = Literal["system", "user", "assistant", "tool"]
 """Allowed message roles. Mirrors the Anthropic / OpenAI common set."""
@@ -79,6 +85,69 @@ class LLMResponse(BaseModel):
     tool_calls: tuple[ToolCall, ...] = ()
     stop_reason: StopReason
     usage: TokenUsage
+    cost_usd: float = Field(ge=0.0)
+    model: str
+    provider: str
+
+
+class StreamChunk(BaseModel):
+    """One event in a provider's streaming response.
+
+    Streaming `LLMClient`s yield an `AsyncIterator[StreamChunk]`. The
+    chunks are ordered: text deltas, optional thinking blocks, optional
+    tool-call deltas, and exactly one terminal `stop` chunk carrying
+    the final usage and cost. Consumers that don't care about
+    streaming can accumulate chunks into a single `LLMResponse` via
+    a helper.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    kind: StreamChunkKind
+    delta: str = ""
+    """Incremental content for `text` and `thinking` kinds (empty for
+    `tool_call` and `stop`)."""
+
+    tool_call: ToolCall | None = None
+    """The fully-assembled `ToolCall` for `kind == "tool_call"` chunks.
+    Provider drivers buffer tool-call argument streams internally and
+    emit one chunk once the call is complete."""
+
+    stop_reason: StopReason | None = None
+    """Set on the terminal `stop` chunk; `None` otherwise."""
+
+    usage: TokenUsage | None = None
+    """Final token accounting on the terminal `stop` chunk."""
+
+    cost_usd: float = Field(default=0.0, ge=0.0)
+    """Final cost on the terminal `stop` chunk; `0.0` on intermediate
+    chunks."""
+
+
+class EmbeddingResponse(BaseModel):
+    """Provider-agnostic response from an embedding call.
+
+    `vectors` is a list of float lists — one vector per input text in
+    the same order the texts were passed. Every vector has the same
+    `dimensions` (the model-declared dimensionality).
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    vectors: tuple[tuple[float, ...], ...]
+    """One vector per input text, in input order. Tuples-of-tuples
+    keeps the response frozen and hashable while the dimensionality
+    stays uniform across vectors."""
+
+    dimensions: int = Field(ge=1)
+    """Length of every vector. The `EmbeddingClient.dimensions()`
+    accessor declares this up front for callers that need to size
+    storage before the call."""
+
+    usage: TokenUsage
+    """Token accounting (input only — embeddings produce no output
+    tokens)."""
+
     cost_usd: float = Field(ge=0.0)
     model: str
     provider: str

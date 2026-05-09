@@ -23,6 +23,7 @@ license-files = ["LICENSE", "NOTICE"]
 dependencies = [
     "agentforge-core",
     "agentforge",
+    "agentforge-bedrock",
 ]
 
 [tool.uv.workspace]
@@ -31,6 +32,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 agentforge-core = { workspace = true }
 agentforge = { workspace = true }
+agentforge-bedrock = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -90,6 +92,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = ["S", "PLR2004", "ARG"]    # tests get more leeway
 "**/conftest.py" = ["ARG"]
+# ABC default-raise stubs intentionally accept the contract args but
+# don't use them — the body is `raise CapabilityNotSupported`. The
+# args are part of the public surface every override must accept.
+"**/contracts/llm.py" = ["ARG002"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -119,6 +125,24 @@ explicit_package_bases = true
 module = "tests.*"
 disallow_untyped_decorators = false   # pytest decorators
 
+# AWS SDKs ship without py.typed markers as of writing. Allow imports
+# without stubs so mypy --strict still passes against the bedrock
+# package; the driver's public surface is still typed at our layer.
+# `disable_error_code = no-any-unimported` is needed because anything
+# annotated with botocore.exceptions.ClientError gets inferred as Any
+# once the import is skipped, and strict mypy normally rejects that.
+[[tool.mypy.overrides]]
+module = ["aioboto3", "aioboto3.*", "botocore", "botocore.*", "aiobotocore", "aiobotocore.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+# Same suppression on our own bedrock package — `ClientError` annotations
+# leak `Any` into helper signatures we type ourselves.
+[[tool.mypy.overrides]]
+module = "agentforge_bedrock.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -129,6 +153,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = [
     "packages/agentforge-core/tests",
     "packages/agentforge/tests",
+    "packages/agentforge-bedrock/tests",
     "tests",
 ]
 markers = [
@@ -146,7 +171,11 @@ xfail_strict = true
 # Coverage
 # ----------------------------------------------------------------------
 [tool.coverage.run]
-source = ["packages/agentforge-core/src", "packages/agentforge/src"]
+source = [
+    "packages/agentforge-core/src",
+    "packages/agentforge/src",
+    "packages/agentforge-bedrock/src",
+]
 branch = true
 parallel = true
 omit = [
