@@ -111,6 +111,16 @@ uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
 uv run pre-commit install            # git hooks
 ```
 
+## Roadmap
+
+What's planned but not yet shipped lives in
+[`docs/roadmap.md`](./docs/roadmap.md). At time of writing, the
+in-flight features are **feat-008** (`agentforge-memory-postgres`
+for production persistence) and **feat-009** (`GraphStore` ABC plus
+SurrealDB and Neo4j drivers — knowledge graphs and multi-hop
+reasoning). The roadmap also tracks deferred items (Anthropic-
+direct provider, entry-point auto-loader, GraphRAG, hybrid search).
+
 ## Contributing
 
 Before you start: read [`AGENTS.md`](./AGENTS.md) for the repo
