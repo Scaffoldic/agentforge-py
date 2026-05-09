@@ -1,0 +1,66 @@
+# agentforge-memory-sqlite — SQLite drivers for AgentForge.
+#
+# Implements MemoryStore (claim audit log) and VectorStore (semantic
+# search) over SQLite via aiosqlite. Zero external services required:
+# the database is a single file (or `:memory:` for tests).
+#
+# Per ADR-0003 (three-tier package model — this is Tier 3, a
+# persistence module) and ADR-0014 (async-first runtime — uses
+# aiosqlite, not stdlib sqlite3).
+
+[project]
+name = "agentforge-memory-sqlite"
+version = "0.0.0"
+description = "SQLite-backed MemoryStore and VectorStore for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "memory", "vector", "sqlite", "rag"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "aiosqlite>=0.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration — feat-010 will load these.
+[project.entry-points."agentforge.memory"]
+sqlite = "agentforge_memory_sqlite.memory:SqliteMemoryStore"
+
+[project.entry-points."agentforge.vector_stores"]
+sqlite = "agentforge_memory_sqlite.vector:SqliteVectorStore"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_memory_sqlite"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_memory_sqlite",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
