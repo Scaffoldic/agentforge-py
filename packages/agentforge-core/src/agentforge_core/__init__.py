@@ -4,13 +4,22 @@ Per ADR-0007, this package's public surface is the framework's locked
 contract layer. Adding a method to an ABC is a major version bump.
 
 This module re-exports every public symbol so consumers can import
-from `agentforge_core` directly. Submodules (`agentforge_core.values`,
-`agentforge_core.production`, etc.) remain part of the public surface
-for granular imports.
+from `agentforge_core` directly. Submodules (`agentforge_core.contracts`,
+`agentforge_core.values`, `agentforge_core.production`) remain part of
+the public surface for granular imports.
 """
 
 from __future__ import annotations
 
+from agentforge_core.contracts import (
+    EvalResult,
+    Evaluator,
+    Finding,
+    LLMClient,
+    MemoryStore,
+    ReasoningStrategy,
+    Tool,
+)
 from agentforge_core.production import (
     AgentForgeError,
     BudgetExceeded,
@@ -47,20 +56,25 @@ from agentforge_core.values import (
 __version__ = "0.0.0"
 
 __all__ = [
-    # Errors
     "AgentForgeError",
     "AgentState",
     "BudgetExceeded",
     "BudgetPolicy",
     "CapabilityNotSupported",
     "Claim",
+    "EvalResult",
+    "Evaluator",
+    "Finding",
     "FinishReason",
     "GuardrailViolation",
+    "LLMClient",
     "LLMResponse",
+    "MemoryStore",
     "Message",
     "MessageRole",
     "ModuleError",
     "ProviderError",
+    "ReasoningStrategy",
     "RunContext",
     "RunIdFilter",
     "RunResult",
@@ -68,6 +82,7 @@ __all__ = [
     "StepKind",
     "StopReason",
     "TokenUsage",
+    "Tool",
     "ToolCall",
     "ToolSpec",
     "__version__",

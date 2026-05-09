@@ -162,25 +162,32 @@ def test_increment_iteration() -> None:
         max_size=20,
     ),
 )
-@settings(max_examples=50, deadline=None)
-def test_property_invariant_spent_plus_reserved_never_exceeds_cap(
+@settings(max_examples=100, deadline=None)
+def test_property_reserve_never_admits_overrun(
     cap: float, operations: list[tuple[str, float]]
 ) -> None:
-    """For any sequence of (reserve, commit, release) operations, spent +
-    reserved stays within cap or raises BudgetExceeded."""
+    """Per BudgetPolicy.reserve's contract:
+
+      A successful `reserve(x)` (no BudgetExceeded raised) must leave
+      `spent_usd + reserved_usd <= cap`.
+
+    `commit()` records actual spend and CAN take spent_usd over cap
+    (real money was already spent, the framework just records it);
+    `release_reservation` is monotone-decreasing on reserved_usd.
+    Only `reserve` enforces the budget invariant.
+    """
     b = BudgetPolicy(usd=cap)
     for op, amount in operations:
-        try:
-            if op == "reserve":
+        if op == "reserve":
+            try:
                 b.reserve(amount)
-            elif op == "commit":
-                b.commit(amount)
-            else:
-                b.release_reservation(amount)
-        except BudgetExceeded:
-            pass
-        # invariant: never exceed cap when budget is healthy
-        if b.spent_usd + b.reserved_usd > cap + 1e-9:
-            # commit can exceed (records actual past spend that overran);
-            # reservation cannot — that's the only case allowed to over-cap
-            assert b.spent_usd > cap or b.spent_usd + b.reserved_usd <= cap + 1e-9
+            except BudgetExceeded:
+                continue
+            # post-reserve invariant
+            assert b.spent_usd + b.reserved_usd <= cap + 1e-9
+        elif op == "commit":
+            b.commit(amount)  # always succeeds
+        else:
+            b.release_reservation(amount)
+            # release never makes reserved_usd negative
+            assert b.reserved_usd >= 0.0
