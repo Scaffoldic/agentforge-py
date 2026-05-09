@@ -16,15 +16,17 @@ import pytest
 class _FakeBedrockClient:
     """Stand-in for the aioboto3 `bedrock-runtime` client.
 
-    Records every Converse call and returns scripted responses. Tests
-    set `responses` to a list of dicts (or callables that build a
-    dict from the request); each `.converse()` invocation pops the
-    next item.
+    Records every Converse / ConverseStream call and returns scripted
+    responses. Tests set `responses` (for converse) or
+    `stream_responses` (for converse_stream) to a list of dicts /
+    callables / event lists; each call pops the next item.
     """
 
     def __init__(self, responses: list[Any] | None = None) -> None:
         self.responses: list[Any] = list(responses or [])
+        self.stream_responses: list[Any] = []
         self.calls: list[dict[str, Any]] = []
+        self.stream_calls: list[dict[str, Any]] = []
         self.exceptions: list[Exception | None] = []
 
     async def converse(self, **kwargs: Any) -> dict[str, Any]:
@@ -37,6 +39,26 @@ class _FakeBedrockClient:
         if callable(item):
             return item(**kwargs)
         return item
+
+    async def converse_stream(self, **kwargs: Any) -> dict[str, Any]:
+        self.stream_calls.append(kwargs)
+        if not self.stream_responses:
+            raise AssertionError("FakeBedrockClient: no scripted stream response left")
+        item = self.stream_responses.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        # Items can be a list of events (auto-wrapped into an iterator
+        # under the "stream" key), or a dict already shaped like a
+        # ConverseStream response.
+        if isinstance(item, list):
+            return {"stream": _async_iter(item)}
+        return item
+
+
+async def _async_iter(items: list[Any]) -> AsyncIterator[Any]:
+    """Minimal async-iterable wrapper for a list of stream events."""
+    for it in items:
+        yield it
 
 
 class _FakeSession:
