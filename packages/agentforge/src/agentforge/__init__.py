@@ -29,6 +29,7 @@ from agentforge.strategies import (
     PlanStep,
     ReActLoop,
     StrategyBase,
+    TreeOfThoughts,
     get_runtime,
 )
 
@@ -45,6 +46,7 @@ __all__ = [
     "ReActLoop",
     "RuntimeContext",
     "StrategyBase",
+    "TreeOfThoughts",
     "__version__",
     "get_runtime",
     "load_config",

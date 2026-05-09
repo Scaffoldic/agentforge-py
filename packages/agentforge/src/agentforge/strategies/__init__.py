@@ -23,6 +23,7 @@ from agentforge.strategies._base import (
 from agentforge.strategies._plan import Plan, PlanStep
 from agentforge.strategies.plan_execute import PlanExecuteLoop
 from agentforge.strategies.react import ReActLoop
+from agentforge.strategies.tot import TreeOfThoughts
 
 __all__ = [
     "Plan",
@@ -30,5 +31,6 @@ __all__ = [
     "PlanStep",
     "ReActLoop",
     "StrategyBase",
+    "TreeOfThoughts",
     "get_runtime",
 ]
