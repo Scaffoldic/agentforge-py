@@ -126,15 +126,25 @@ class Agent:
             return None
         if isinstance(model, LLMClient):
             return model
-        # String — parse "<provider>:<model_id>". Provider lookup is
-        # deferred to feat-003; for now we surface a clear error so the
-        # developer knows what's missing.
-        provider, _ = parse_model_string(model)
-        raise ModuleError(
-            f"No LLM provider registered for {provider!r}. "
-            f"feat-001 ships only the abstraction; install agentforge-{provider} "
-            f"(when feat-003 ships) or pass a typed LLMClient instance directly."
-        )
+        # String — parse "<provider>:<model_id>" and look up the
+        # provider in the resolver. feat-003 lights up the bedrock
+        # provider; future provider packages (anthropic, openai, ...)
+        # register themselves the same way at import time.
+        provider, model_id = parse_model_string(model)
+        try:
+            cls = Resolver.global_().resolve("providers", provider)
+        except ModuleError as exc:
+            raise ModuleError(
+                f"No LLM provider registered for {provider!r}. "
+                f"Install agentforge-{provider} (e.g. `uv add agentforge-{provider}`) "
+                f"or pass a typed LLMClient instance via Agent(model=...)."
+            ) from exc
+        instance = cls(model_id=model_id)
+        if not isinstance(instance, LLMClient):
+            raise ModuleError(
+                f"Resolved provider {provider!r} ({cls.__name__}) does not implement LLMClient."
+            )
+        return instance
 
     def _resolve_strategy(self, strategy: str | ReasoningStrategy | None) -> ReasoningStrategy:
         if isinstance(strategy, ReasoningStrategy):
