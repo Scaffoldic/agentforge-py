@@ -18,14 +18,18 @@ Usage in a driver's tests:
 
 from __future__ import annotations
 
+import itertools
+import math
 import typing
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.claim import Claim
 from agentforge_core.values.state import AgentState, StepKind
+from agentforge_core.values.vector import VectorItem
 
 _VALID_STEP_KINDS: frozenset[str] = frozenset(typing.get_args(StepKind))
 """Closed enum mirror of `StepKind`. Used by `run_strategy_conformance`."""
@@ -291,3 +295,137 @@ async def run_embedding_conformance(client: EmbeddingClient) -> None:
 
     # 8. supports() is honest about unknown capabilities
     assert client.supports("definitely-not-a-capability-2026") is False
+
+
+# ----------------------------------------------------------------------
+# Vector store conformance — feat-007.
+# ----------------------------------------------------------------------
+
+
+async def run_vector_conformance(store: VectorStore) -> None:
+    """Run the shared `VectorStore` conformance suite.
+
+    The store must be empty when this is called and is left empty when
+    the function returns (every item upserted is also deleted).
+
+    Verifies the locked invariants of `VectorStore`:
+
+      1. `dimensions()` returns a positive int with no network call.
+      2. `upsert` accepts items whose vectors match `dimensions()`;
+         dimension mismatch raises `ValueError`.
+      3. `search` returns at most `limit` matches sorted by score
+         descending, with scores in `[0, 1]`.
+      4. `search`'s top hit on a query identical to an upserted
+         vector returns that item with score ≈ 1.0.
+      5. `upsert` is write-through: re-upserting an existing id
+         replaces the prior record (no duplicate ids in results).
+      6. `delete` returns the count of items actually removed; unknown
+         ids are silently dropped (no exception).
+      7. `filter_metadata` AND-matches every key/value in the dict.
+      8. `search(limit=0)` raises `ValueError`.
+      9. `supports("not-a-real-capability")` returns False.
+
+    Drivers may issue real network calls; the suite is async. Tests are
+    responsible for arranging fixtures (e.g. running Postgres) before
+    calling this helper.
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+    _ITEM_COUNT = 3  # noqa: N806 — local constant in this function only
+
+    dim = store.dimensions()
+    assert isinstance(dim, int), "dimensions() must return an int"
+    assert dim >= 1, f"dimensions() must be >= 1, got {dim}"
+
+    # 2. dimension-mismatch on upsert
+    bad = VectorItem(id="bad", vector=tuple([0.1] * (dim + 1)), text="bad", metadata={})
+    raised_dim_error = False
+    try:
+        await store.upsert([bad])
+    except ValueError:
+        raised_dim_error = True
+    assert raised_dim_error, "upsert with mismatched vector length must raise ValueError"
+
+    # 3-5. happy-path upsert + search
+    items = [
+        VectorItem(
+            id=f"id-{i}",
+            vector=tuple(_unit_vector(dim, seed=i)),
+            text=f"text {i}",
+            metadata={"category": "doc" if i < 2 else "note", "n": i},  # noqa: PLR2004
+        )
+        for i in range(_ITEM_COUNT)
+    ]
+    await store.upsert(items)
+
+    # Searching with the same vector as item-0 should put item-0 first.
+    results = await store.search(items[0].vector, limit=_ITEM_COUNT)
+    assert len(results) == _ITEM_COUNT, f"expected {_ITEM_COUNT} results, got {len(results)}"
+    # Sorted by score descending, all in [0, 1]
+    for prev, nxt in itertools.pairwise(results):
+        assert prev.score >= nxt.score, f"results not sorted desc: {prev.score} before {nxt.score}"
+    for r in results:
+        assert 0.0 <= r.score <= 1.0, f"score out of range: {r.score}"
+    assert results[0].id == "id-0", (
+        f"top result must be the exact-match upsert, got {results[0].id!r}"
+    )
+    score_tolerance = 1e-3
+    assert abs(results[0].score - 1.0) < score_tolerance, (
+        f"exact-match score must be ~1.0, got {results[0].score}"
+    )
+
+    # 5. write-through: replace id-0 and search again
+    replacement = VectorItem(
+        id="id-0",
+        vector=tuple(_unit_vector(dim, seed=99)),
+        text="replaced",
+        metadata={"category": "doc", "n": 0},
+    )
+    await store.upsert([replacement])
+    after = await store.search(items[0].vector, limit=10)
+    # No two results may share an id.
+    seen_ids = [r.id for r in after]
+    assert len(seen_ids) == len(set(seen_ids)), (
+        f"upsert must replace prior records, but got duplicate ids: {seen_ids}"
+    )
+
+    # 7. metadata filtering
+    filtered = await store.search(items[0].vector, limit=10, filter_metadata={"category": "doc"})
+    for r in filtered:
+        assert r.metadata.get("category") == "doc", (
+            f"filter_metadata broken: returned {r.metadata!r}"
+        )
+
+    # 8. limit < 1 raises
+    raised_limit_error = False
+    try:
+        await store.search(items[0].vector, limit=0)
+    except ValueError:
+        raised_limit_error = True
+    assert raised_limit_error, "search(limit=0) must raise ValueError"
+
+    # 6. delete: known + unknown ids
+    deleted = await store.delete([item.id for item in items] + ["never-existed"])
+    assert deleted == _ITEM_COUNT, (
+        f"delete should report {_ITEM_COUNT} actual removals "
+        f"(the {_ITEM_COUNT} we upserted), got {deleted}"
+    )
+    # Empty list returns 0
+    assert await store.delete([]) == 0
+
+    # 9. supports honesty
+    assert store.supports("definitely-not-a-capability-2026") is False
+
+
+def _unit_vector(dim: int, *, seed: int) -> list[float]:
+    """Build a deterministic unit vector for conformance tests.
+
+    Returns a one-hot-like vector with the seed-th component set high
+    and a small uniform background, then L2-normalised so cosine
+    similarity computations are stable across drivers.
+    """
+    raw = [0.01] * dim
+    raw[seed % dim] = 1.0
+    norm = math.sqrt(sum(x * x for x in raw))
+    return [x / norm for x in raw]

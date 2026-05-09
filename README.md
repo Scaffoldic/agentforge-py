@@ -35,6 +35,34 @@ Credentials follow the standard AWS chain (`~/.aws/credentials`,
 (`us.…`, `eu.…`, `apac.…`, `global.…`) are passed through to
 Bedrock unchanged.
 
+### Retrieval-augmented generation (feat-007)
+
+```python
+from agentforge import Agent, InMemoryVectorStore, Retriever
+from agentforge_bedrock import BedrockEmbeddingClient
+
+embedder = BedrockEmbeddingClient(model_id="amazon.titan-embed-text-v2:0")
+store = InMemoryVectorStore(dimensions=embedder.dimensions())
+retriever = Retriever(store=store, embedder=embedder)
+
+await retriever.add_documents([
+    "AgentForge is an open-source agentic framework.",
+    "It ships four reasoning strategies stable in v0.1.",
+])
+
+async with Agent(
+    model="bedrock:us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    strategy="react",
+    retriever=retriever,
+) as agent:
+    result = await agent.run("What strategies does AgentForge ship?")
+    print(result.output)
+```
+
+For persistence beyond a single process, swap `InMemoryVectorStore`
+for `SqliteVectorStore` from `agentforge-memory-sqlite` — same
+contract, file-backed.
+
 ## Repository structure
 
 This is a **uv workspace** — one git repo, multiple installable
@@ -47,7 +75,8 @@ agentforge-py/
 ├── packages/
 │   ├── agentforge-core/            stable contracts (ABCs, value types)
 │   ├── agentforge/                 default runtime (Agent, defaults)
-│   └── agentforge-bedrock/         AWS Bedrock provider (LLM + embeddings)
+│   ├── agentforge-bedrock/         AWS Bedrock provider (LLM + embeddings)
+│   └── agentforge-memory-sqlite/   SQLite memory + vector drivers
 ├── tests/                          cross-package integration / conformance
 └── .github/workflows/              CI
 ```
