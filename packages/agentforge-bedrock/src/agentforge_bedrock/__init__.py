@@ -10,8 +10,8 @@ never sync `boto3`, so it never blocks the event loop.
 
 from __future__ import annotations
 
-from agentforge_bedrock.client import BedrockClient
+from agentforge_bedrock.client import BedrockClient, accumulate_stream
 
 __version__ = "0.0.0"
 
-__all__ = ["BedrockClient", "__version__"]
+__all__ = ["BedrockClient", "__version__", "accumulate_stream"]
