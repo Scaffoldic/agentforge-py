@@ -18,10 +18,16 @@ Usage in a driver's tests:
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import typing
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.values.claim import Claim
+from agentforge_core.values.state import AgentState, StepKind
+
+_VALID_STEP_KINDS: frozenset[str] = frozenset(typing.get_args(StepKind))
+"""Closed enum mirror of `StepKind`. Used by `run_strategy_conformance`."""
 
 
 def _claim(
@@ -132,3 +138,83 @@ async def run_memory_conformance(store: MemoryStore) -> None:
         sample = next(iter(caps))
         assert store.supports(sample) is True
     assert store.supports("definitely-not-a-capability-2026") is False
+
+
+# ----------------------------------------------------------------------
+# Strategy conformance — feat-002.
+# ----------------------------------------------------------------------
+
+
+async def run_strategy_conformance(
+    strategy: ReasoningStrategy,
+    *,
+    state_factory: Callable[[], AgentState],
+    pre_run: Callable[[AgentState], None | Awaitable[None]] | None = None,
+) -> None:
+    """Run the shared `ReasoningStrategy` conformance suite.
+
+    Args:
+        strategy: A constructed strategy instance.
+        state_factory: Builds a fresh `AgentState` for each scenario
+            (with `RuntimeContext` bound on `state.metadata` if the
+            strategy needs one — the framework runtime does this; tests
+            must do it explicitly).
+        pre_run: Optional async-or-sync callable invoked on the freshly
+            built `AgentState` before `strategy.run()` (e.g. to seed
+            findings or steps). May be omitted.
+
+    Verifies the locked invariants of `ReasoningStrategy.run`:
+
+      1. Returns the same `AgentState` instance it was given.
+      2. Populates `state.steps` with at least one step.
+      3. Every emitted step's `kind` is a valid `StepKind` value.
+      4. `step.iteration` is monotonically non-decreasing across the run.
+      5. Every emitted step has non-negative `tokens_in`, `tokens_out`,
+         `cost_usd`, `duration_ms` (Pydantic enforces; the assertion
+         here is defence-in-depth).
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+    state = state_factory()
+    if pre_run is not None:
+        outcome = pre_run(state)
+        if outcome is not None and hasattr(outcome, "__await__"):
+            await outcome
+
+    result = await strategy.run(state)
+
+    # 1. Returns the same instance
+    assert result is state, (
+        "ReasoningStrategy.run must return the same AgentState instance "
+        "it received (state mutation, not replacement)."
+    )
+
+    # 2. Populates state.steps
+    assert len(state.steps) >= 1, (
+        "ReasoningStrategy.run must append at least one Step to state.steps before returning."
+    )
+
+    # 3. Every step.kind is valid
+    for step in state.steps:
+        assert step.kind in _VALID_STEP_KINDS, (
+            f"step.kind={step.kind!r} is not a valid StepKind. "
+            f"Valid kinds: {sorted(_VALID_STEP_KINDS)}"
+        )
+
+    # 4. step.iteration monotonic non-decreasing
+    last_iter = -1
+    for step in state.steps:
+        assert step.iteration >= last_iter, (
+            f"step.iteration must be monotonically non-decreasing; "
+            f"saw {step.iteration} after {last_iter}."
+        )
+        last_iter = step.iteration
+
+    # 5. Non-negative cost / token / duration fields (Pydantic
+    #    already enforces ge=0; this is defence-in-depth)
+    for step in state.steps:
+        assert step.tokens_in >= 0, "step.tokens_in must be non-negative"
+        assert step.tokens_out >= 0, "step.tokens_out must be non-negative"
+        assert step.cost_usd >= 0.0, "step.cost_usd must be non-negative"
+        assert step.duration_ms >= 0, "step.duration_ms must be non-negative"
