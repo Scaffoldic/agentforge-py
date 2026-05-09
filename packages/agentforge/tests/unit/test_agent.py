@@ -6,8 +6,11 @@ from pathlib import Path
 
 import pytest
 from agentforge import Agent, InMemoryStore
+from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.production.exceptions import ModuleError
+from agentforge_core.resolver import Resolver, register_provider
+from agentforge_core.values.messages import LLMResponse, Message, ToolSpec
 from agentforge_core.values.state import AgentState, RunResult, Step
 
 
@@ -61,6 +64,46 @@ def test_agent_string_model_without_provider_registered_raises() -> None:
 def test_agent_invalid_model_string_raises() -> None:
     with pytest.raises(ModuleError, match="Invalid model string"):
         Agent(model="just-a-name", strategy=_NoOpStrategy())
+
+
+def test_agent_resolves_registered_provider_from_model_string() -> None:
+    """When a provider package has registered itself under the
+    `providers` resolver category, `Agent(model="<provider>:...")`
+    instantiates that class with `model_id=...`."""
+
+    @register_provider(f"_test_provider_{id(object())}")
+    class _FakeProvider(LLMClient):
+        def __init__(self, *, model_id: str) -> None:
+            self.model_id = model_id
+
+        async def call(
+            self,
+            system: str,
+            messages: list[Message],
+            tools: list[ToolSpec] | None = None,
+        ) -> LLMResponse:
+            raise NotImplementedError
+
+        async def close(self) -> None: ...
+
+    # Find the unique registration name we just created.
+    registered = [
+        name
+        for cat, name in Resolver.global_()._registry
+        if cat == "providers"
+        if name.startswith("_test_provider_")
+    ]
+    assert registered, "fake provider should be registered"
+    name = registered[-1]
+    try:
+        agent = Agent(
+            model=f"{name}:my-model-id",
+            strategy=_NoOpStrategy(),
+        )
+        assert isinstance(agent._llm, _FakeProvider)
+        assert agent._llm.model_id == "my-model-id"
+    finally:
+        Resolver.global_()._registry.pop(("providers", name), None)
 
 
 def test_agent_loads_config_from_explicit_path(tmp_path: Path) -> None:

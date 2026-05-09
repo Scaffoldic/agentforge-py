@@ -19,6 +19,82 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-003 — `agentforge-bedrock` provider + capability extensions.**
+  First concrete LLM provider for AgentForge. AWS Bedrock support
+  (Anthropic, Titan, Cohere) over the Converse / ConverseStream /
+  InvokeModel APIs, plus the cross-provider extensions every future
+  driver (`-anthropic`, `-openai`, `-azure`, …) consumes.
+
+  *Core contract extensions (chunk 1):*
+  - **Optional `LLMClient` methods** (default-raise so the contract
+    stays additive per ADR-0009): `call_with_cache`,
+    `call_with_thinking`, `stream() -> AsyncIterator[StreamChunk]`.
+  - **Value types**: `StreamChunk` (kind: text / thinking /
+    tool_call / stop), `EmbeddingResponse`.
+  - **`EmbeddingClient` ABC** under `agentforge_core.contracts.embedding`.
+  - **Provider error hierarchy**: `RateLimitError`,
+    `AuthenticationError`, `ModelNotFoundError`, `ServiceError`,
+    `TimeoutError` under `ProviderError` (the framework's
+    `TimeoutError` deliberately does not subclass `OSError`).
+  - **Resolver helpers**: `@register_provider("name")` and
+    `@register_embedding_provider("name")` so chat and embedding
+    drivers can share a provider name in different categories.
+
+  *`agentforge-bedrock` package (chunks 2–5):*
+  - **`BedrockClient`** — registered as `providers/bedrock`. Async
+    via `aioboto3` per ADR-0014. Implements `call`,
+    `call_with_cache` (cachePoint blocks at message breakpoints),
+    `call_with_thinking` (Anthropic extended thinking via
+    `additionalModelRequestFields.thinking`; reasoningContent
+    blocks dropped from public answer), and `stream()` over
+    ConverseStream (text / thinking / tool_use deltas normalised
+    into `StreamChunk`s, terminal stop chunk carrying usage and
+    cost). Plus `accumulate_stream()` — adapter that consumes a
+    stream into a single `LLMResponse`. Capabilities:
+    `{"tools", "json_mode", "caching", "thinking", "streaming"}`.
+  - **`BedrockEmbeddingClient`** — registered as
+    `embeddings/bedrock`. Detects the model family from the id
+    prefix: Titan loops one text per `InvokeModel` call;
+    Cohere uses the native batched shape. `dimensions()` resolved
+    from `prices.json` at construction for storage sizing.
+  - **Cross-region inference profile support** — `us.`, `eu.`,
+    `apac.`, `global.` model id prefixes pass through to Bedrock
+    unchanged. Pricing strips the prefix transparently so the
+    table only needs the base model row.
+  - **Cost calculation** — JSON-backed per-model price table.
+    Unknown models log once and report `cost_usd=0` rather than
+    crashing. Add new models by editing `prices.json`; no code
+    release needed.
+  - **Error mapping + bounded backoff** — botocore `ClientError`
+    codes map to `ProviderError` subclasses (HTTP-status fallback
+    for unknown codes); `with_retry` retries `RateLimitError`,
+    `ServiceError`, `TimeoutError` with exponential backoff +
+    jitter, capped at 30s and `max_retries` attempts. Auth and
+    not-found errors propagate immediately. Streams are NOT
+    retried (partial output already published).
+  - **Live integration test** opt-in via `RUN_LIVE_BEDROCK=1`,
+    targeting `us.anthropic.claude-haiku-4-5-20251001-v1:0` by
+    default. Skipped from CI; runs locally against
+    `~/.aws/credentials`.
+
+  *Agent integration (chunk 6):*
+  - `Agent(model="bedrock:<model-id>")` resolves through the
+    `providers` resolver category. Provider name is surfaced in a
+    clear `ModuleError` if the package is not installed
+    (`Install agentforge-<provider>`).
+
+  *Conformance:*
+  - **`run_embedding_conformance(client)`** — shared suite under
+    `agentforge_core.testing` covering the locked
+    `EmbeddingClient` invariants. Pytest-free so any test runner
+    can drive it.
+
+  *Tests:* 119 new unit tests + 2 integration tests + 5 Hypothesis
+  property tests covering cost-calculation linearity and
+  cross-region prefix invariance. 2 opt-in live Bedrock tests
+  (gated on `RUN_LIVE_BEDROCK=1`). 464 total tests; ~96% coverage
+  on the new package.
+
 - **feat-002 — Reasoning strategies (all four stable).** All four
   reasoning loops ship as production-stable in `agentforge.strategies`
   (no experimental package per ADR-0008).

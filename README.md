@@ -18,13 +18,22 @@ parts — your tools, your prompts, your reasoning shape — are where you
 spend your time.
 
 ```python
-# When the v0.1 milestone is complete:
+# Bedrock provider (feat-003) is the first concrete LLMClient.
+# The provider package registers itself at import time.
 from agentforge import Agent
 
-agent = Agent(model="anthropic:claude-sonnet-4.7")
-result = await agent.run("Summarise this PR")
-print(result.output)
+async with Agent(
+    model="bedrock:us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    strategy="react",
+) as agent:
+    result = await agent.run("Summarise this PR")
+    print(result.output)
 ```
+
+Credentials follow the standard AWS chain (`~/.aws/credentials`,
+`AWS_PROFILE`, IAM role). Cross-region inference profile IDs
+(`us.…`, `eu.…`, `apac.…`, `global.…`) are passed through to
+Bedrock unchanged.
 
 ## Repository structure
 
@@ -37,7 +46,8 @@ agentforge-py/
 ├── uv.lock                         shared lock file
 ├── packages/
 │   ├── agentforge-core/            stable contracts (ABCs, value types)
-│   └── agentforge/                 default runtime (Agent, defaults)
+│   ├── agentforge/                 default runtime (Agent, defaults)
+│   └── agentforge-bedrock/         AWS Bedrock provider (LLM + embeddings)
 ├── tests/                          cross-package integration / conformance
 └── .github/workflows/              CI
 ```
