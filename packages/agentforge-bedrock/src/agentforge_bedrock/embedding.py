@@ -187,7 +187,8 @@ class BedrockEmbeddingClient(EmbeddingClient):
             except Exception as exc:
                 raise map_unexpected(exc) from exc
             payload = await _read_body(response["body"])
-            return json.loads(payload)
+            parsed: dict[str, Any] = json.loads(payload)
+            return parsed
 
         return await with_retry(_do, max_retries=self._max_retries)
 
@@ -215,8 +216,9 @@ async def _read_body(body: Any) -> bytes:
         return bytes(body)
     result = read()
     if hasattr(result, "__await__"):
-        return await result
-    return result  # type: ignore[no-any-return]
+        awaited: bytes = await result
+        return awaited
+    return bytes(result)
 
 
 def _detect_family(model_id: str) -> str:
