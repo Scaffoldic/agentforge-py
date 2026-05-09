@@ -20,9 +20,14 @@ from agentforge.strategies._base import (
     StrategyBase,
     get_runtime,
 )
+from agentforge.strategies._plan import Plan, PlanStep
+from agentforge.strategies.plan_execute import PlanExecuteLoop
 from agentforge.strategies.react import ReActLoop
 
 __all__ = [
+    "Plan",
+    "PlanExecuteLoop",
+    "PlanStep",
     "ReActLoop",
     "StrategyBase",
     "get_runtime",

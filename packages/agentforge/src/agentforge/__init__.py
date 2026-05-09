@@ -23,7 +23,14 @@ from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
-from agentforge.strategies import ReActLoop, StrategyBase, get_runtime
+from agentforge.strategies import (
+    Plan,
+    PlanExecuteLoop,
+    PlanStep,
+    ReActLoop,
+    StrategyBase,
+    get_runtime,
+)
 
 __version__ = "0.0.0"
 
@@ -32,6 +39,9 @@ __all__ = [
     "Agent",
     "AgentForgeConfig",
     "InMemoryStore",
+    "Plan",
+    "PlanExecuteLoop",
+    "PlanStep",
     "ReActLoop",
     "RuntimeContext",
     "StrategyBase",
