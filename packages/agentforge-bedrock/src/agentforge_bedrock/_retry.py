@@ -57,9 +57,9 @@ async def with_retry[T](
         except ProviderError as exc:
             if attempt >= max_retries or not is_retryable(exc):
                 raise
-            delay = min(base_seconds * (2**attempt), cap_seconds) + random.uniform(  # noqa: S311 — non-crypto jitter
-                0, jitter_seconds
-            )
+            # `random.uniform` is fine for retry jitter — non-crypto.
+            jitter = random.uniform(0, jitter_seconds)  # noqa: S311  # nosec B311
+            delay = min(base_seconds * (2**attempt), cap_seconds) + jitter
             log.info(
                 "agentforge-bedrock: retryable %s on attempt %d/%d; sleeping %.2fs",
                 type(exc).__name__,

@@ -125,6 +125,24 @@ explicit_package_bases = true
 module = "tests.*"
 disallow_untyped_decorators = false   # pytest decorators
 
+# AWS SDKs ship without py.typed markers as of writing. Allow imports
+# without stubs so mypy --strict still passes against the bedrock
+# package; the driver's public surface is still typed at our layer.
+# `disable_error_code = no-any-unimported` is needed because anything
+# annotated with botocore.exceptions.ClientError gets inferred as Any
+# once the import is skipped, and strict mypy normally rejects that.
+[[tool.mypy.overrides]]
+module = ["aioboto3", "aioboto3.*", "botocore", "botocore.*", "aiobotocore", "aiobotocore.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+# Same suppression on our own bedrock package — `ClientError` annotations
+# leak `Any` into helper signatures we type ourselves.
+[[tool.mypy.overrides]]
+module = "agentforge_bedrock.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
