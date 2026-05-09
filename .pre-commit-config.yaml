@@ -1,8 +1,8 @@
 # Pre-commit hook configuration for agentforge-py.
 #
-# Reference: .claude/checklists/pre-commit.md (in the parent design workspace)
-# This config is the agentforge-py-scoped subset of the project-wide hook
-# at ../../.pre-commit-config.yaml.
+# Install once after cloning the repo: `uv run pre-commit install`.
+# Run all hooks manually against every file: `uv run pre-commit run --all-files`.
+# CI runs the same checks; see .github/workflows/ci.yml.
 
 minimum_pre_commit_version: "3.5.0"
 
