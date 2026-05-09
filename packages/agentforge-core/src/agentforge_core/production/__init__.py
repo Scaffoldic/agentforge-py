@@ -11,11 +11,16 @@ from __future__ import annotations
 from agentforge_core.production.budget import BudgetPolicy
 from agentforge_core.production.exceptions import (
     AgentForgeError,
+    AuthenticationError,
     BudgetExceeded,
     CapabilityNotSupported,
     GuardrailViolation,
+    ModelNotFoundError,
     ModuleError,
     ProviderError,
+    RateLimitError,
+    ServiceError,
+    TimeoutError,
 )
 from agentforge_core.production.log_filter import (
     RunIdFilter,
@@ -32,14 +37,19 @@ from agentforge_core.production.run_context import (
 
 __all__ = [
     "AgentForgeError",
+    "AuthenticationError",
     "BudgetExceeded",
     "BudgetPolicy",
     "CapabilityNotSupported",
     "GuardrailViolation",
+    "ModelNotFoundError",
     "ModuleError",
     "ProviderError",
+    "RateLimitError",
     "RunContext",
     "RunIdFilter",
+    "ServiceError",
+    "TimeoutError",
     "bind_run",
     "current_run",
     "install_run_id_filter",

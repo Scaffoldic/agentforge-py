@@ -83,6 +83,35 @@ def register(category: str, name: str) -> Callable[[T], T]:
     return decorator
 
 
+def register_provider(name: str) -> Callable[[T], T]:
+    """Decorator: register an `LLMClient` subclass as a model provider.
+
+    Convenience wrapper around `register("providers", name)` — used by
+    every concrete provider package (`agentforge-bedrock`,
+    `agentforge-anthropic`, ...). The provider name corresponds to the
+    leading token in a model string: `register_provider("bedrock")`
+    enables `Agent(model="bedrock:...")`.
+
+    Example:
+        @register_provider("bedrock")
+        class BedrockClient(LLMClient):
+            def __init__(self, *, model_id: str, region: str = "us-east-1") -> None:
+                ...
+    """
+    return register("providers", name)
+
+
+def register_embedding_provider(name: str) -> Callable[[T], T]:
+    """Decorator: register an `EmbeddingClient` subclass as an embedding provider.
+
+    Mirrors `register_provider` but under the `"embeddings"` category
+    so chat models and embedding models can share a provider name
+    without colliding (e.g. `bedrock:anthropic.claude-...` for chat,
+    `embeddings:bedrock:amazon.titan-embed-text-v2:0` for embeddings).
+    """
+    return register("embeddings", name)
+
+
 def parse_model_string(model_str: str) -> tuple[str, str]:
     """Parse `"<provider>:<model_id>"` into `(provider, model_id)`.
 
