@@ -71,16 +71,19 @@ repos:
         types: [python]
         pass_filenames: false
 
+      # pytest exit 5 means "no tests collected"; we tolerate it during
+      # the early phase of feat-001 when integration / conformance dirs
+      # are still empty. Real failures (1, 2, 3, 4) still block.
       - id: pytest-unit
         name: pytest unit
-        entry: uv run pytest -q -x -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit
+        entry: bash -c 'uv run pytest -q -x -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
         language: system
         always_run: true
         pass_filenames: false
 
       - id: pytest-integration
         name: pytest integration (excludes live)
-        entry: uv run pytest -q -x -m "not live" tests/integration
+        entry: bash -c 'uv run pytest -q -x -m "not live" tests/integration; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
         language: system
         always_run: true
         pass_filenames: false

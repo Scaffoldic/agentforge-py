@@ -31,13 +31,15 @@ classifiers = [
 
 dependencies = [
     "pydantic>=2.10",
+    "python-ulid>=3.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/"
-Repository = "https://github.com/"
-Documentation = "https://github.com/"
-Changelog = "https://github.com/"
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
 
 [build-system]
 requires = ["hatchling>=1.27"]
