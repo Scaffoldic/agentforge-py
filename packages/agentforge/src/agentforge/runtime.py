@@ -1,0 +1,46 @@
+"""`RuntimeContext` — per-run execution context shared with strategies.
+
+Lives in `agentforge` (not `agentforge-core`) because it references
+the framework's runtime concerns — `BudgetPolicy`, the active
+`LLMClient`, the agent's tool catalogue, the active `MemoryStore`.
+`agentforge-core` defines those contracts; `agentforge` consumes
+them.
+
+`Agent.run()` constructs a `RuntimeContext` per run and stores it
+on `state.metadata` under `RUNTIME_KEY`. Strategies access it via
+`agentforge.strategies._base.get_runtime(state)`.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from agentforge_core.contracts.llm import LLMClient
+from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.tool import Tool
+from agentforge_core.production.budget import BudgetPolicy
+
+RUNTIME_KEY = "__agentforge_runtime__"
+"""Documented key under `AgentState.metadata` where the runtime is bound."""
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeContext:
+    """Per-run execution context.
+
+    Constructed by `Agent.run()` once per run and bound to
+    `state.metadata[RUNTIME_KEY]`. Strategies read via
+    `get_runtime(state)`.
+
+    Frozen — once bound, the context does not change for the
+    duration of the run. `BudgetPolicy` is itself mutable (the
+    strategy calls `.check()`, `.reserve()`, `.commit()`); the
+    immutability here is on the *binding*, not on the budget's
+    internal counters.
+    """
+
+    llm: LLMClient
+    tools: tuple[Tool, ...]
+    memory: MemoryStore
+    budget: BudgetPolicy
+    system_prompt: str | None = None
