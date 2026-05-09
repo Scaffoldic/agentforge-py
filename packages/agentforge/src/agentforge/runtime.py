@@ -14,11 +14,15 @@ on `state.metadata` under `RUNTIME_KEY`. Strategies access it via
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.production.budget import BudgetPolicy
+
+if TYPE_CHECKING:
+    from agentforge.retrieval import Retriever
 
 RUNTIME_KEY = "__agentforge_runtime__"
 """Documented key under `AgentState.metadata` where the runtime is bound."""
@@ -44,3 +48,7 @@ class RuntimeContext:
     memory: MemoryStore
     budget: BudgetPolicy
     system_prompt: str | None = None
+    retriever: Retriever | None = None
+    """Optional RAG retriever (feat-007). Strategies that want to
+    ground responses in indexed documents check `runtime.retriever
+    is not None` and call `retriever.retrieve(query)`."""

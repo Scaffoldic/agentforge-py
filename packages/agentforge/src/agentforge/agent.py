@@ -52,6 +52,7 @@ from agentforge_core.values.state import AgentState, FinishReason, RunResult
 
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
+from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 
 StepHook = Callable[..., Awaitable[None] | None]
@@ -75,6 +76,7 @@ class Agent:
         tools: list[Tool] | None = None,
         strategy: str | ReasoningStrategy | None = None,
         memory: MemoryStore | None = None,
+        retriever: Retriever | None = None,
         evaluators: list[Evaluator] | None = None,
         system_prompt: str | None = None,
         budget_usd: float | None = None,
@@ -97,6 +99,7 @@ class Agent:
 
         # Defaults: in-memory store, no evaluators, no tools.
         self._memory: MemoryStore = memory if memory is not None else InMemoryStore()
+        self._retriever: Retriever | None = retriever
         self._tools: list[Tool] = list(tools) if tools is not None else []
         self._evaluators: list[Evaluator] = list(evaluators) if evaluators is not None else []
         self._system_prompt: str | None = (
@@ -215,6 +218,7 @@ class Agent:
                     memory=self._memory,
                     budget=run_budget,
                     system_prompt=self._system_prompt,
+                    retriever=self._retriever,
                 )
             state = AgentState(
                 run_id=ctx.run_id,
