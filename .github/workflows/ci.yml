@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel in-progress runs on force-push to a PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-type:
+    name: Lint + types (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Mypy strict
+        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
+      - name: Bandit
+        run: uv run bandit -q -r packages/agentforge-core/src packages/agentforge/src
+
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest unit
+        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit
+      - name: Pytest integration
+        run: uv run pytest -q -m "not live" tests/integration
+      - name: Coverage
+        if: matrix.os == 'ubuntu-latest'
+        run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"
+
+  coverage-ratchet:
+    name: Coverage ratchet vs main
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run coverage ratchet
+        run: |
+          if [ -f scripts/coverage_ratchet.py ]; then
+            python scripts/coverage_ratchet.py
+          else
+            echo "coverage_ratchet.py not yet shipped (lands with feat-001 implementation)"
+          fi

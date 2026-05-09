@@ -1,0 +1,55 @@
+# agentforge-core — locked contracts (ABCs, value types) for AgentForge.
+#
+# This package ships only the stable contract layer. No I/O. No
+# third-party SDKs except Pydantic. Every other module pins against
+# this package's major version and implements its ABCs.
+#
+# Per ADR-0007 (ABC + Protocol as the framework's stable surface) and
+# ADR-0003 (three-tier package model — this is Tier 1).
+
+[project]
+name = "agentforge-core"
+version = "0.0.0"
+description = "AgentForge core — stable contracts (ABCs, value types) for the agentic framework"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "llm", "framework", "contracts"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "pydantic>=2.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/"
+Repository = "https://github.com/"
+Documentation = "https://github.com/"
+Changelog = "https://github.com/"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_core"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_core",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

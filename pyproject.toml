@@ -1,0 +1,168 @@
+# Workspace root for the agentforge-py monorepo.
+#
+# This file declares the uv workspace and shared tool configuration that
+# applies across every member package. Member packages have their own
+# pyproject.toml under packages/<name>/ with their own [project] table.
+#
+# Why uv workspaces (per ADR-0003 + ADR-0015):
+#   - All Tier-3 modules are versioned and released together.
+#   - Cross-package PRs are atomic; one CI run validates every member.
+#   - The lock file (uv.lock) is shared across the workspace, so dev
+#     environments are deterministic.
+
+[project]
+name = "agentforge-workspace"
+version = "0.0.0"
+description = "AgentForge — Python implementation (workspace root)"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+
+# The workspace root itself is not installed; the [project] block exists
+# only to satisfy uv. Member packages are the installable units.
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "pytest-xdist>=3.6",
+    "hypothesis>=6.115",
+    "ruff>=0.8.4",
+    "mypy>=1.13",
+    "bandit>=1.8",
+    "pre-commit>=4.0",
+]
+
+# ----------------------------------------------------------------------
+# Ruff — formatter + linter (replaces black, flake8, isort, pyupgrade)
+# Reference: .claude/standards/coding.md (Python section)
+# ----------------------------------------------------------------------
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = ["docs", ".venv"]
+
+[tool.ruff.lint]
+# Enable a broad rule set; quiet the few that conflict with our idioms.
+select = [
+    "E", "W",        # pycodestyle
+    "F",             # pyflakes
+    "I",             # isort
+    "N",             # pep8-naming
+    "UP",            # pyupgrade
+    "B",             # flake8-bugbear
+    "C4",            # flake8-comprehensions
+    "SIM",           # flake8-simplify
+    "RET",           # flake8-return
+    "RUF",           # ruff-specific
+    "ASYNC",         # flake8-async
+    "S",             # flake8-bandit subset
+    "PT",            # flake8-pytest-style
+    "TID",           # flake8-tidy-imports
+    "ARG",           # unused arguments
+    "PL",            # pylint subset
+    "PERF",          # perflint
+    "ERA",           # eradicate (commented-out code)
+    "TRY",           # tryceratops
+]
+ignore = [
+    "S101",          # `assert` — fine in tests; per-file ignore handles
+    "PLR0913",       # too many arguments — ABC methods may need more
+    "TRY003",        # long exception messages — clearer than codes
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = ["S", "PLR2004", "ARG"]    # tests get more leeway
+"**/conftest.py" = ["ARG"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+# ----------------------------------------------------------------------
+# Mypy — strict mode (per .claude/standards/coding.md)
+# ----------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unused_configs = true
+warn_unreachable = true
+warn_no_return = true
+disallow_any_unimported = true
+disallow_any_generics = true
+plugins = ["pydantic.mypy"]
+mypy_path = ["packages/agentforge-core/src", "packages/agentforge/src"]
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false   # pytest decorators
+
+# ----------------------------------------------------------------------
+# Pytest
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = [
+    "packages/agentforge-core/tests",
+    "packages/agentforge/tests",
+    "tests",
+]
+markers = [
+    "live: tests that hit real LLM providers (excluded from pre-commit)",
+    "slow: tests that take > 1s (excluded from default unit run)",
+    "conformance: ABC-conformance suite that drivers must pass",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:pydantic._internal.*",
+]
+xfail_strict = true
+
+# ----------------------------------------------------------------------
+# Coverage
+# ----------------------------------------------------------------------
+[tool.coverage.run]
+source = ["packages/agentforge-core/src", "packages/agentforge/src"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+    "@overload",
+]
+
+[tool.coverage.paths]
+source = [
+    "packages/agentforge-core/src",
+    "packages/agentforge/src",
+    "*/site-packages",
+]
+
+# ----------------------------------------------------------------------
+# Bandit — security lint (per .claude/standards/coding.md)
+# ----------------------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101"]    # assert is fine

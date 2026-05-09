@@ -1,0 +1,21 @@
+# Configurable thresholds for tests.
+#
+# Per `.claude/standards/configuration.md`, no test hardcodes a numeric
+# threshold. Tests read from this file via the `thresholds` fixture in
+# `tests/conftest.py`.
+#
+# Add a new section per feature when you need new tunables; document
+# why each value was chosen.
+
+# Cross-cutting defaults — used by integration and conformance tests.
+defaults:
+  unit_test_timeout_s: 5
+  integration_test_timeout_s: 30
+  flaky_retry_count: 2
+
+# Feature-specific sections will be added as features land.
+# Example shape (for feat-001 budget tests):
+# budget:
+#   small_cap_usd: 0.10
+#   default_cap_usd: 1.00
+#   exhaustion_threshold_usd: 0.05

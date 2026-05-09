@@ -1,0 +1,93 @@
+# Pre-commit hook configuration for agentforge-py.
+#
+# Reference: .claude/checklists/pre-commit.md (in the parent design workspace)
+# This config is the agentforge-py-scoped subset of the project-wide hook
+# at ../../.pre-commit-config.yaml.
+
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  # ----------------------------------------------------------------------
+  # Generic file hygiene
+  # ----------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ----------------------------------------------------------------------
+  # Conventional Commits message format
+  # ----------------------------------------------------------------------
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.6.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - "feat"
+          - "fix"
+          - "docs"
+          - "test"
+          - "refactor"
+          - "chore"
+          - "perf"
+          - "revert"
+
+  # ----------------------------------------------------------------------
+  # Python — ruff (format + lint)
+  # ----------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff-format
+      - id: ruff
+        args: ["--fix"]
+
+  # ----------------------------------------------------------------------
+  # Python — mypy / bandit / pytest / coverage (run via uv)
+  # ----------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: mypy-strict
+        name: mypy --strict
+        entry: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: bandit
+        name: bandit security lint
+        entry: uv run bandit -q -r packages/agentforge-core/src packages/agentforge/src
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: pytest-unit
+        name: pytest unit
+        entry: uv run pytest -q -x -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit
+        language: system
+        always_run: true
+        pass_filenames: false
+
+      - id: pytest-integration
+        name: pytest integration (excludes live)
+        entry: uv run pytest -q -x -m "not live" tests/integration
+        language: system
+        always_run: true
+        pass_filenames: false
+
+      - id: pytest-coverage
+        name: coverage >= 90%
+        entry: uv run pytest --cov --cov-fail-under=90 -q -m "not live"
+        language: system
+        always_run: true
+        pass_filenames: false
