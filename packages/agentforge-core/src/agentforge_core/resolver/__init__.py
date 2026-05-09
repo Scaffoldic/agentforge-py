@@ -19,10 +19,14 @@ from agentforge_core.resolver.resolve import (
     Resolver,
     parse_model_string,
     register,
+    register_embedding_provider,
+    register_provider,
 )
 
 __all__ = [
     "Resolver",
     "parse_model_string",
     "register",
+    "register_embedding_provider",
+    "register_provider",
 ]

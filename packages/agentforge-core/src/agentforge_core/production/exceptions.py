@@ -51,8 +51,53 @@ class ModuleError(AgentForgeError):
 class ProviderError(AgentForgeError):
     """Base for errors originating in an LLM / embedding provider.
 
-    Concrete subclasses (`RateLimitError`, etc.) ship in feat-003 with
-    the provider abstraction.
+    Concrete subclasses below cover the cross-provider failure modes
+    every reasoning loop needs to branch on. Provider drivers map
+    their SDK exceptions into one of these at the boundary; callers
+    catch `ProviderError` for general handling or narrow to a
+    specific subclass for retry / surfacing logic.
+    """
+
+
+class RateLimitError(ProviderError):
+    """The provider throttled the request (HTTP 429 / `ThrottlingException`).
+
+    Retryable with exponential backoff. Provider drivers honour
+    `Retry-After` headers when present.
+    """
+
+
+class AuthenticationError(ProviderError):
+    """The provider rejected credentials (HTTP 401 / 403).
+
+    Not retryable. The agent run terminates and the developer fixes
+    credentials at the deployment layer.
+    """
+
+
+class ModelNotFoundError(ProviderError):
+    """The provider does not recognise the requested model id.
+
+    Surfaced at the first call rather than at construction because
+    most providers don't expose a synchronous "does this model exist"
+    check. Not retryable.
+    """
+
+
+class ServiceError(ProviderError):
+    """The provider returned a transient server error (HTTP 5xx).
+
+    Retryable. Drivers retry up to `max_retries` times with bounded
+    exponential backoff before propagating.
+    """
+
+
+class TimeoutError(ProviderError):
+    """A request to the provider exceeded the configured timeout.
+
+    Distinct from the stdlib `TimeoutError` (which subclasses
+    `OSError`); this one subclasses `ProviderError` so it can be
+    caught by the same handler as other provider failures. Retryable.
     """
 
 

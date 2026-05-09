@@ -35,12 +35,12 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check .
       - name: Mypy strict
-        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
+        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src
       - name: Bandit
         # -c pyproject.toml so [tool.bandit] (skips B101) is honoured;
         # without it, the conformance suite's asserts in
         # agentforge_core.testing.conformance trip B101.
-        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src
+        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
@@ -61,9 +61,9 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Pytest unit
-        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit
+        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit tests/unit
       - name: Pytest integration
-        run: uv run pytest -q -m "not live" tests/integration
+        run: uv run pytest -q -m "not live" packages/agentforge-bedrock/tests/integration tests/integration
       - name: Coverage
         if: matrix.os == 'ubuntu-latest'
         run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"

@@ -1,0 +1,18 @@
+{
+  "_comment": "Bedrock per-model token prices in USD per 1k tokens. Cross-region inference profile prefixes (us./eu./apac./global.) are stripped before lookup. Embedding rows omit output_per_1k.",
+  "_source": "https://aws.amazon.com/bedrock/pricing/",
+  "models": {
+    "anthropic.claude-opus-4-7-v1:0": {"input_per_1k": 0.015, "output_per_1k": 0.075},
+    "anthropic.claude-sonnet-4-5-20250929-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "anthropic.claude-sonnet-4-20250514-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "anthropic.claude-haiku-4-5-20251001-v1:0": {"input_per_1k": 0.0008, "output_per_1k": 0.004},
+    "anthropic.claude-3-5-sonnet-20241022-v2:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "anthropic.claude-3-5-sonnet-20240620-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "anthropic.claude-3-5-haiku-20241022-v1:0": {"input_per_1k": 0.0008, "output_per_1k": 0.004},
+    "anthropic.claude-3-haiku-20240307-v1:0": {"input_per_1k": 0.00025, "output_per_1k": 0.00125},
+    "amazon.titan-embed-text-v2:0": {"input_per_1k": 0.00002, "dimensions": 1024},
+    "amazon.titan-embed-text-v1": {"input_per_1k": 0.0001, "dimensions": 1536},
+    "cohere.embed-english-v3": {"input_per_1k": 0.0001, "dimensions": 1024},
+    "cohere.embed-multilingual-v3": {"input_per_1k": 0.0001, "dimensions": 1024}
+  }
+}

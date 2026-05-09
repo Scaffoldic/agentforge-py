@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import pytest
 from agentforge_core.production.exceptions import ModuleError
-from agentforge_core.resolver import Resolver, parse_model_string, register
+from agentforge_core.resolver import (
+    Resolver,
+    parse_model_string,
+    register,
+    register_embedding_provider,
+    register_provider,
+)
 
 
 @pytest.fixture
@@ -145,3 +151,61 @@ def test_register_decorator_uses_global() -> None:
         # The Resolver doesn't expose a public "unregister", so we
         # poke the internal map. Tests-only access pattern.
         Resolver.global_()._registry.pop(("strategies", unique_name), None)
+
+
+# ---- register_provider / register_embedding_provider ----
+
+
+def test_register_provider_targets_providers_category() -> None:
+    """`register_provider("name")` puts the class under
+    `("providers", "name")` so `Agent` can look it up after parsing
+    `"name:model-id"`."""
+    unique_name = f"prov-{id(object())}"
+
+    @register_provider(unique_name)
+    class _FakeProvider:
+        pass
+
+    try:
+        cls = Resolver.global_().resolve("providers", unique_name)
+        assert cls is _FakeProvider
+    finally:
+        Resolver.global_()._registry.pop(("providers", unique_name), None)
+
+
+def test_register_embedding_provider_targets_embeddings_category() -> None:
+    """Embedding providers register under `("embeddings", "name")` so
+    they don't collide with chat-model providers of the same name."""
+    unique_name = f"emb-{id(object())}"
+
+    @register_embedding_provider(unique_name)
+    class _FakeEmbedder:
+        pass
+
+    try:
+        cls = Resolver.global_().resolve("embeddings", unique_name)
+        assert cls is _FakeEmbedder
+    finally:
+        Resolver.global_()._registry.pop(("embeddings", unique_name), None)
+
+
+def test_chat_and_embedding_providers_can_share_a_name() -> None:
+    """A single provider package may register both a chat client and
+    an embedding client under the same name — they live in different
+    categories, so no collision."""
+    unique_name = f"shared-{id(object())}"
+
+    @register_provider(unique_name)
+    class _Chat:
+        pass
+
+    @register_embedding_provider(unique_name)
+    class _Emb:
+        pass
+
+    try:
+        assert Resolver.global_().resolve("providers", unique_name) is _Chat
+        assert Resolver.global_().resolve("embeddings", unique_name) is _Emb
+    finally:
+        Resolver.global_()._registry.pop(("providers", unique_name), None)
+        Resolver.global_()._registry.pop(("embeddings", unique_name), None)
