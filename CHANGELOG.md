@@ -19,6 +19,78 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-007 — Persistent memory + vector search + RAG.** Lifts agents
+  from "process-local memory only" to "persistent state across runs"
+  and adds semantic retrieval so agents can ground answers in indexed
+  documents. Validates the three-tier package model end-to-end.
+
+  *New core contracts (`agentforge-core`):*
+  - **`VectorStore` ABC** under `agentforge_core.contracts.vector_store`.
+    Methods: `upsert`, `search`, `delete`, `close`, `dimensions`,
+    `capabilities`, `supports`. Distinct from `MemoryStore` (claim
+    audit log) — the shapes don't unify cleanly. Cosine scores
+    normalised to `[0, 1]` (1 = identical direction; 0 = orthogonal-
+    or-anti-correlated).
+  - **`VectorItem`** and **`VectorMatch`** frozen Pydantic value types.
+    Vectors are `tuple[float, ...]` for immutability + hashability.
+  - **`run_vector_conformance(store)`** suite in
+    `agentforge_core.testing`. Pytest-free; verifies the locked
+    invariants every driver must respect: dimensions positive,
+    upsert is write-through, results sorted desc, exact-match
+    scores ≈ 1.0, dimension mismatch raises ValueError, metadata
+    filter is conjunctive AND, delete returns actual count.
+
+  *New runtime helpers (`agentforge`):*
+  - **`InMemoryVectorStore`** — process-local reference impl. Brute-
+    force cosine over an `OrderedDict`. L2-normalises on upsert so
+    search math is a plain dot product. Suitable for tests, demos,
+    small RAG corpora; production swaps to a persistent driver.
+  - **`Retriever`** — high-level adapter wrapping `VectorStore` +
+    `EmbeddingClient`. `add_documents(texts, *, ids=None,
+    metadata=None, batch_size=32)` with auto-ULID generation.
+    `retrieve(query, *, top_k=None, filter_metadata=None)` embeds
+    the query and forwards to `VectorStore.search`. Constructor
+    enforces dimension parity between store and embedder up-front.
+  - **`Agent(retriever=...)`** kwarg threads a `Retriever` through
+    `RuntimeContext.retriever` so strategies can do RAG via
+    `get_runtime(state).retriever.retrieve(...)` without the caller
+    having to thread store/embedder manually. Existing `Agent(...)`
+    constructions keep working — the field is optional.
+
+  *New persistence package (`agentforge-memory-sqlite`):*
+  - **`SqliteMemoryStore`** — persistent `MemoryStore` over
+    `aiosqlite`. Single-table schema with composite indices on
+    `(project, agent)`, `run_id`, and `category`. JSON payload
+    serialisation, supersede() preserves history. `from_path(path)`
+    handles `:memory:` and filesystem databases; async context
+    manager closes the connection.
+  - **`SqliteVectorStore`** — persistent `VectorStore` over
+    `aiosqlite`. Vectors stored as fixed-width float64 BLOBs
+    (`struct.pack '<Nd'`), brute-force cosine scan in Python
+    (~10k vectors fine; v0.2 will add an opt-in `sqlite-vec`
+    extension path declared via the `"native_ann"` capability).
+    Dimensions pinned per database in a `vector_meta` table — re-
+    opening with a different value raises `ValueError` rather than
+    silently corrupting.
+  - Both stores pass the framework's conformance suites verbatim.
+
+  *Tests:* 89 new unit tests covering value-type validation,
+  ABC default behaviour, the in-memory impl, the `Retriever`
+  adapter (auto-ULID, batching, length-mismatch validation,
+  metadata forwarding), `SqliteMemoryStore` (conformance + edge
+  cases + persistence across reconnects), `SqliteVectorStore`
+  (conformance + dimension pinning + BLOB roundtrip), and Agent
+  retriever wiring. Plus 7 Hypothesis property tests for vector
+  invariants (cosine direction-only, dimension enforcement, sort
+  order, bounded result count, delete round-trip) and a 3-test
+  integration suite that wires the full RAG pipeline end-to-end
+  (Embedder → VectorStore → Retriever → Agent).
+
+  *Postgres deferred to feat-008.* SQLite covers the v0.1 use
+  cases (development, single-host deployments, small-to-medium
+  RAG corpora). A production Postgres driver with `pgvector` and
+  `asyncpg` ships in feat-008 once we have actual deployment plans.
+
 - **feat-003 — `agentforge-bedrock` provider + capability extensions.**
   First concrete LLM provider for AgentForge. AWS Bedrock support
   (Anthropic, Titan, Cohere) over the Converse / ConverseStream /

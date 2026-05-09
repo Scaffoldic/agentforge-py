@@ -24,6 +24,7 @@ dependencies = [
     "agentforge-core",
     "agentforge",
     "agentforge-bedrock",
+    "agentforge-memory-sqlite",
 ]
 
 [tool.uv.workspace]
@@ -33,6 +34,7 @@ members = ["packages/*"]
 agentforge-core = { workspace = true }
 agentforge = { workspace = true }
 agentforge-bedrock = { workspace = true }
+agentforge-memory-sqlite = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -154,6 +156,7 @@ testpaths = [
     "packages/agentforge-core/tests",
     "packages/agentforge/tests",
     "packages/agentforge-bedrock/tests",
+    "packages/agentforge-memory-sqlite/tests",
     "tests",
 ]
 markers = [
@@ -175,6 +178,7 @@ source = [
     "packages/agentforge-core/src",
     "packages/agentforge/src",
     "packages/agentforge-bedrock/src",
+    "packages/agentforge-memory-sqlite/src",
 ]
 branch = true
 parallel = true

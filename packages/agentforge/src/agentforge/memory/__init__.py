@@ -1,14 +1,15 @@
 """Default in-process memory implementations.
 
-`InMemoryStore` ships with `agentforge` so a fresh `Agent(...)` has
-durable-shaped state out of the box without external infra. It is
-the safe default; production deployments swap to a real driver
-(`agentforge-memory-sqlite`, `-postgres`, etc.) via `agentforge.yaml`
-once feat-005 lands.
+`InMemoryStore` (claim audit log) and `InMemoryVectorStore` (semantic
+search) ship with `agentforge` so a fresh `Agent(...)` has
+durable-shaped state out of the box without external infra. Both are
+safe defaults; production deployments swap to real drivers
+(`agentforge-memory-sqlite`, `-postgres`) via `agentforge.yaml`.
 """
 
 from __future__ import annotations
 
 from agentforge.memory.in_memory import InMemoryStore
+from agentforge.memory.in_memory_vector import InMemoryVectorStore
 
-__all__ = ["InMemoryStore"]
+__all__ = ["InMemoryStore", "InMemoryVectorStore"]
