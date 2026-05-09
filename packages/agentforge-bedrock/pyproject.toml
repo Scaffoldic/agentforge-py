@@ -1,0 +1,63 @@
+# agentforge-bedrock — AWS Bedrock provider for AgentForge.
+#
+# Implements the LLMClient + EmbeddingClient contracts defined in
+# agentforge-core, normalising Bedrock's Converse API and Titan/Cohere
+# embedding APIs into the framework's provider-agnostic shapes.
+#
+# Per ADR-0003 (three-tier package model — this is Tier 3, a provider
+# module) and ADR-0014 (async-first runtime — this package uses
+# aioboto3, never sync boto3, in agent code paths).
+
+[project]
+name = "agentforge-bedrock"
+version = "0.0.0"
+description = "AWS Bedrock provider for AgentForge — Anthropic, Titan, Cohere on Bedrock"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "llm", "bedrock", "aws", "anthropic"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "aioboto3>=13.0",
+    "botocore>=1.35",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration (per ADR-0004) — feat-010 will load these.
+[project.entry-points."agentforge.providers"]
+bedrock = "agentforge_bedrock.client:BedrockClient"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_bedrock"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_bedrock",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

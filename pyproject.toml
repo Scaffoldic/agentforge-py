@@ -23,6 +23,7 @@ license-files = ["LICENSE", "NOTICE"]
 dependencies = [
     "agentforge-core",
     "agentforge",
+    "agentforge-bedrock",
 ]
 
 [tool.uv.workspace]
@@ -31,6 +32,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 agentforge-core = { workspace = true }
 agentforge = { workspace = true }
+agentforge-bedrock = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -133,6 +135,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = [
     "packages/agentforge-core/tests",
     "packages/agentforge/tests",
+    "packages/agentforge-bedrock/tests",
     "tests",
 ]
 markers = [
@@ -150,7 +153,11 @@ xfail_strict = true
 # Coverage
 # ----------------------------------------------------------------------
 [tool.coverage.run]
-source = ["packages/agentforge-core/src", "packages/agentforge/src"]
+source = [
+    "packages/agentforge-core/src",
+    "packages/agentforge/src",
+    "packages/agentforge-bedrock/src",
+]
 branch = true
 parallel = true
 omit = [
