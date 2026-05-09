@@ -21,6 +21,7 @@ from __future__ import annotations
 import typing
 from collections.abc import AsyncIterator, Awaitable, Callable
 
+from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.values.claim import Claim
@@ -218,3 +219,75 @@ async def run_strategy_conformance(
         assert step.tokens_out >= 0, "step.tokens_out must be non-negative"
         assert step.cost_usd >= 0.0, "step.cost_usd must be non-negative"
         assert step.duration_ms >= 0, "step.duration_ms must be non-negative"
+
+
+# ----------------------------------------------------------------------
+# Embedding conformance — feat-003.
+# ----------------------------------------------------------------------
+
+
+async def run_embedding_conformance(client: EmbeddingClient) -> None:
+    """Run the shared `EmbeddingClient` conformance suite.
+
+    Verifies the locked invariants of `EmbeddingClient.embed`:
+
+      1. `dimensions()` returns a positive integer without a network
+         round-trip (callers rely on this for storage sizing).
+      2. `embed(texts)` raises `ValueError` on an empty input list
+         (no provider supports zero-length batches).
+      3. The returned `EmbeddingResponse` has one vector per input
+         text in input order.
+      4. Every vector has length `dimensions()`.
+      5. `usage.input_tokens >= 0` and `usage.output_tokens == 0`
+         (embeddings have no output tokens).
+      6. `cost_usd >= 0`.
+      7. `model` and `provider` are non-empty strings.
+      8. `supports("not-a-real-capability")` returns False (the
+         capability check is honest about unknown names).
+
+    Drivers may need to issue a real (or mocked) network call inside
+    this test, so it is async. Tests are responsible for arranging the
+    necessary fixtures (e.g. injecting a fake AWS session) before
+    calling this helper.
+
+    Args:
+        client: A constructed `EmbeddingClient` instance, ready to use.
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+    # 1. dimensions() is sync, positive, no network round-trip
+    dim = client.dimensions()
+    assert isinstance(dim, int), "dimensions() must return an int"
+    assert dim >= 1, f"dimensions() must be >= 1, got {dim}"
+
+    # 2. empty batch raises ValueError
+    raised_value_error = False
+    try:
+        await client.embed([])
+    except ValueError:
+        raised_value_error = True
+    assert raised_value_error, "embed([]) must raise ValueError on empty input"
+
+    # 3-7. embed roundtrip
+    texts = ["hello", "world", "agentforge"]
+    response = await client.embed(texts)
+    assert len(response.vectors) == len(texts), (
+        f"embed() must return one vector per input text; "
+        f"got {len(response.vectors)} vectors for {len(texts)} texts."
+    )
+    for i, vec in enumerate(response.vectors):
+        assert len(vec) == dim, f"vector {i} has length {len(vec)} but dimensions() declared {dim}"
+    assert response.dimensions == dim, (
+        f"response.dimensions ({response.dimensions}) must match client.dimensions() ({dim})"
+    )
+    assert response.usage.input_tokens >= 0
+    assert response.usage.output_tokens == 0, (
+        f"embedding responses must report output_tokens=0; got {response.usage.output_tokens}."
+    )
+    assert response.cost_usd >= 0.0
+    assert response.model, "EmbeddingResponse.model must be non-empty"
+    assert response.provider, "EmbeddingResponse.provider must be non-empty"
+
+    # 8. supports() is honest about unknown capabilities
+    assert client.supports("definitely-not-a-capability-2026") is False
