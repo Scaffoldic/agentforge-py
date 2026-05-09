@@ -12,6 +12,9 @@ have to depend on the full runtime.
 
 from __future__ import annotations
 
-from agentforge_core.testing.conformance import run_memory_conformance
+from agentforge_core.testing.conformance import (
+    run_memory_conformance,
+    run_strategy_conformance,
+)
 
-__all__ = ["run_memory_conformance"]
+__all__ = ["run_memory_conformance", "run_strategy_conformance"]

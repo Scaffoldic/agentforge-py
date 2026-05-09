@@ -52,6 +52,7 @@ from agentforge_core.values.state import AgentState, FinishReason, RunResult
 
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
+from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 
 StepHook = Callable[..., Awaitable[None] | None]
 """Hook signature: takes a Step, returns awaitable-or-None."""
@@ -187,7 +188,20 @@ class Agent:
         started_ms = time.monotonic()
         finish_reason: FinishReason = "completed"
         try:
-            state = AgentState(run_id=ctx.run_id, task=task)
+            metadata: dict[str, object] = {}
+            if self._llm is not None:
+                metadata[RUNTIME_KEY] = RuntimeContext(
+                    llm=self._llm,
+                    tools=tuple(self._tools),
+                    memory=self._memory,
+                    budget=self._budget,
+                    system_prompt=self._system_prompt,
+                )
+            state = AgentState(
+                run_id=ctx.run_id,
+                task=task,
+                metadata=metadata,
+            )
             try:
                 await self._strategy.run(state)
             except BudgetExceeded:

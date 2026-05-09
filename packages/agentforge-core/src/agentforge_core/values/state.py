@@ -61,6 +61,14 @@ class AgentState(BaseModel):
 
     Strategies append to `steps`; tools and pipeline tasks may append
     to `findings`. The runtime owns the lifecycle.
+
+    The per-run execution context (`RuntimeContext` — LLM client,
+    tools, memory, budget, system prompt) is stored on
+    `state.metadata` under the key `"__agentforge_runtime__"`,
+    populated by `Agent.run()` before calling the strategy.
+    Strategies access it via the `get_runtime(state)` helper in
+    `agentforge.strategies._base`. Storing it on metadata keeps
+    `agentforge-core` free of dependencies on runtime modules.
     """
 
     model_config = ConfigDict(strict=True, validate_assignment=True)
