@@ -90,6 +90,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**/*.py" = ["S", "PLR2004", "ARG"]    # tests get more leeway
 "**/conftest.py" = ["ARG"]
+# ABC default-raise stubs intentionally accept the contract args but
+# don't use them — the body is `raise CapabilityNotSupported`. The
+# args are part of the public surface every override must accept.
+"**/contracts/llm.py" = ["ARG002"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

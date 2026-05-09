@@ -9,10 +9,13 @@ from __future__ import annotations
 
 from agentforge_core.values.claim import Claim
 from agentforge_core.values.messages import (
+    EmbeddingResponse,
     LLMResponse,
     Message,
     MessageRole,
     StopReason,
+    StreamChunk,
+    StreamChunkKind,
     TokenUsage,
     ToolCall,
     ToolSpec,
@@ -28,6 +31,7 @@ from agentforge_core.values.state import (
 __all__ = [
     "AgentState",
     "Claim",
+    "EmbeddingResponse",
     "FinishReason",
     "LLMResponse",
     "Message",
@@ -36,6 +40,8 @@ __all__ = [
     "Step",
     "StepKind",
     "StopReason",
+    "StreamChunk",
+    "StreamChunkKind",
     "TokenUsage",
     "ToolCall",
     "ToolSpec",
