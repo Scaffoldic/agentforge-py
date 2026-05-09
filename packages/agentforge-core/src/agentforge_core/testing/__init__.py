@@ -16,10 +16,12 @@ from agentforge_core.testing.conformance import (
     run_embedding_conformance,
     run_memory_conformance,
     run_strategy_conformance,
+    run_vector_conformance,
 )
 
 __all__ = [
     "run_embedding_conformance",
     "run_memory_conformance",
     "run_strategy_conformance",
+    "run_vector_conformance",
 ]

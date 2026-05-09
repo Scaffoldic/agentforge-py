@@ -20,6 +20,7 @@ from agentforge_core.contracts import (
     MemoryStore,
     ReasoningStrategy,
     Tool,
+    VectorStore,
 )
 from agentforge_core.production import (
     AgentForgeError,
@@ -67,6 +68,8 @@ from agentforge_core.values import (
     TokenUsage,
     ToolCall,
     ToolSpec,
+    VectorItem,
+    VectorMatch,
 )
 
 __version__ = "0.0.0"
@@ -111,6 +114,9 @@ __all__ = [
     "Tool",
     "ToolCall",
     "ToolSpec",
+    "VectorItem",
+    "VectorMatch",
+    "VectorStore",
     "__version__",
     "bind_run",
     "current_run",
