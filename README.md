@@ -1,32 +1,35 @@
 # agentforge-py
 
-Python implementation of [AgentForge](https://github.com/Scaffoldic/agentforge-py) — an open-source,
-plug-and-play framework for building production AI agents.
+Python implementation of [AgentForge](https://github.com/Scaffoldic/agentforge-py)
+— an open-source, plug-and-play framework for building production AI agents.
 
-> **Status:** v0.0 — pre-alpha. The repo is bootstrapped; no features
-> shipped yet. The full design lives in the design workspace at
-> [`../docs/`](../docs/) (relative to the parent `ai-agents/` workspace).
+> **Status:** v0.0 — pre-alpha. feat-001 (core contracts & `Agent`
+> orchestrator) is shipped; the rest of the v0.1 milestone is in
+> progress. See `CHANGELOG.md` for what's landed.
 
 ## What is AgentForge
 
-AgentForge is a framework for building AI agents in three lines plus one
-`pip install`. The opinionated parts — cost guardrails, run-id propagation,
-distributed tracing, fallback chains, durable claim records, evaluator
-suites, prompt-injection and PII defenses by default — are wired before
-you write a line of code. The interesting parts — your tools, your
-prompts, your reasoning shape — are where you spend your time.
+AgentForge is a framework for building AI agents in three lines plus
+one `pip install`. The opinionated parts — cost guardrails, run-id
+propagation, distributed tracing, fallback chains, durable claim
+records, evaluator suites, prompt-injection and PII defenses by
+default — are wired before you write a line of code. The interesting
+parts — your tools, your prompts, your reasoning shape — are where you
+spend your time.
 
-The full pitch and architecture are in the design workspace docs:
+```python
+# When the v0.1 milestone is complete:
+from agentforge import Agent
 
-- [`../../docs/README.md`](../../docs/README.md) — entry point
-- [`../../docs/design/architecture.md`](../../docs/design/architecture.md) — system view
-- [`../../docs/features/README.md`](../../docs/features/README.md) — feature catalogue
-- [`../../docs/adr/README.md`](../../docs/adr/README.md) — decision records
+agent = Agent(model="anthropic:claude-sonnet-4.7")
+result = await agent.run("Summarise this PR")
+print(result.output)
+```
 
 ## Repository structure
 
-This is a **uv workspace** — one git repo, multiple installable packages
-managed in lock-step (per ADR-0003 + ADR-0015).
+This is a **uv workspace** — one git repo, multiple installable
+packages managed in lock-step.
 
 ```
 agentforge-py/
@@ -34,35 +37,56 @@ agentforge-py/
 ├── uv.lock                         shared lock file
 ├── packages/
 │   ├── agentforge-core/            stable contracts (ABCs, value types)
-│   └── agentforge/                 default runtime (Agent, ReAct, defaults)
+│   └── agentforge/                 default runtime (Agent, defaults)
 ├── tests/                          cross-package integration / conformance
 └── .github/workflows/              CI
 ```
 
-Packages publish to PyPI as separate distributions; users `pip install
-agentforge` (or `agentforge[anthropic]`) and the right pieces land.
+Packages publish to PyPI as separate distributions; users
+`pip install agentforge` (or `agentforge[anthropic]` etc. as
+provider modules ship) and the right pieces land in the venv.
+
+## Install (end users)
+
+```bash
+pip install agentforge
+```
+
+Note: provider modules (`agentforge-anthropic`, `agentforge-bedrock`,
+`agentforge-openai`, …) and persistence modules
+(`agentforge-memory-sqlite`, `-postgres`, …) ship as separate packages
+in the v0.1 milestone. Install only what you need.
 
 ## Development
 
 Prerequisites: Python 3.13, [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv sync                              # create venv, install all members + dev deps
-uv run pytest                        # run all tests
+git clone git@github.com:Scaffoldic/agentforge-py.git
+cd agentforge-py
+uv sync --group dev                  # venv + members + dev deps
+uv run pytest                        # all tests (unit + integration + conformance)
 uv run ruff check                    # lint
-uv run mypy --strict packages/       # type-check
-pre-commit install                   # install git hooks
+uv run ruff format                   # auto-format
+uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
+uv run pre-commit install            # git hooks
 ```
 
 ## Contributing
 
-This repo follows the AgentForge framework's strict development pipeline.
-Before you start, read:
+Before you start: read [`AGENTS.md`](./AGENTS.md) for the repo
+conventions (uv workspace layout, locked contract layer, anti-patterns
+reviewers will reject, the pre-commit gate, how to add a new module
+package).
 
-1. [`AGENTS.md`](./AGENTS.md) — repo-scoped AI assistant rules
-2. [`../../AGENTS.md`](../../AGENTS.md) — project-wide rules
-3. [`../../.claude/development-pipeline.md`](../../.claude/development-pipeline.md) — per-feature workflow
-4. [`../../.claude/standards/`](../../.claude/standards/) — coding, testing, docs, git, configuration
+Branch and PR conventions:
+
+- Branch from `main`. Names: `feat/<NNN>-<slug>`, `fix/<slug>`,
+  `docs/<slug>`, `chore/<slug>`.
+- Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`,
+  `refactor:`, `chore:`, `perf:`, `revert:`.
+- One feature = one PR. Squash-merge to `main`.
+- 90% coverage gate; pre-commit + CI block below.
 
 ## License
 
