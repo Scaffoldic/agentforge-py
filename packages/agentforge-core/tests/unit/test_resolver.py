@@ -127,12 +127,21 @@ def test_global_resolver_is_singleton() -> None:
 
 
 def test_register_decorator_uses_global() -> None:
-    Resolver.global_().clear()
+    """The @register decorator targets the global resolver. Use a
+    unique name and avoid clearing the global — clearing would nuke
+    other modules' registrations (e.g. ReActLoop registers itself at
+    import time)."""
+    unique_name = f"decorator-test-{id(object())}"
 
-    @register("strategies", "decorator-test")
+    @register("strategies", unique_name)
     class _MyStrategy:
         pass
 
-    cls = Resolver.global_().resolve("strategies", "decorator-test")
-    assert cls is _MyStrategy
-    Resolver.global_().clear()
+    try:
+        cls = Resolver.global_().resolve("strategies", unique_name)
+        assert cls is _MyStrategy
+    finally:
+        # Tidy up: remove only our own entry, never clear the global.
+        # The Resolver doesn't expose a public "unregister", so we
+        # poke the internal map. Tests-only access pattern.
+        Resolver.global_()._registry.pop(("strategies", unique_name), None)

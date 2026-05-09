@@ -149,10 +149,14 @@ class StrategyBase(ReasoningStrategy):
         runtime.budget.commit(response.cost_usd, response.usage.total)
         runtime.budget.increment_iteration()
 
-        # Record success unless the response contained a tool error
-        # (tool dispatch happens elsewhere; LLM calls themselves don't
-        # increment the error streak).
-        runtime.budget.record_success()
+        # Deliberately do NOT call record_success() here — the
+        # error_streak tracks tool-execution failures across
+        # iterations, not LLM-call success. Resetting on every LLM
+        # call would make the streak counter useless: every iteration
+        # would start with a streak reset, so a broken tool that
+        # always errors would never accumulate enough errors to trip
+        # the cap. Strategies call record_success() / record_error()
+        # around tool dispatches themselves.
 
         # Append the LLM-call step to the trace.
         self._record_step(
