@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
-from agentforge.memory import InMemoryStore
+from agentforge.memory import InMemoryStore, InMemoryVectorStore
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 from agentforge.strategies import (
     MultiAgentSupervisor,
@@ -41,6 +41,7 @@ __all__ = [
     "Agent",
     "AgentForgeConfig",
     "InMemoryStore",
+    "InMemoryVectorStore",
     "MultiAgentSupervisor",
     "Plan",
     "PlanExecuteLoop",

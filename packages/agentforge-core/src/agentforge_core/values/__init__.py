@@ -27,6 +27,7 @@ from agentforge_core.values.state import (
     Step,
     StepKind,
 )
+from agentforge_core.values.vector import VectorItem, VectorMatch
 
 __all__ = [
     "AgentState",
@@ -45,4 +46,6 @@ __all__ = [
     "TokenUsage",
     "ToolCall",
     "ToolSpec",
+    "VectorItem",
+    "VectorMatch",
 ]
