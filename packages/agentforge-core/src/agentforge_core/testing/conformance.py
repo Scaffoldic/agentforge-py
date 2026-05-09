@@ -69,42 +69,42 @@ async def run_memory_conformance(store: MemoryStore) -> None:
 
     # 3. query with no filters returns at least the claim we put
     all_results = await store.query()
-    assert any(
-        c.id == cid for c in all_results
-    ), "query() with no filters must include the put claim"
+    assert any(c.id == cid for c in all_results), (
+        "query() with no filters must include the put claim"
+    )
 
     # 4. query filters by project
     other_project = _claim(project="other-project")
     await store.put(other_project)
     only_p1 = await store.query(project="p1")
     assert any(c.id == cid for c in only_p1)
-    assert all(
-        c.project == "p1" for c in only_p1
-    ), "query(project=...) must filter results to that project"
+    assert all(c.project == "p1" for c in only_p1), (
+        "query(project=...) must filter results to that project"
+    )
 
     # 5. query filters by agent
     other_agent = _claim(agent="other-agent")
     await store.put(other_agent)
     only_a1 = await store.query(agent="a1")
-    assert all(
-        c.agent == "a1" for c in only_a1
-    ), "query(agent=...) must filter results to that agent"
+    assert all(c.agent == "a1" for c in only_a1), (
+        "query(agent=...) must filter results to that agent"
+    )
 
     # 6. query filters by category
     decision = _claim(category="decision")
     await store.put(decision)
     only_findings = await store.query(category="finding")
-    assert all(
-        c.category == "finding" for c in only_findings
-    ), "query(category=...) must filter results to that category"
+    assert all(c.category == "finding" for c in only_findings), (
+        "query(category=...) must filter results to that category"
+    )
 
     # 7. query filters by run_id
     other_run = _claim(run_id="run-y")
     await store.put(other_run)
     only_run_x = await store.query(run_id="run-x")
-    assert all(
-        c.run_id == "run-x" for c in only_run_x
-    ), "query(run_id=...) must filter results to that run_id"
+    assert all(c.run_id == "run-x" for c in only_run_x), (
+        "query(run_id=...) must filter results to that run_id"
+    )
 
     # 8. query respects limit
     limited = await store.query(limit=1)

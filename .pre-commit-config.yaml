@@ -43,10 +43,12 @@ repos:
           - "revert"
 
   # ----------------------------------------------------------------------
-  # Python — ruff (format + lint)
+  # Python — ruff (format + lint).
+  # Pinned to match the uv-managed venv version so pre-commit and CI
+  # (which runs `uv run ruff`) agree on the format.
   # ----------------------------------------------------------------------
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.12
     hooks:
       - id: ruff-format
       - id: ruff
