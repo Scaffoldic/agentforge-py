@@ -21,6 +21,25 @@ release tag bumps every workspace member to the same minor version.
 
 ### Changed
 
+- **Project structure made self-contained for AI assistants.** Moved
+  the canonical feature catalogue (`docs/features/feat-NNN-*.md`,
+  20 specs + README) and per-project state files (`.claude/state/`)
+  from the parent design workspace into `agentforge-py`. Added a
+  tracked `.claude/CLAUDE.md` whose reading order references only
+  files inside this repo — no upward path traversal. `AGENTS.md`
+  workflow rules updated: branch `<NNN>` must match an existing
+  `docs/features/feat-NNN-*.md` spec; every feature PR updates the
+  matching spec's Implementation section; every milestone updates
+  `.claude/state/current.md` and appends to `.claude/state/log.md`.
+  Background: chore PR #2 had decoupled `agentforge-py` from the
+  parent workspace by removing `../../` cross-references but did
+  not move the canonical files in. AI sessions reading
+  `agentforge-py` couldn't find the catalogue or state record and
+  invented feat-NNN numbers from CHANGELOG memory — that's how PRs
+  #5/#7/#8 ended up mis-labelled (see canonical `feat-005`'s
+  Implementation section for the full mapping). This PR closes the
+  loop so future sessions can't trip the same way.
+
 - Documentation made self-contained for the public OSS repo: removed
   `../../` references to a private design workspace from `AGENTS.md`,
   `README.md`, the PR template, and the pre-commit config. Repo
