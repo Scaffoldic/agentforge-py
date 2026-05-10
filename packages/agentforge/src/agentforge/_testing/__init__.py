@@ -14,5 +14,6 @@ Helpers here:
 from __future__ import annotations
 
 from agentforge._testing.fake_llm import FakeLLMClient, echo_response
+from agentforge._testing.fake_tool import FakeTool
 
-__all__ = ["FakeLLMClient", "echo_response"]
+__all__ = ["FakeLLMClient", "FakeTool", "echo_response"]
