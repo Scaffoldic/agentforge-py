@@ -27,6 +27,7 @@ dependencies = [
     "agentforge-memory-sqlite",
     "agentforge-memory-neo4j",
     "agentforge-memory-surrealdb",
+    "agentforge-memory-postgres",
 ]
 
 [tool.uv.workspace]
@@ -39,6 +40,7 @@ agentforge-bedrock = { workspace = true }
 agentforge-memory-sqlite = { workspace = true }
 agentforge-memory-neo4j = { workspace = true }
 agentforge-memory-surrealdb = { workspace = true }
+agentforge-memory-postgres = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -164,6 +166,21 @@ disable_error_code = ["no-any-unimported"]
 module = ["agentforge_memory_neo4j.*", "agentforge_memory_surrealdb.*"]
 disable_error_code = ["no-any-unimported"]
 
+# asyncpg and pgvector ship without py.typed markers. Allow imports
+# without stubs so mypy --strict still passes against the postgres
+# package; the driver's public surface is still typed at our layer.
+[[tool.mypy.overrides]]
+module = ["asyncpg", "asyncpg.*", "pgvector", "pgvector.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+# Same suppression on our own postgres package — asyncpg types leak
+# Any into helper signatures we type ourselves.
+[[tool.mypy.overrides]]
+module = "agentforge_memory_postgres.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -178,6 +195,7 @@ testpaths = [
     "packages/agentforge-memory-sqlite/tests",
     "packages/agentforge-memory-neo4j/tests",
     "packages/agentforge-memory-surrealdb/tests",
+    "packages/agentforge-memory-postgres/tests",
     "tests",
 ]
 markers = [
@@ -202,6 +220,7 @@ source = [
     "packages/agentforge-memory-sqlite/src",
     "packages/agentforge-memory-neo4j/src",
     "packages/agentforge-memory-surrealdb/src",
+    "packages/agentforge-memory-postgres/src",
 ]
 branch = true
 parallel = true
