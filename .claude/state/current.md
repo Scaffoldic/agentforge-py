@@ -1,75 +1,48 @@
 ---
-feature: chore-self-contained-project-docs
-state: implementing
-branch: chore/self-contained-project-docs
-started_at: 2026-05-10T13:00
-last_milestone_at: 2026-05-10T13:30
-last_shipped: feat-005 (Persistence) — partial; sqlite + RAG via PR #5, neo4j + surrealdb + GraphStore via PR #7; postgres via PR #8 (open, awaiting reorg merge)
+feature: feat-004-tools-system
+state: pr-raised
+branch: feat/004-tools-system
+started_at: 2026-05-10T14:00
+last_milestone_at: 2026-05-10T17:15
+last_shipped: feat-005 (Persistence) shipped via PRs #5 (sqlite + RAG), #7 (graph + neo4j + surrealdb), #8 (postgres); chore PR #9 (self-contained project layout) merged at 74ea4ed
 blocker: null
 flags_for_user: []
 ---
 
-## Active work
+## Active feature
 
-Structural reorg, **not a feat-NNN**: agentforge-py becomes
-self-contained for AI assistants. Background:
+[`feat-004 — Tools system`](../../docs/features/feat-004-tools-system.md)
 
-- The previous decoupling PR (#2) removed `../../` references from
-  agentforge-py to the parent design workspace's pipeline files but
-  did not move those files in. Result: agentforge-py's
-  `.claude/CLAUDE.md` reading order pointed at paths that didn't
-  exist locally.
-- AI sessions reading agentforge-py couldn't find the canonical
-  pipeline / feature catalogue / state record at the parent — they
-  started inventing feat-NNN numbers from CHANGELOG/roadmap memory.
-- That's how PRs #5, #7, #8 ended up labelled feat-007/feat-009/
-  feat-008 even though all three actually implement portions of
-  canonical feat-005 (Persistence — `MemoryStore` ABC + drivers).
+PR #10 raised. Awaiting review + merge.
 
-The user picked the structural fix: each project fully
-self-contained. Parent workspace stays as the meta layer (universal
-pipeline, design principles, ADRs); each sub-project owns its own
-feature specs, state, CHANGELOG, AGENTS.md, CLAUDE.md.
+## Chunks shipped
 
-## What this PR does
+| Chunk | Commit | What |
+|---|---|---|
+| 1 | `6ec7c13` | `@tool` decorator |
+| 2 | `97e2acc` | `calculator` + `file_read` |
+| 3 | `c5be0f5` | `shell` + `web_search` |
+| 4 | `20c9dc6` | `_dispatch_tool` helper + ReAct/PlanExecute refactor |
+| 5 | `4ac290a` | `FakeTool` test helper |
+| 6 | (this) | CHANGELOG + Implementation section + PR + ruff hook id migrate |
 
-1. **Moves into `agentforge-py`:**
-   - All 20 `feat-NNN-*.md` specs + `README.md` catalogue from parent
-     `docs/features/` → `agentforge-py/docs/features/`.
-   - `state/current.md`, `state/log.md`, `state/README.md` from parent
-     `.claude/state/` → `agentforge-py/.claude/state/`.
-2. **Updates `agentforge-py/.claude/CLAUDE.md`** so the reading order
-   references only files inside this repo.
-3. **Updates `agentforge-py/AGENTS.md`** with the full project
-   pipeline (analyse → design → implement → test → PR + Implementation
-   section update). Self-contained — no upward path traversal.
-4. **Updates `docs/roadmap.md`** to point at the now-local
-   `docs/features/feat-NNN-*.md`.
-5. **Logs the divergence + remediation** in `state/log.md`.
-6. **CHANGELOG entry** under `Changed`.
+## Reading order on session resume
 
-The parent workspace gets non-git updates (deletion of moved
-directories, AGENTS.md / CLAUDE.md rewrite to focus on
-workspace-level concerns) — those happen out-of-band since the
-parent isn't version-controlled.
+1. `AGENTS.md`
+2. `.claude/CLAUDE.md`
+3. `.claude/state/current.md` (this file)
+4. `docs/features/README.md`
+5. `docs/features/feat-NNN-*.md` (active feature)
+6. `docs/roadmap.md`
 
 ## After merge
 
-- Rebase `feat/008-postgres` (PR #8) onto the new main. Re-apply the
-  chunk-4 doc updates inline with the new structure (Implementation
-  section now at `docs/features/feat-005-*.md`).
-
-## Reading order on session resume (post-reorg)
-
-This project is fully self-contained. Read in order:
-
-1. `AGENTS.md` (project rules + workflow)
-2. `.claude/CLAUDE.md` (Claude Code reading order)
-3. `.claude/state/current.md` (this file)
-4. `docs/features/README.md` (catalogue) — pick the active feature
-5. `docs/features/feat-NNN-*.md` for the active feature
-6. `docs/roadmap.md` (shipped + backlog)
-
-No upward path traversal — everything needed lives inside this
-repo. External contributors cloning the project standalone have
-the same picture as the maintainer.
+- Pull main, delete `feat/004-tools-system` local + remote.
+- Pick the next feature per pipeline §1: lowest-numbered proposed
+  with deps shipped. Eligible after feat-004:
+  - **feat-007** (Production rails) — deps feat-001 ✓ feat-003 ✓
+  - **feat-008** (Findings) — deps feat-001 ✓
+  - feat-006 (Evaluators) — blocked by feat-008
+  - feat-009 (Observability) — blocked by feat-007
+  - feat-010 (Module discovery) — blocked by feat-012
+- Lowest-numbered eligible is **feat-007** by default.

@@ -279,3 +279,75 @@ schema dict).
 - feat-013 (MCP — bridges Tool ↔ MCP both directions)
 - feat-016 (testing — mocks tools)
 - Prior art: Pydantic AI's `@agent.tool`, smolagents' `@tool`, Strands' `@tool`
+
+---
+
+## Implementation status
+
+**Status: shipped (Python). TypeScript port pending.**
+
+Landed via PR #10 on `feat/004-tools-system` (six chunks).
+
+| Chunk | Commit | Scope |
+|---|---|---|
+| 1 | `6ec7c13` | `@tool` decorator (signature + Google docstring → Pydantic schema → `Tool` subclass; bare and parameterised forms; sync + async dispatch; decoration-time validation) |
+| 2 | `97e2acc` | `calculator` (AST-based, no `eval`) and `file_read` / `FileReadTool` (sandboxed reads, size cap) |
+| 3 | `c5be0f5` | `shell` / `ShellTool` (subprocess via `create_subprocess_exec`, `shell=False`, timeout, output cap, optional whitelist) and `web_search` / `WebSearchTool` (pluggable backend with DuckDuckGo HTML default + warning fallback) |
+| 4 | `20c9dc6` | `_StrategyBase._dispatch_tool` — centralised tool-call dispatch (validation → observation, timeout, exception → observation). `ReActLoop` and `PlanExecuteLoop` refactored to use it. |
+| 5 | `4ac290a` | `agentforge._testing.FakeTool.fake(name, response_or_fn)` — minimal scripted-response Tool for unit tests |
+| 6 | (this commit) | CHANGELOG, Implementation status, PR |
+
+### Public surface delivered
+
+- `from agentforge import tool` — decorator, both forms
+- `from agentforge.tools import calculator, file_read, FileReadTool,
+  shell, ShellTool, web_search, WebSearchTool, SearchResult`
+- `from agentforge._testing import FakeTool`
+- `agentforge.strategies._base.DEFAULT_TOOL_TIMEOUT_S = 30.0` — the
+  default per-tool execution timeout
+
+### Capability vocabulary in use
+
+`{"filesystem", "network", "shell", "destructive"}` declared per
+default tool:
+- `calculator` → `frozenset()` (pure computation)
+- `file_read` → `{"filesystem"}`
+- `web_search` → `{"network"}`
+- `shell` → `{"shell", "destructive"}`
+
+Future safety guardrails (feat-018) consume this vocabulary to
+gate destructive tool use.
+
+### Deviations from this spec
+
+- **Decorator location**: spec §4.2 placed it at
+  `agentforge.tool_decorator`. Shipped at
+  `agentforge._tools.decorator` and re-exported as
+  `from agentforge import tool` — same public surface; cleaner
+  internal namespace alongside the four default tools.
+- **Docstring format**: spec said "Google or NumPy". Shipped with
+  Google-style only. NumPy support can land later if asked; the
+  framework's own default tools all use Google so the parser is
+  exercised in production.
+- **`web_search` default backend**: spec didn't lock a backend.
+  Shipped with a pluggable `search_fn=` plus a DuckDuckGo HTML
+  scrape default that emits a warning log when the page format
+  drifts. Real backends (Serper, Tavily, Brave) ship as separate
+  module packages later.
+- **`shell` default whitelist**: spec didn't specify. Shipped with
+  `allowed_commands=None` (any binary), but heavily documented as
+  destructive — operators add their own whitelist for production.
+- **Config integration (`agentforge.yaml > agent.tools`)**:
+  feat-012's full configuration schema lands separately. The
+  default tools and `@tool`-decorated functions are usable
+  programmatically today; declarative wiring follows when feat-012
+  ships.
+
+### What's *not* yet implemented
+
+- Entry-point auto-loading of third-party tool packages — that's
+  feat-010 (Module discovery).
+- MCP bridging (`@tool` ↔ MCP server endpoints) — feat-013.
+- Cost attribution per tool — feat-009 (Observability).
+- Tool-level rate limiting — feat-018 (Safety).
+- TypeScript port of the entire feat-004 surface.

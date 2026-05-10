@@ -357,3 +357,52 @@ keeps the meta layer (universal pipeline, design principles, ADRs);
 each sub-project owns its own feature specs, state, CHANGELOG,
 AGENTS.md, CLAUDE.md. This PR moves `docs/features/` and
 `.claude/state/` into agentforge-py.
+
+## 2026-05-10T13:30 — chore-self-contained-project-docs PR raised
+PR: https://github.com/Scaffoldic/agentforge-py/pull/9
+Branch: `chore/self-contained-project-docs`. Awaiting review + merge.
+
+## 2026-05-10T13:50 — chore PR #9 shipped
+Merged at commit `74ea4ed`. Project is now fully self-contained for
+OSS contributors. Workspace hosts the universal pipeline + shared
+templates only; no project-specific content at workspace level.
+Branch deleted local + remote.
+
+## 2026-05-10T14:00 — feat-004 started
+Branch: `feat/004-tools-system` (off main).
+State: `analysing`. Pipeline rule §1 picks lowest-numbered proposed
+feature with deps shipped — feat-004 (Tools) wins (deps: feat-001
+✓). Awaiting user approval of analysis + chunk plan in
+`state/current.md`.
+
+## 2026-05-10T14:30 — feat-004 chunk 1 done: @tool decorator
+Commit: `6ec7c13`. 25 unit tests pass via pre-commit gate.
+`agentforge._tools.decorator.tool` re-exported as `from agentforge
+import tool`. Bare and parameterised forms both work; Google-style
+docstring parser feeds Pydantic Field descriptions. Decoration-time
+errors on missing type hints / variadic / positional-only params.
+
+## 2026-05-10T15:30 — feat-004 chunk 2 done: calculator + file_read
+Commit: `97e2acc`. 36 unit tests across both tools (calculator's
+AST-based safe evaluation; file_read's sandbox + size cap).
+
+## 2026-05-10T16:00 — feat-004 chunk 3 done: shell + web_search
+Commit: `c5be0f5`. 26 unit tests + a live integration test gated on
+RUN_LIVE_WEB. shell uses asyncio.create_subprocess_exec (shell=False)
+with timeout, output cap, optional whitelist. web_search ships a
+pluggable backend with DuckDuckGo HTML default.
+
+## 2026-05-10T16:30 — feat-004 chunk 4 done: tool dispatch
+Commit: `20c9dc6`. Centralised _dispatch_tool helper on _StrategyBase
+handles validation → observation, timeout, exception → observation
+per spec §4.3. ReActLoop and PlanExecuteLoop refactored. 8 unit
+tests lock the contract.
+
+## 2026-05-10T17:00 — feat-004 chunk 5 done: FakeTool
+Commit: `4ac290a`. agentforge._testing.FakeTool.fake() — minimal
+scripted-response Tool for unit tests. 10 unit tests.
+
+## 2026-05-10T17:15 — feat-004 chunk 6 done: docs + PR
+Updated docs/features/feat-004 Implementation status, CHANGELOG,
+roadmap (moved feat-004 from backlog to shipped). Pre-commit hook
+ID migrated from `ruff` (legacy alias) to `ruff-check`.
