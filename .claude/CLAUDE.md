@@ -19,9 +19,18 @@
    catalogue of every canonical feat-NNN spec
 5. [`docs/features/feat-NNN-*.md`](../docs/features/) — the active
    feature's spec (linked from `state/current.md`)
-6. [`docs/roadmap.md`](../docs/roadmap.md) — shipped + backlog
-   pointer (canonical numbering)
-7. [`CHANGELOG.md`](../CHANGELOG.md) — release notes
+6. [`docs/design/`](../docs/design/) — architecture, design
+   principles, module-system, persistence-and-orm, scaffolding —
+   the framework's load-bearing decisions
+7. [`docs/adr/`](../docs/adr/) — immutable architectural decision
+   records (MADR / Nygard format)
+8. [`.claude/standards/`](./standards/) — coding / testing / git /
+   docs / configuration standards
+9. [`.claude/checklists/`](./checklists/) — pre-feature, pre-commit,
+   pre-pr, feature-complete checklists
+10. [`docs/roadmap.md`](../docs/roadmap.md) — shipped + backlog
+    pointer (canonical numbering)
+11. [`CHANGELOG.md`](../CHANGELOG.md) — release notes
 
 ## Project-specific rules
 
