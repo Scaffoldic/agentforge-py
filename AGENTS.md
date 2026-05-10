@@ -55,7 +55,17 @@ new directory under `packages/`. The workspace glob in the root
 ## Workflow
 
 - Branch from `main`. Conventional branch names: `feat/<NNN>-<slug>`,
-  `fix/<slug>`, `docs/<slug>`, `chore/<slug>`.
+  `fix/<slug>`, `docs/<slug>`, `chore/<slug>`. **`<NNN>` must match
+  the canonical feature number** in
+  `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/docs/features/feat-NNN-*.md`.
+  If you can't find a canonical spec for the work, the work doesn't
+  have a feat-NNN number — use a `chore/` or `docs/` branch instead,
+  or write a spec first.
+- **Every feature PR updates the matching canonical spec's
+  Implementation section** — what shipped, what was deferred, any
+  deviations from the original design, link to the PR. The spec is
+  the durable record; CHANGELOG is the user-facing summary. Both
+  ship in the same PR.
 - Every commit goes through pre-commit (`pre-commit install` after a
   fresh clone). The hook runs ruff / mypy / bandit / pytest /
   coverage. Failures block.
