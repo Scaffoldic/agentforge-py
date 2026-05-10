@@ -19,6 +19,7 @@ the per-feature specs under `docs/features/`.
 
 from __future__ import annotations
 
+from agentforge._tools import tool
 from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryGraphStore, InMemoryStore, InMemoryVectorStore
@@ -56,4 +57,5 @@ __all__ = [
     "__version__",
     "get_runtime",
     "load_config",
+    "tool",
 ]
