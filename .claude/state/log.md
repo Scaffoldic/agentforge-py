@@ -454,3 +454,14 @@ Updates landed:
 
 feat-007 chunk plan unchanged in count (still 3 chunks); chunk 3
 just gains the Runbook authoring sub-task.
+
+## 2026-05-10T18:30 — feat-007 chunks 1-3 done
+- chunk 1 `6bdd066`: FallbackChain class + 23 unit tests
+- chunk 2 `2e7d2d3`: top-level re-export + 4 Agent-integration tests
+- chunk 3 (this): CHANGELOG, Implementation status, **first-ever
+  Runbook section** (configure fallback / tune retries / combine
+  with budget / read run_id from a tool / debug "every provider
+  failed" / when not to use FallbackChain), roadmap moved feat-007
+  from backlog to shipped.
+
+PR #11 to be raised next.

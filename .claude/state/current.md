@@ -1,12 +1,12 @@
 ---
 feature: feat-007-production-rails
-state: analysing
+state: pr-raised
 branch: feat/007-production-rails
 started_at: 2026-05-10T17:30
-last_milestone_at: 2026-05-10T17:30
+last_milestone_at: 2026-05-10T18:30
 last_shipped: feat-004 (Tools system) shipped via PR #10 @ 2b1a37c
 blocker: null
-flags_for_user: ["design-awaiting-approval"]
+flags_for_user: []
 ---
 
 ## Active feature
