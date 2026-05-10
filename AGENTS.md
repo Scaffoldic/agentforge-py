@@ -54,24 +54,56 @@ new directory under `packages/`. The workspace glob in the root
 
 ## Workflow
 
-- Branch from `main`. Conventional branch names: `feat/<NNN>-<slug>`,
-  `fix/<slug>`, `docs/<slug>`, `chore/<slug>`. **`<NNN>` must match
-  the canonical feature number** in
-  `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/docs/features/feat-NNN-*.md`.
-  If you can't find a canonical spec for the work, the work doesn't
-  have a feat-NNN number — use a `chore/` or `docs/` branch instead,
-  or write a spec first.
+This project is **fully self-contained**: every spec / state /
+standard / checklist / CHANGELOG / design / ADR / workflow rule
+lives inside `agentforge-py/`. A new contributor cloning the repo
+standalone — without seeing any parent directory — has everything
+needed to contribute.
+
+The complete per-feature workflow is captured in this file
+(see *Branch + PR rules* below) plus the project's standards
+(`.claude/standards/`) and checklists (`.claude/checklists/`).
+Don't reference anything outside this repo.
+
+### Reading order on session resume
+
+1. This file (`AGENTS.md`)
+2. [`.claude/state/current.md`](./.claude/state/current.md) — the
+   live snapshot
+3. [`.claude/state/log.md`](./.claude/state/log.md) — append-only
+   milestone history
+4. [`docs/features/README.md`](./docs/features/README.md) — feature
+   catalogue
+5. The active feature spec at
+   [`docs/features/feat-NNN-*.md`](./docs/features/) (linked from
+   `state/current.md`)
+6. [`docs/roadmap.md`](./docs/roadmap.md) — shipped + backlog
+   pointer
+7. [`CHANGELOG.md`](./CHANGELOG.md) — release notes
+
+### Branch + PR rules
+
+- Branch from `main`. Conventional branch names:
+  `feat/<NNN>-<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`.
+  **`<NNN>` must match the canonical feature number** in
+  `docs/features/feat-NNN-*.md`. If you can't find a canonical spec
+  for the work, the work doesn't have a feat-NNN number — use a
+  `chore/` or `docs/` branch instead, or write a spec first.
 - **Every feature PR updates the matching canonical spec's
   Implementation section** — what shipped, what was deferred, any
   deviations from the original design, link to the PR. The spec is
   the durable record; CHANGELOG is the user-facing summary. Both
   ship in the same PR.
-- Every commit goes through pre-commit (`pre-commit install` after a
-  fresh clone). The hook runs ruff / mypy / bandit / pytest /
+- **Every feature PR updates `.claude/state/current.md` and appends
+  to `.claude/state/log.md`** at every milestone (analysis,
+  design-approved, chunk-complete, PR-raised, shipped). The state
+  files are the audit trail across sessions.
+- Every commit goes through pre-commit (`pre-commit install` after
+  a fresh clone). The hook runs ruff / mypy / bandit / pytest /
   coverage. Failures block.
 - One feature = one PR. Squash-merge to `main`.
-- CI runs the same checks plus a multi-OS test matrix (Linux, macOS,
-  Windows) on Python 3.13.
+- CI runs the same checks plus a multi-OS test matrix (Linux,
+  macOS, Windows) on Python 3.13.
 
 ## How to add a new module package
 
