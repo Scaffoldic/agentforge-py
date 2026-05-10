@@ -54,28 +54,16 @@ new directory under `packages/`. The workspace glob in the root
 
 ## Workflow
 
-This project is **self-contained for project-specific content** —
-every spec / state / standard / checklist / CHANGELOG / design /
-ADR lives inside `agentforge-py/`.
+This project is **fully self-contained**: every spec / state /
+standard / checklist / CHANGELOG / design / ADR / workflow rule
+lives inside `agentforge-py/`. A new contributor cloning the repo
+standalone — without seeing any parent directory — has everything
+needed to contribute.
 
-**Two universal resources** are read from the workspace level
-because they are genuinely shared across every project in the
-workspace and there is one source of truth for each:
-
-- **The per-feature development pipeline** at
-  `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/development-pipeline.md`
-  — the workflow pattern every project follows. Project-specific
-  *commands* (the exact `ruff` / `mypy` / `pytest` invocations)
-  live in this project's `.claude/standards/` and pre-commit /
-  CI configs.
-- **Doc templates** at
-  `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/templates/`
-  — feature, design, ADR, bug, enhancement templates. Every doc
-  in `docs/features/` / `docs/design/` / `docs/adr/` was started
-  by copying one of these.
-
-Everything else stays inside this project. Don't traverse upward
-for project-specific work.
+The complete per-feature workflow is captured in this file
+(see *Branch + PR rules* below) plus the project's standards
+(`.claude/standards/`) and checklists (`.claude/checklists/`).
+Don't reference anything outside this repo.
 
 ### Reading order on session resume
 

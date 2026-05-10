@@ -57,25 +57,19 @@ parent isn't version-controlled.
 
 - Rebase `feat/008-postgres` (PR #8) onto the new main. Re-apply the
   chunk-4 doc updates inline with the new structure (Implementation
-  section now at `agentforge-py/docs/features/feat-005-*.md` instead
-  of the parent path).
-- Delete `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/docs/features/`
-  and `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/state/`
-  (they live in agentforge-py now).
-- Update parent `AGENTS.md` and `.claude/CLAUDE.md` to reflect the
-  new workspace-meta-only role.
+  section now at `docs/features/feat-005-*.md`).
 
 ## Reading order on session resume (post-reorg)
 
-1. `agentforge-py/AGENTS.md`
-2. `agentforge-py/.claude/state/current.md` (this file)
-3. `agentforge-py/docs/features/README.md` (catalogue) — pick
-   the active feature
-4. `agentforge-py/docs/features/feat-NNN-*.md` for the active feature
-5. `agentforge-py/docs/roadmap.md` (project-level shipped/backlog
-   pointer)
+This project is fully self-contained. Read in order:
 
-The parent workspace's `AGENTS.md` and
-`.claude/development-pipeline.md` are still authoritative for
-**cross-project** workflow patterns, but **for project-specific
-work, this project's files are self-contained**.
+1. `AGENTS.md` (project rules + workflow)
+2. `.claude/CLAUDE.md` (Claude Code reading order)
+3. `.claude/state/current.md` (this file)
+4. `docs/features/README.md` (catalogue) — pick the active feature
+5. `docs/features/feat-NNN-*.md` for the active feature
+6. `docs/roadmap.md` (shipped + backlog)
+
+No upward path traversal — everything needed lives inside this
+repo. External contributors cloning the project standalone have
+the same picture as the maintainer.

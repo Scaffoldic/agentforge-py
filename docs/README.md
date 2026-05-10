@@ -56,10 +56,12 @@ scaffold time. They are not stored under this tree — that would
 duplicate them and let them drift. The design and contract for the
 runbook system live in feat-019.
 
-Doc templates live at the workspace root under
-`/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/templates/`
-(shared across all projects in the workspace). Every doc here was
-started by copying one of those templates.
+Every doc here follows the same shape: a metadata header
+(`Status`, `Owner`, `Target version`, dependencies), a "why this
+feature" section, scope, public API surface, design notes, test
+plan, and an Implementation status section once shipped. New
+contributors writing a fresh feature spec should copy the shape
+from an existing one (`feat-001-*.md` is a canonical reference).
 
 ## Reading order
 
@@ -125,13 +127,8 @@ agentforge-py/
 └── scripts/                   doc + ADR validators (used by pre-commit/CI)
 ```
 
-The parent workspace at
-`/Users/khemchandjoshi/MbytesWorkspace/ai-agents/` hosts only
-**workspace-meta** material (the abstract development pipeline,
-shared doc templates, the multi-project README). Future sibling
-projects — TypeScript port (`typescript/agentforge-ts/`) and agents
-built using this framework — sit under the parent workspace as
-peers and follow the same self-contained structure.
+A TypeScript port (`agentforge-ts`) is planned and will follow the
+same self-contained layout in its own repo.
 
 ## What AgentForge is, in one paragraph
 
