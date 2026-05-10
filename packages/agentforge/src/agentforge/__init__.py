@@ -19,6 +19,8 @@ the per-feature specs under `docs/features/`.
 
 from __future__ import annotations
 
+from agentforge_core import FallbackChain
+
 from agentforge._tools import tool
 from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
@@ -42,6 +44,7 @@ __all__ = [
     "RUNTIME_KEY",
     "Agent",
     "AgentForgeConfig",
+    "FallbackChain",
     "InMemoryGraphStore",
     "InMemoryStore",
     "InMemoryVectorStore",
