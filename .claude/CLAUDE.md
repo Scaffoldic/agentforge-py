@@ -2,11 +2,16 @@
 
 > This file is `agentforge-py`'s entry point for AI assistants
 > (Claude Code and any other tool that reads CLAUDE.md or AGENTS.md).
-> Everything you need to work on this project is **inside this
-> repo**. The reading order below references **only** files in
-> `agentforge-py/` — no upward path traversal.
+> Everything **project-specific** lives inside this repo (specs,
+> state, standards, checklists, CHANGELOG, design, ADRs). Two
+> truly-shared resources are referenced by absolute path from the
+> workspace level — the per-feature **development pipeline** and
+> the **doc templates**. Both are universal across every project
+> in this workspace; one source of truth, no duplication.
 
 ## Read first, in order
+
+**Project-local** (everything specific to this project):
 
 1. [`AGENTS.md`](../AGENTS.md) — universal AI-assistant rules for
    this project (workflow, branch naming, anti-patterns, the
@@ -25,12 +30,25 @@
 7. [`docs/adr/`](../docs/adr/) — immutable architectural decision
    records (MADR / Nygard format)
 8. [`.claude/standards/`](./standards/) — coding / testing / git /
-   docs / configuration standards
+   docs / configuration standards (Python tooling lives here)
 9. [`.claude/checklists/`](./checklists/) — pre-feature, pre-commit,
    pre-pr, feature-complete checklists
 10. [`docs/roadmap.md`](../docs/roadmap.md) — shipped + backlog
     pointer (canonical numbering)
 11. [`CHANGELOG.md`](../CHANGELOG.md) — release notes
+
+**Workspace-shared** (single source of truth — referenced, not
+copied; do **not** duplicate these into the project):
+
+- `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/development-pipeline.md`
+  — the per-feature workflow pattern. Universal across every
+  project in this workspace; this is where the pipeline lives.
+  Project-specific commands (the exact `ruff` / `mypy` / `pytest`
+  invocations) live in `.claude/standards/` and the project's
+  pre-commit / CI configs.
+- `/Users/khemchandjoshi/MbytesWorkspace/ai-agents/.claude/templates/`
+  — shared doc templates (feature, design, ADR, bug, enhancement).
+  Every doc here was started by copying one of those.
 
 ## Project-specific rules
 
