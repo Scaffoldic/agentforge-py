@@ -32,6 +32,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-003](./features/feat-003-llm-provider-abstraction.md) | LLM provider abstraction (Bedrock) | [#4](https://github.com/Scaffoldic/agentforge-py/pull/4) |
 | [feat-004](./features/feat-004-tools-system.md) | Tools system — `@tool` decorator + 4 default tools + dispatch enhancements + `FakeTool` | [#10](https://github.com/Scaffoldic/agentforge-py/pull/10) |
 | [feat-005](./features/feat-005-persistence-and-memory.md) | Persistence — MemoryStore + sqlite + postgres + neo4j + surrealdb + VectorStore + GraphStore + RAG | [#5](https://github.com/Scaffoldic/agentforge-py/pull/5) (sqlite + RAG, mis-labelled feat-007), [#7](https://github.com/Scaffoldic/agentforge-py/pull/7) (graph + neo4j + surrealdb, mis-labelled feat-009), [#8](https://github.com/Scaffoldic/agentforge-py/pull/8) (postgres, mis-labelled feat-008) |
+| [feat-007](./features/feat-007-production-rails.md) | Production rails — `BudgetPolicy` + `RunContext` + `idempotency_key_for` + `RunIdFilter` (shipped under feat-001) + `FallbackChain` cross-provider failover | [#11](https://github.com/Scaffoldic/agentforge-py/pull/11) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -49,11 +50,6 @@ move into "In flight" when starting.
   Evaluators & benchmarks.** `Evaluator` ABC was shipped under
   feat-001; the full eval framework (closes `scorer="judge"`
   placeholder in feat-002's `TreeOfThoughts`) is feat-006.
-- **[feat-007](./features/feat-007-production-rails.md) — Production
-  rails.** Cost budget (partially shipped via `BudgetPolicy`),
-  fallback chain (NOT shipped), `run_id` propagation (partially
-  shipped), idempotency (NOT shipped). The full feat-007 scope
-  remains.
 - **[feat-008](./features/feat-008-findings-and-output-shapes.md) —
   Findings & output shapes.** `Finding` Protocol + variants
   (Simple, Patch, Narrative, MultiSpan) + renderers. Spec exists;
