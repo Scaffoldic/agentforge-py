@@ -26,6 +26,7 @@ from pathlib import Path
 from types import TracebackType
 
 from agentforge_core.contracts.evaluator import Evaluator
+from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
@@ -77,6 +78,7 @@ class Agent:
         strategy: str | ReasoningStrategy | None = None,
         memory: MemoryStore | None = None,
         retriever: Retriever | None = None,
+        graph_store: GraphStore | None = None,
         evaluators: list[Evaluator] | None = None,
         system_prompt: str | None = None,
         budget_usd: float | None = None,
@@ -100,6 +102,7 @@ class Agent:
         # Defaults: in-memory store, no evaluators, no tools.
         self._memory: MemoryStore = memory if memory is not None else InMemoryStore()
         self._retriever: Retriever | None = retriever
+        self._graph_store: GraphStore | None = graph_store
         self._tools: list[Tool] = list(tools) if tools is not None else []
         self._evaluators: list[Evaluator] = list(evaluators) if evaluators is not None else []
         self._system_prompt: str | None = (
@@ -219,6 +222,7 @@ class Agent:
                     budget=run_budget,
                     system_prompt=self._system_prompt,
                     retriever=self._retriever,
+                    graph_store=self._graph_store,
                 )
             state = AgentState(
                 run_id=ctx.run_id,
@@ -263,6 +267,8 @@ class Agent:
         if self._llm is not None:
             await self._llm.close()
         await self._memory.close()
+        if self._graph_store is not None:
+            await self._graph_store.close()
         uninstall_run_id_filter()
 
     async def __aenter__(self) -> Agent:

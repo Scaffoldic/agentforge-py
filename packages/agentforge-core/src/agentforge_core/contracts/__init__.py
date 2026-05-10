@@ -10,6 +10,7 @@ from __future__ import annotations
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.finding import Finding
+from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
@@ -21,6 +22,7 @@ __all__ = [
     "EvalResult",
     "Evaluator",
     "Finding",
+    "GraphStore",
     "LLMClient",
     "MemoryStore",
     "ReasoningStrategy",
