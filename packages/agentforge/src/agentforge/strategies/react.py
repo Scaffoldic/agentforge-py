@@ -87,18 +87,13 @@ class ReActLoop(StrategyBase):
                 )
 
                 tool = _find_tool(runtime.tools, tool_call.name)
-                if tool is None:
-                    observation = f"Error: tool {tool_call.name!r} is not registered on this agent."
+                observation = await self._dispatch_tool(
+                    tool, tool_call.name, dict(tool_call.arguments)
+                )
+                if observation.startswith("Error:"):
                     runtime.budget.record_error()
                 else:
-                    try:
-                        raw = await tool.run(**tool_call.arguments)
-                    except Exception as exc:
-                        observation = f"Error: {type(exc).__name__}: {exc}"
-                        runtime.budget.record_error()
-                    else:
-                        observation = raw if isinstance(raw, str) else str(raw)
-                        runtime.budget.record_success()
+                    runtime.budget.record_success()
 
                 self._record_step(
                     state,
