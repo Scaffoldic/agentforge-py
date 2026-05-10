@@ -9,6 +9,16 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+> **Numbering note**: PRs #5, #7, #8 shipped under labels `feat-007`,
+> `feat-009`, `feat-008` respectively, but **all three actually
+> implement portions of canonical feat-005 (Persistence — `MemoryStore`
+> ABC + drivers)** in the parent design workspace at
+> `docs/features/feat-005-persistence-and-memory.md`. The divergence
+> wasn't caught until after #8 opened. Going forward every feat-NNN
+> uses the canonical number; no git history was rewritten. The full
+> mapping and deviations are documented in the canonical spec's
+> Implementation section. See `docs/roadmap.md` for the policy.
+
 ### Changed
 
 - **Project structure made self-contained for AI assistants.** Moved
@@ -37,6 +47,73 @@ release tag bumps every workspace member to the same minor version.
   live entirely inside `agentforge-py`.
 
 ### Added
+
+- **feat-008 — `agentforge-memory-postgres` (production persistence).**
+  Sister package to `agentforge-memory-sqlite` — same locked
+  contracts, same conformance suites — but backed by Postgres with
+  `asyncpg` and the pgvector extension for real-world scale,
+  multi-writer concurrency, and managed-database guarantees (RDS,
+  Neon, Supabase, etc.). Closes the postgres deferral from feat-007.
+
+  *New persistence package (`agentforge-memory-postgres`):*
+  - **`PostgresMemoryStore`** — claim audit log over a `claims`
+    JSONB table with composite indices on `(project, agent)`,
+    `run_id`, `category`. Capabilities: `{"transactions"}`. Every
+    mutation runs inside an asyncpg transaction.
+  - **`PostgresVectorStore`** — semantic search over a `vectors`
+    table with a typed `vector(N)` column and a pgvector HNSW index
+    (`vector_cosine_ops`). Dimensions pinned at construction.
+    `register_vector` is registered on every pooled connection so
+    `list[float]` flows through asyncpg's codec as the native
+    `vector` type. Capabilities: `{"native_ann"}` declared **only**
+    after `init_schema()` provisions the HNSW index — without
+    bootstrap the driver still works as a brute-force fallback but
+    doesn't claim ANN, per ADR-0009.
+  - **Score conversion at the SQL boundary**: pgvector's `<=>`
+    returns cosine *distance* in [0, 2] (0 = identical,
+    1 = orthogonal, 2 = anti-correlated); the locked contract
+    requires similarity in [0, 1]. The driver emits
+    `GREATEST(0.0, 1.0 - (embedding <=> $1))` so cross-driver scores
+    are directly comparable.
+  - **Metadata filter** is conjunctive equality via
+    `metadata @> $2::jsonb` (Postgres JSONB containment); empty
+    filter `{}` matches all rows.
+  - **Internal `PostgresRunner` protocol** + production
+    `_AsyncpgPoolRunner` wrapping `asyncpg.create_pool`
+    (`min_size=1`, `max_size=10` by default; pool acquired per
+    call). Tests inject a `PostgresFakeRunner` in conftest that
+    interprets the SQL vocabulary and routes operations to
+    `InMemoryStore` / an in-process vector dict — no Postgres
+    required for CI. Same pattern feat-009 proved out for Neo4j and
+    SurrealDB.
+  - **`init_schema()`** is opt-in and idempotent on both stores
+    (`CREATE EXTENSION / TABLE / INDEX IF NOT EXISTS`). No
+    migration framework yet — the schema shape is pinned for v0.1.
+  - **All SQL is parameterised via asyncpg's numbered `$1, $2, …`
+    placeholders.** Schema-bootstrap and filter-builder f-strings
+    reference only framework table-name constants (never user
+    input); S608 / B608 noqa annotations explicitly say so. The
+    `vector(N)` type literal is the only place a value is
+    interpolated, and it's validated as an `int` first since
+    pgvector forbids parameter binding for that position.
+  - **Live integration tests** exercise both conformance suites
+    against a real Postgres + pgvector, gated on
+    `RUN_LIVE_POSTGRES=1`. Docker-compose dev stack ships
+    `pgvector/pgvector:pg16`. CI does not run these (the
+    `@pytest.mark.live` marker is excluded by `pytest -m "not
+    live"`).
+  - 20 unit tests (6 memory + 14 vector) all green; both
+    `run_memory_conformance` and `run_vector_conformance` pass via
+    the fake runner.
+
+  *Workspace + CI wiring:*
+  - Package added to root pyproject (workspace member, `[tool.uv.sources]`,
+    coverage source, pytest testpaths).
+  - New mypy override block for `asyncpg.*` and `pgvector.*` (neither
+    SDK ships `py.typed`).
+  - `.github/workflows/ci.yml` and `.pre-commit-config.yaml` extended
+    in lockstep (mypy, bandit, pytest unit) per the rule established
+    in feat-009.
 
 - **feat-009 — `GraphStore` ABC + Neo4j and SurrealDB drivers.** Adds
   the third locked Tier-1 contract — graph traversal — alongside
