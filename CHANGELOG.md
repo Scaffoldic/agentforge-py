@@ -9,6 +9,16 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+> **Numbering note**: PRs #5, #7, #8 shipped under labels `feat-007`,
+> `feat-009`, `feat-008` respectively, but **all three actually
+> implement portions of canonical feat-005 (Persistence — `MemoryStore`
+> ABC + drivers)** in the parent design workspace at
+> `docs/features/feat-005-persistence-and-memory.md`. The divergence
+> wasn't caught until after #8 opened. Going forward every feat-NNN
+> uses the canonical number; no git history was rewritten. The full
+> mapping and deviations are documented in the canonical spec's
+> Implementation section. See `docs/roadmap.md` for the policy.
+
 ### Changed
 
 - Documentation made self-contained for the public OSS repo: removed
