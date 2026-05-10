@@ -30,6 +30,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-001](./features/feat-001-core-contracts-and-agent.md) | Core contracts + Agent | [#1](https://github.com/Scaffoldic/agentforge-py/pull/1) |
 | [feat-002](./features/feat-002-reasoning-strategies.md) | Reasoning strategies | [#3](https://github.com/Scaffoldic/agentforge-py/pull/3) |
 | [feat-003](./features/feat-003-llm-provider-abstraction.md) | LLM provider abstraction (Bedrock) | [#4](https://github.com/Scaffoldic/agentforge-py/pull/4) |
+| [feat-004](./features/feat-004-tools-system.md) | Tools system — `@tool` decorator + 4 default tools + dispatch enhancements + `FakeTool` | [#10](https://github.com/Scaffoldic/agentforge-py/pull/10) |
 | [feat-005](./features/feat-005-persistence-and-memory.md) | Persistence — MemoryStore + sqlite + postgres + neo4j + surrealdb + VectorStore + GraphStore + RAG | [#5](https://github.com/Scaffoldic/agentforge-py/pull/5) (sqlite + RAG, mis-labelled feat-007), [#7](https://github.com/Scaffoldic/agentforge-py/pull/7) (graph + neo4j + surrealdb, mis-labelled feat-009), [#8](https://github.com/Scaffoldic/agentforge-py/pull/8) (postgres, mis-labelled feat-008) |
 
 For details on what each shipped feature delivered vs. what was
@@ -44,10 +45,6 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **[feat-004](./features/feat-004-tools-system.md) — Tools system.**
-  `Tool` ABC was shipped under feat-001 but the full tool registry,
-  parallel tool calls, tool guard rails, and tool result handling
-  spec lives in feat-004.
 - **[feat-006](./features/feat-006-evaluators-and-benchmarks.md) —
   Evaluators & benchmarks.** `Evaluator` ABC was shipped under
   feat-001; the full eval framework (closes `scorer="judge"`
