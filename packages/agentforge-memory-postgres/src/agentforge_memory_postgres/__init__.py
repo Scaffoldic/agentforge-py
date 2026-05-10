@@ -12,7 +12,8 @@ sync `psycopg`, in agent code paths.
 from __future__ import annotations
 
 from agentforge_memory_postgres.memory import PostgresMemoryStore
+from agentforge_memory_postgres.vector import PostgresVectorStore
 
 __version__ = "0.0.0"
 
-__all__ = ["PostgresMemoryStore", "__version__"]
+__all__ = ["PostgresMemoryStore", "PostgresVectorStore", "__version__"]
