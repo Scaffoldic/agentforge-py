@@ -39,7 +39,7 @@ _UPSERT_CLAIM_QUERY = (
     "run_id: $run_id, category: $category, payload: $payload, "
     "supersedes: $supersedes, created_at: $created_at }"
 )
-_SELECT_CLAIM_BY_ID = f"SELECT * FROM {_CLAIM_TABLE} WHERE af_id = $id LIMIT 1"  # noqa: S608
+_SELECT_CLAIM_BY_ID = f"SELECT * FROM {_CLAIM_TABLE} WHERE af_id = $id LIMIT 1"  # noqa: S608  # nosec B608
 
 
 class SurrealMemoryStore(MemoryStore):
@@ -218,7 +218,7 @@ def _build_filter_query(
         where.append("run_id = $run_id")
         params["run_id"] = run_id
 
-    surql = f"SELECT * FROM {_CLAIM_TABLE}"  # noqa: S608 — table is a constant
+    surql = f"SELECT * FROM {_CLAIM_TABLE}"  # noqa: S608  # nosec B608 — table is a constant
     if where:
         surql += " WHERE " + " AND ".join(where)
     surql += " ORDER BY created_at"

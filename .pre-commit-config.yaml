@@ -59,9 +59,15 @@ repos:
   # ----------------------------------------------------------------------
   - repo: local
     hooks:
+      # Hook entries below MUST mirror .github/workflows/ci.yml exactly.
+      # When you add a new package, extend BOTH this file and ci.yml in
+      # the same commit — the local gate is meant to catch every error
+      # CI would catch. mypy is invoked over package src trees (not
+      # file-by-file) because cross-file type inference can surface
+      # errors that file-scope mypy misses.
       - id: mypy-strict
         name: mypy --strict
-        entry: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src
+        entry: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src
         language: system
         types: [python]
         pass_filenames: false
@@ -69,7 +75,7 @@ repos:
       - id: bandit
         name: bandit security lint
         # -c pyproject.toml so bandit reads [tool.bandit] (skips B101 etc.)
-        entry: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src
+        entry: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src
         language: system
         types: [python]
         pass_filenames: false
@@ -79,14 +85,14 @@ repos:
       # are still empty. Real failures (1, 2, 3, 4) still block.
       - id: pytest-unit
         name: pytest unit
-        entry: bash -c 'uv run pytest -q -x -m "not live" packages/agentforge-core/tests packages/agentforge/tests tests/unit; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
+        entry: bash -c 'uv run pytest -q -x -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit packages/agentforge-memory-sqlite/tests/unit packages/agentforge-memory-neo4j/tests/unit packages/agentforge-memory-surrealdb/tests/unit tests/unit; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
         language: system
         always_run: true
         pass_filenames: false
 
       - id: pytest-integration
         name: pytest integration (excludes live)
-        entry: bash -c 'uv run pytest -q -x -m "not live" tests/integration; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
+        entry: bash -c 'uv run pytest -q -x -m "not live" packages/agentforge-bedrock/tests/integration tests/integration; code=$?; [ $code -eq 0 ] || [ $code -eq 5 ] && exit 0 || exit $code'
         language: system
         always_run: true
         pass_filenames: false

@@ -54,27 +54,27 @@ _UPSERT_NODE_QUERY = (
     f"UPSERT type::thing('{_NODE_TABLE}', $id) "
     "CONTENT { af_id: $id, labels: $labels, properties: $properties }"
 )
-_SELECT_NODE_BY_ID = f"SELECT * FROM {_NODE_TABLE} WHERE af_id = $id LIMIT 1"  # noqa: S608
-_SELECT_NODES_BY_IDS = f"SELECT af_id FROM {_NODE_TABLE} WHERE af_id IN $ids"  # noqa: S608
-_SELECT_ALL_NODES = f"SELECT * FROM {_NODE_TABLE}"  # noqa: S608
-_DELETE_NODE = f"DELETE FROM {_NODE_TABLE} WHERE af_id = $id"  # noqa: S608
+_SELECT_NODE_BY_ID = f"SELECT * FROM {_NODE_TABLE} WHERE af_id = $id LIMIT 1"  # noqa: S608  # nosec B608
+_SELECT_NODES_BY_IDS = f"SELECT af_id FROM {_NODE_TABLE} WHERE af_id IN $ids"  # noqa: S608  # nosec B608
+_SELECT_ALL_NODES = f"SELECT * FROM {_NODE_TABLE}"  # noqa: S608  # nosec B608
+_DELETE_NODE = f"DELETE FROM {_NODE_TABLE} WHERE af_id = $id"  # noqa: S608  # nosec B608
 
 _DELETE_EDGE_BY_TRIPLE = (
-    f"DELETE FROM {_EDGE_TABLE} WHERE "  # noqa: S608
+    f"DELETE FROM {_EDGE_TABLE} WHERE "  # noqa: S608  # nosec B608
     "in.af_id = $src AND out.af_id = $dst AND edge_type = $edge_type"
 )
 _RELATE_EDGE = (
-    f"LET $s = (SELECT * FROM {_NODE_TABLE} WHERE af_id = $src)[0]; "  # noqa: S608
+    f"LET $s = (SELECT * FROM {_NODE_TABLE} WHERE af_id = $src)[0]; "  # noqa: S608  # nosec B608
     f"LET $d = (SELECT * FROM {_NODE_TABLE} WHERE af_id = $dst)[0]; "
     f"RELATE $s->{_EDGE_TABLE}->$d "
     "CONTENT { edge_type: $edge_type, properties: $properties }"
 )
 _SELECT_EDGE_BY_TRIPLE = (
-    f"SELECT id FROM {_EDGE_TABLE} WHERE "  # noqa: S608
+    f"SELECT id FROM {_EDGE_TABLE} WHERE "  # noqa: S608  # nosec B608
     "in.af_id = $src AND out.af_id = $dst AND edge_type = $edge_type"
 )
 _DELETE_EDGES_INCIDENT = (
-    f"DELETE FROM {_EDGE_TABLE} WHERE "  # noqa: S608
+    f"DELETE FROM {_EDGE_TABLE} WHERE "  # noqa: S608  # nosec B608
     "in.af_id = $id OR out.af_id = $id"
 )
 
@@ -83,7 +83,7 @@ def _select_edges(where: str) -> str:
     """Compose an `af_edge` SELECT — `where` is a constant predicate
     chosen from a closed set in `get_edges`, never user input."""
     return (
-        f"SELECT in.af_id AS src, out.af_id AS dst, edge_type, properties "  # noqa: S608
+        f"SELECT in.af_id AS src, out.af_id AS dst, edge_type, properties "  # noqa: S608  # nosec B608
         f"FROM {_EDGE_TABLE} WHERE {where}"
     )
 
