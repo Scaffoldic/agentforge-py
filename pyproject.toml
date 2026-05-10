@@ -25,6 +25,7 @@ dependencies = [
     "agentforge",
     "agentforge-bedrock",
     "agentforge-memory-sqlite",
+    "agentforge-memory-neo4j",
 ]
 
 [tool.uv.workspace]
@@ -35,6 +36,7 @@ agentforge-core = { workspace = true }
 agentforge = { workspace = true }
 agentforge-bedrock = { workspace = true }
 agentforge-memory-sqlite = { workspace = true }
+agentforge-memory-neo4j = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -145,6 +147,21 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_bedrock.*"
 disable_error_code = ["no-any-unimported"]
 
+# Neo4j and SurrealDB Python SDKs ship without py.typed markers.
+# Allow imports without stubs so mypy --strict still passes; the
+# driver's public surface is still typed at our layer.
+[[tool.mypy.overrides]]
+module = ["neo4j", "neo4j.*", "surrealdb", "surrealdb.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+# Same suppression on our own neo4j and surrealdb packages — driver
+# types leak Any into helper signatures we type ourselves.
+[[tool.mypy.overrides]]
+module = ["agentforge_memory_neo4j.*", "agentforge_memory_surrealdb.*"]
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -157,6 +174,7 @@ testpaths = [
     "packages/agentforge/tests",
     "packages/agentforge-bedrock/tests",
     "packages/agentforge-memory-sqlite/tests",
+    "packages/agentforge-memory-neo4j/tests",
     "tests",
 ]
 markers = [
@@ -179,6 +197,7 @@ source = [
     "packages/agentforge/src",
     "packages/agentforge-bedrock/src",
     "packages/agentforge-memory-sqlite/src",
+    "packages/agentforge-memory-neo4j/src",
 ]
 branch = true
 parallel = true
