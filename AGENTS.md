@@ -94,6 +94,16 @@ Don't reference anything outside this repo.
   deviations from the original design, link to the PR. The spec is
   the durable record; CHANGELOG is the user-facing summary. Both
   ship in the same PR.
+- **Every feature PR adds (or updates) a `## Runbook` section in
+  the matching canonical spec.** This section is task-oriented
+  (audience: agent developers using the framework, not framework
+  maintainers): "How do I do X with this feature?", "How do I
+  configure / swap / extend it?", "What goes wrong and how do I
+  debug it?". When feat-011 (Copier scaffolding) and feat-019
+  (runbook system) ship, the templating engine consumes these
+  sections and renders proper runbook files into scaffolded agent
+  projects. Authoring inline avoids the bootstrap problem of
+  retroactive runbook debt.
 - **Every feature PR updates `.claude/state/current.md` and appends
   to `.claude/state/log.md`** at every milestone (analysis,
   design-approved, chunk-complete, PR-raised, shipped). The state
