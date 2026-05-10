@@ -8,6 +8,13 @@ requires a major bump.
 from __future__ import annotations
 
 from agentforge_core.values.claim import Claim
+from agentforge_core.values.graph import (
+    GraphEdge,
+    GraphNode,
+    GraphPattern,
+    GraphSegment,
+    Path,
+)
 from agentforge_core.values.messages import (
     EmbeddingResponse,
     LLMResponse,
@@ -34,9 +41,14 @@ __all__ = [
     "Claim",
     "EmbeddingResponse",
     "FinishReason",
+    "GraphEdge",
+    "GraphNode",
+    "GraphPattern",
+    "GraphSegment",
     "LLMResponse",
     "Message",
     "MessageRole",
+    "Path",
     "RunResult",
     "Step",
     "StepKind",
