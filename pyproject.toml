@@ -26,6 +26,7 @@ dependencies = [
     "agentforge-bedrock",
     "agentforge-memory-sqlite",
     "agentforge-memory-neo4j",
+    "agentforge-memory-surrealdb",
 ]
 
 [tool.uv.workspace]
@@ -37,6 +38,7 @@ agentforge = { workspace = true }
 agentforge-bedrock = { workspace = true }
 agentforge-memory-sqlite = { workspace = true }
 agentforge-memory-neo4j = { workspace = true }
+agentforge-memory-surrealdb = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -175,6 +177,7 @@ testpaths = [
     "packages/agentforge-bedrock/tests",
     "packages/agentforge-memory-sqlite/tests",
     "packages/agentforge-memory-neo4j/tests",
+    "packages/agentforge-memory-surrealdb/tests",
     "tests",
 ]
 markers = [
@@ -198,6 +201,7 @@ source = [
     "packages/agentforge-bedrock/src",
     "packages/agentforge-memory-sqlite/src",
     "packages/agentforge-memory-neo4j/src",
+    "packages/agentforge-memory-surrealdb/src",
 ]
 branch = true
 parallel = true

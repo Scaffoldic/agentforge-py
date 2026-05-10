@@ -1,0 +1,71 @@
+# agentforge-memory-surrealdb — SurrealDB drivers for AgentForge.
+#
+# Implements MemoryStore (claim audit log), VectorStore (semantic
+# search via HNSW), and GraphStore (knowledge graph traversal) over
+# SurrealDB via the official `surrealdb` Python SDK. SurrealDB is
+# multi-modal: a single store supports document, graph, and vector
+# semantics — uniquely well-suited as an all-in-one persistence
+# layer for AgentForge.
+#
+# Per ADR-0003 (three-tier package model — this is Tier 3, a
+# persistence module) and ADR-0014 (async-first runtime).
+
+[project]
+name = "agentforge-memory-surrealdb"
+version = "0.0.0"
+description = "SurrealDB-backed MemoryStore, VectorStore, and GraphStore for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "memory", "vector", "graph", "surrealdb", "surrealql", "rag"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "surrealdb>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration — feat-010 will load these.
+[project.entry-points."agentforge.memory"]
+surrealdb = "agentforge_memory_surrealdb.memory:SurrealMemoryStore"
+
+[project.entry-points."agentforge.vector_stores"]
+surrealdb = "agentforge_memory_surrealdb.vector:SurrealVectorStore"
+
+[project.entry-points."agentforge.graph_stores"]
+surrealdb = "agentforge_memory_surrealdb.graph:SurrealGraphStore"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_memory_surrealdb"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_memory_surrealdb",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
