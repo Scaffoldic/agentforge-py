@@ -30,9 +30,9 @@ _UPSERT_VECTOR_QUERY = (
     f"UPSERT type::thing('{_VECTOR_TABLE}', $id) CONTENT "
     "{ af_id: $id, embedding: $embedding, text: $text, metadata: $metadata }"
 )
-_SELECT_ALL_VECTORS = f"SELECT * FROM {_VECTOR_TABLE}"  # noqa: S608
-_SELECT_VECTORS_BY_IDS = f"SELECT af_id FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608
-_DELETE_VECTORS_BY_IDS = f"DELETE FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608
+_SELECT_ALL_VECTORS = f"SELECT * FROM {_VECTOR_TABLE}"  # noqa: S608  # nosec B608
+_SELECT_VECTORS_BY_IDS = f"SELECT af_id FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608  # nosec B608
+_DELETE_VECTORS_BY_IDS = f"DELETE FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608  # nosec B608
 
 
 def _build_init_schema(dimensions: int) -> str:
