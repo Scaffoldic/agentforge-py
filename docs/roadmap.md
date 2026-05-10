@@ -1,64 +1,87 @@
 # Roadmap
 
-What's planned but not yet shipped. Each entry is a
-"feature-in-flight" with a rough scope; the full design lands in a PR
-when work begins. Items are listed by feature number, not priority —
-order may shift based on user demand.
+What's planned but not yet shipped. Feature numbers below match the
+canonical specs in [`docs/features/`](./features/) — that's the
+single source of truth for feat-NNN identity and scope.
+
+## Numbering note (read this first)
+
+The first three PRs match canonical numbers (PR #1 = feat-001, PR #3
+= feat-002, PR #4 = feat-003). PRs #5, #7, #8 shipped under labels
+`feat-007`, `feat-009`, `feat-008` respectively but **all three
+actually implement portions of canonical feat-005 (Persistence —
+`MemoryStore` ABC + drivers)**. The divergence wasn't caught until
+after #8 opened. Remediation: "Add mapping + addendum" — no git
+history rewrites; canonical
+[`feat-005`](./features/feat-005-persistence-and-memory.md)
+gains an Implementation section with the mapping; from this PR
+onward every feature uses the canonical feat-NNN number.
 
 ## In flight
 
-### feat-008 — `agentforge-memory-postgres` (production persistence)
-
-Production-grade `MemoryStore` and `VectorStore` over Postgres via
-`asyncpg` and the [`pgvector`](https://github.com/pgvector/pgvector)
-extension. Sister package to `agentforge-memory-sqlite`; same locked
-contracts, same conformance suites — drop-in replacement for
-deployments that need scale, multi-writer concurrency, or
-managed-database guarantees (RDS, Neon, Supabase, etc.).
-
-Deferred from feat-007 because SQLite already covers single-host
-v0.1 use cases and Postgres deserves real load testing rather than
-being rushed in alongside the contract work.
-
-**Scope:**
-- New workspace member `packages/agentforge-memory-postgres/`.
-- `PostgresMemoryStore` (claims) + `PostgresVectorStore` (vectors via
-  `CREATE EXTENSION vector;`). Both pass `run_memory_conformance` and
-  `run_vector_conformance` verbatim.
-- Schema migrations: opt-in `await store.init_schema()` (idempotent
-  `CREATE TABLE IF NOT EXISTS`); no migration framework yet — that
-  lands when we have a v0.1.0 → v0.2.0 schema delta.
-- Live integration tests gated on `RUN_LIVE_POSTGRES=1` +
-  `POSTGRES_URL=…`. Local docker-compose for development.
-- Pricing entry-point registration (`embeddings.postgres` reserved if
-  pgvector hosts embeddings server-side via `vector_l2_ops`-aware
-  search; otherwise pure persistence).
-
-**Estimated chunks:** 4 — package skeleton + claims, vector store,
-live integration test fixture, CHANGELOG/PR.
+*No features in flight.*
 
 ---
 
-## Backlog (no design yet)
+## Shipped (Python; TypeScript port pending across the board)
 
-These are tracked here so they don't get lost. Designs land when
-they get prioritised:
+| Canonical | Title | PRs |
+|---|---|---|
+| [feat-001](./features/feat-001-core-contracts-and-agent.md) | Core contracts + Agent | [#1](https://github.com/Scaffoldic/agentforge-py/pull/1) |
+| [feat-002](./features/feat-002-reasoning-strategies.md) | Reasoning strategies | [#3](https://github.com/Scaffoldic/agentforge-py/pull/3) |
+| [feat-003](./features/feat-003-llm-provider-abstraction.md) | LLM provider abstraction (Bedrock) | [#4](https://github.com/Scaffoldic/agentforge-py/pull/4) |
+| [feat-005](./features/feat-005-persistence-and-memory.md) | Persistence — MemoryStore + sqlite + postgres + neo4j + surrealdb + VectorStore + GraphStore + RAG | [#5](https://github.com/Scaffoldic/agentforge-py/pull/5) (sqlite + RAG, mis-labelled feat-007), [#7](https://github.com/Scaffoldic/agentforge-py/pull/7) (graph + neo4j + surrealdb, mis-labelled feat-009), [#8](https://github.com/Scaffoldic/agentforge-py/pull/8) (postgres, mis-labelled feat-008) |
 
-- **feat-004 — Anthropic SDK direct provider.** First-party Anthropic
-  client (not via Bedrock). Mirrors the locked `LLMClient` surface
-  feat-003 exercises.
-- **feat-005 — OpenAI / Azure provider.** Same shape as feat-004.
-- **feat-006 — `agentforge-eval-geval`.** Cheap-judge model + eval
-  framework. Closes the `scorer="judge"` placeholder from feat-002's
-  `TreeOfThoughts`.
-- **feat-010 — Entry-point auto-loader.** `pip install agentforge-X`
-  alone enables `Agent(model="X:...")` without an explicit import.
-- **GraphRAG-style hybrid retrieval** (post-feat-009). Combines vector
-  retrieval with graph expansion — pull the top-k vector matches,
-  then traverse outgoing edges to enrich context.
-- **Hybrid search** (BM25 + vector fusion) inside the locked
+For details on what each shipped feature delivered vs. what was
+deferred, read the **Implementation status** section at the bottom
+of each spec under [`docs/features/`](./features/).
+
+---
+
+## Backlog (canonical numbers)
+
+These are tracked here so they don't get lost. Full design specs
+already exist under [`docs/features/`](./features/); pick one to
+move into "In flight" when starting.
+
+- **[feat-004](./features/feat-004-tools-system.md) — Tools system.**
+  `Tool` ABC was shipped under feat-001 but the full tool registry,
+  parallel tool calls, tool guard rails, and tool result handling
+  spec lives in feat-004.
+- **[feat-006](./features/feat-006-evaluators-and-benchmarks.md) —
+  Evaluators & benchmarks.** `Evaluator` ABC was shipped under
+  feat-001; the full eval framework (closes `scorer="judge"`
+  placeholder in feat-002's `TreeOfThoughts`) is feat-006.
+- **[feat-007](./features/feat-007-production-rails.md) — Production
+  rails.** Cost budget (partially shipped via `BudgetPolicy`),
+  fallback chain (NOT shipped), `run_id` propagation (partially
+  shipped), idempotency (NOT shipped). The full feat-007 scope
+  remains.
+- **[feat-008](./features/feat-008-findings-and-output-shapes.md) —
+  Findings & output shapes.** `Finding` Protocol + variants
+  (Simple, Patch, Narrative, MultiSpan) + renderers. Spec exists;
+  not yet implemented. **Note:** PR #8 was *labelled* feat-008 but
+  actually implemented part of feat-005.
+- **[feat-009](./features/feat-009-observability.md) —
+  Observability.** Structured logging + OpenTelemetry + dashboard
+  exporters. Spec exists; not yet implemented. **Note:** PR #7 was
+  *labelled* feat-009 but actually implemented part of feat-005.
+- **[feat-010](./features/feat-010-module-discovery-and-cli.md) —
+  Module discovery & CLI.** Entry-point auto-loader so
+  `pip install agentforge-X` enables `Agent(model="X:…")` without
+  explicit import.
+- **feat-011 through feat-020** — see specs under
+  [`docs/features/`](./features/).
+
+### Sub-feat backlog (no canonical number yet)
+
+- **GraphRAG-style hybrid retrieval** — combines vector retrieval
+  with graph expansion (pull top-k vector matches, then traverse
+  outgoing edges to enrich context).
+- **Hybrid search** (BM25 + vector fusion) inside the
   `VectorStore` capability vocabulary.
 - **Reranker contract** — `Reranker` ABC for cross-encoder reranking
   on top of `VectorStore.search`.
-- **Schema migrations** for persistent stores (Postgres, SQLite). Lands
-  alongside the first breaking schema delta.
+- **Schema migrations** for persistent stores (the
+  `init_schema()` opt-in is the v0.1 stand-in; a real migration
+  framework lands alongside the first v0.1.0 → v0.2.0 schema delta).
