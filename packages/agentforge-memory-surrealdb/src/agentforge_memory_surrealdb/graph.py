@@ -285,7 +285,7 @@ def _flatten(rows: list[Any]) -> list[dict[str, Any]]:
 
 
 def _flatten_ids(rows: list[Any]) -> set[str]:
-    return {r.get("af_id") for r in _flatten(rows) if r.get("af_id") is not None}
+    return {str(r["af_id"]) for r in _flatten(rows) if r.get("af_id") is not None}
 
 
 def _record_to_node(record: dict[str, Any]) -> GraphNode:
