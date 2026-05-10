@@ -26,9 +26,16 @@ from __future__ import annotations
 
 from agentforge._tools.calculator import calculator
 from agentforge._tools.file_read import FileReadTool, file_read
+from agentforge._tools.shell import ShellTool, shell
+from agentforge._tools.web_search import SearchResult, WebSearchTool, web_search
 
 __all__ = [
     "FileReadTool",
+    "SearchResult",
+    "ShellTool",
+    "WebSearchTool",
     "calculator",
     "file_read",
+    "shell",
+    "web_search",
 ]
