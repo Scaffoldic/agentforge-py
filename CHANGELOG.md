@@ -19,6 +19,92 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-009 — `GraphStore` ABC + Neo4j and SurrealDB drivers.** Adds
+  the third locked Tier-1 contract — graph traversal — alongside
+  the existing `MemoryStore` (claim audit log) and `VectorStore`
+  (similarity search) ABCs. Unlocks knowledge-graph agents,
+  multi-hop reasoning over a corpus, and ontology-driven planning
+  without compromising the minimalism of the other contracts.
+
+  *New core contracts (`agentforge-core`):*
+  - **`GraphStore` ABC** under `agentforge_core.contracts.graph_store`.
+    Methods: `add_node`, `add_edge`, `get_node`, `get_edges`, `match`,
+    `traverse`, `delete_node`, `delete_edge`, `close`, `capabilities`,
+    `supports`. Distinct from `MemoryStore` and `VectorStore` because
+    graph traversal — multi-hop walks, pattern matching — doesn't
+    fit metadata-filter or cosine-similarity shapes.
+  - **`GraphNode`**, **`GraphEdge`**, **`GraphSegment`**, **`GraphPattern`**,
+    **`Path`** frozen Pydantic value types. `GraphPattern` enforces
+    `len(node_filters) ∈ {0, len(segments) + 1}`; `Path` enforces
+    `len(edges) == len(nodes) - 1`.
+  - **`run_graph_conformance(store)`** suite in
+    `agentforge_core.testing`. Round-trip, idempotent upsert, get_edges
+    directionality, single-segment match, depth-bounded traverse,
+    cascade delete semantics, capability honesty.
+
+  *New runtime helpers (`agentforge`):*
+  - **`InMemoryGraphStore`** — process-local reference impl. Dict +
+    adjacency list, BFS traversal with cycle avoidance, brute-force
+    pattern walk. Passes `run_graph_conformance` from day one.
+  - **`Agent(graph_store=...)`** constructor kwarg threads a
+    `GraphStore` through `RuntimeContext.graph_store` so strategies
+    can do multi-hop reasoning via
+    `get_runtime(state).graph_store.traverse(...)` without the caller
+    threading the store manually. Existing `Agent(...)` constructions
+    keep working — the field is optional.
+  - 6 Hypothesis property tests against `InMemoryGraphStore` exercise
+    arbitrary graph shapes (round-trip, idempotent upsert, traverse
+    depth bound, cascade delete, Path invariants).
+
+  *New persistence package (`agentforge-memory-neo4j`):*
+  - **`Neo4jGraphStore`** — full GraphStore contract over Neo4j 5.x
+    via the official `neo4j` async driver. Models the framework's
+    dynamic-label model with a marker label `:AfNode` + `_af_labels`
+    property (Cypher can't parameterise label names); same pattern
+    for edges (`:AF_EDGE` + `_af_edge_type`). Compiles multi-segment
+    `GraphPattern`s to native Cypher with parameterised WHERE
+    clauses. `traverse()` uses Cypher's variable-length `*1..N`.
+    Capabilities: `{"transactions", "cypher", "fulltext"}`.
+  - **`Neo4jMemoryStore`** — MemoryStore over `:Claim` nodes.
+    Supersede chains also write `[:SUPERSEDES]` edges so graph
+    queries can traverse claim history.
+  - `init_schema()` is opt-in (idempotent constraints + indexes).
+  - Docker-compose dev stack ships in the package. Live integration
+    tests gated on `RUN_LIVE_NEO4J=1`; CI does not run them. Unit
+    tests use a `GraphFakeRunner` / `MemoryFakeRunner` in conftest
+    that interpret the Cypher vocabulary the driver emits.
+
+  *New persistence package (`agentforge-memory-surrealdb`):*
+  - AgentForge's first multi-modal persistence package. SurrealDB
+    supports documents, vectors, and graphs natively; the package
+    implements all three locked contracts against one
+    `surrealdb.AsyncSurreal` client.
+  - **`SurrealGraphStore`** — GraphStore via native
+    `RELATE src->edge_table->dst` syntax. `match()` and `traverse()`
+    walk client-side via repeated `get_edges` queries — correct,
+    portable, easily testable. Capabilities:
+    `{"transactions", "surrealql", "vector", "live_query"}`.
+  - **`SurrealVectorStore`** — VectorStore. `init_schema()`
+    provisions an HNSW index; the driver declares `{"native_ann"}`
+    only after, with a brute-force fallback otherwise.
+  - **`SurrealMemoryStore`** — MemoryStore over `af_claim` records.
+  - All SurrealQL strings are module-level constants composed of
+    framework-defined table names (never user input); S608 lint
+    warnings explicitly noqa'd with that rationale.
+  - Docker-compose dev stack (SurrealDB v2). Live integration tests
+    gated on `RUN_LIVE_SURREAL=1`. Unit tests use a multi-modal
+    `SurrealFakeRunner` in conftest.
+
+  *Agent integration:*
+  - `RuntimeContext.graph_store: GraphStore | None` added.
+  - `Agent.close()` now also `await graph_store.close()` so external
+    drivers release their connections cleanly.
+
+  *CI:*
+  - Both new packages added to `.github/workflows/ci.yml` (mypy,
+    bandit, pytest unit). mypy override blocks added for `neo4j.*`
+    and `surrealdb.*` since both SDKs ship without `py.typed`.
+
 - **feat-007 — Persistent memory + vector search + RAG.** Lifts agents
   from "process-local memory only" to "persistent state across runs"
   and adds semantic retrieval so agents can ground answers in indexed
