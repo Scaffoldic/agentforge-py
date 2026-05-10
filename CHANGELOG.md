@@ -48,6 +48,79 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-004 — Tools system.** Adds the decorator + default tools +
+  dispatch enhancements that turn a typed Python function into a
+  ready-to-use `Tool`, and the four default tools every agent gets
+  out of the box.
+
+  *New in `agentforge`:*
+  - **`@tool`** decorator (`from agentforge import tool`) — wraps a
+    typed function as a `Tool` subclass with `name`, `description`,
+    and `input_schema` inferred from the function signature and
+    Google-style docstring. Bare form (`@tool`) and parameterised
+    form (`@tool(name=..., capabilities=...)`) both supported. Sync
+    and async functions both work. Decoration-time validation:
+    missing type hints, variadic args, and positional-only params
+    all raise `ValueError` with a clear message.
+  - **`agentforge.tools`** — public namespace for default tools:
+    - `calculator` — arithmetic via Python's `ast` module (no
+      `eval()`); supports `+ - * / // % **` and parens.
+    - `file_read` / `FileReadTool` — sandboxed UTF-8 file read with
+      a configurable working dir and size cap (default 1 MiB).
+      Capabilities: `{"filesystem"}`.
+    - `shell` / `ShellTool` — sandboxed subprocess via
+      `asyncio.create_subprocess_exec` (`shell=False` semantics; no
+      shell-injection vector). Default 30s timeout, 64 KiB output
+      cap, optional `allowed_commands` whitelist. Capabilities:
+      `{"shell", "destructive"}`.
+    - `web_search` / `WebSearchTool` / `SearchResult` — pluggable
+      search backend with a DuckDuckGo HTML scrape default. Real
+      backends (Serper, Tavily, Brave) ship as separate module
+      packages later. Capabilities: `{"network"}`.
+
+  *Strategy improvements:*
+  - **`_StrategyBase._dispatch_tool`** centralises the tool-call
+    boundary per spec §4.3:
+    1. Tool not registered → `Error: tool 'x' is not registered…`
+       observation (no exception).
+    2. Validation failure on
+       `input_schema.model_validate(arguments)` → `Error: invalid
+       arguments…` observation. The LLM sees the Pydantic error
+       message and self-corrects on the next iteration.
+    3. `await tool.run(**validated)` wrapped in
+       `asyncio.wait_for(timeout=timeout_s)`. Default 30 s
+       (`agentforge.strategies._base.DEFAULT_TOOL_TIMEOUT_S`); pass
+       `timeout_s=None` to disable.
+    4. Any exception from the tool body → `Error: {ExcClass}: {msg}`
+       observation. Tools should raise rather than catch — the
+       strategy turns the raise into the LLM's observation.
+  - `ReActLoop` and `PlanExecuteLoop` now use the helper
+    consistently. `PlanExecuteLoop` preserves its replan-on-failure
+    semantics by re-raising "Error:" observations so the existing
+    `_StepFailure` machinery can decide whether to replan.
+
+  *Test isolation:*
+  - **`agentforge._testing.FakeTool.fake(name, response_or_fn)`** —
+    minimal scripted-response Tool. Static values, sync callables,
+    and async callables all supported. Records every `run` call's
+    kwargs in `self.calls` for assertions. `isinstance(fake, Tool)`
+    holds, so `Agent(tools=[fake, …])` accepts them without
+    special-casing.
+
+  *Coverage:* 75 new unit tests (decorator, default tools,
+  dispatch helper, FakeTool) plus a live integration test for the
+  DuckDuckGo backend gated on `RUN_LIVE_WEB=1`.
+
+  *Capability vocabulary now in use:* `{"filesystem", "network",
+  "shell", "destructive"}` — declared per default tool. Future
+  safety guardrails (feat-018) will consume this vocabulary to
+  gate destructive tool use behind explicit operator opt-in.
+
+  *Pre-commit housekeeping:* migrated the ruff hook id from the
+  legacy alias `id: ruff` to the modern `id: ruff-check`. No
+  behavioural change; the previous "(legacy alias)" log line is
+  gone.
+
 - **feat-008 — `agentforge-memory-postgres` (production persistence).**
   Sister package to `agentforge-memory-sqlite` — same locked
   contracts, same conformance suites — but backed by Postgres with

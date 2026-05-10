@@ -312,12 +312,19 @@ class PlanExecuteLoop(StrategyBase):
             },
         )
 
-        raw = await tool.run(**step.arguments)
+        observation = await self._dispatch_tool(tool, step.tool, dict(step.arguments))
         duration_ms = int((time.monotonic() - started_ms) * 1000)
         # Note duration is approximate (records before the observe step
         # is appended); kept on the act step's metadata if needed.
         del duration_ms
-        return raw if isinstance(raw, str) else str(raw)
+        # plan-execute keeps its replan-on-failure semantics: if the
+        # dispatch helper produced an `Error:` observation (validation
+        # failure, timeout, or tool exception), bubble it up so the
+        # surrounding execute_one/_StepFailure machinery can decide
+        # whether to replan.
+        if observation.startswith("Error:"):
+            raise RuntimeError(observation)
+        return observation
 
 
 def _parse_plan(content: str) -> Plan:

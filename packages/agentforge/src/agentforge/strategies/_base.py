@@ -26,16 +26,25 @@ the underscore makes it discoverable; the class is exported from
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from abc import abstractmethod
+from typing import Any
 
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.tool import Tool
 from agentforge_core.values.messages import LLMResponse, Message, ToolSpec
 from agentforge_core.values.state import AgentState, Step, StepKind
+from pydantic import ValidationError
 
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
+
+DEFAULT_TOOL_TIMEOUT_S = 30.0
+"""Default per-tool execution timeout. Overridable per call to
+`_dispatch_tool` and (eventually, per feat-004 §4.5) via
+`agent.tool_options.timeout_s` in `agentforge.yaml`."""
 
 log = logging.getLogger(__name__)
 
@@ -171,3 +180,48 @@ class StrategyBase(ReasoningStrategy):
         )
 
         return response
+
+    async def _dispatch_tool(
+        self,
+        tool: Tool | None,
+        tool_name: str,
+        arguments: dict[str, Any],
+        *,
+        timeout_s: float | None = DEFAULT_TOOL_TIMEOUT_S,
+    ) -> str:
+        """Validate args, run a tool with a timeout, capture errors.
+
+        Centralises the tool-call dispatch path per feat-004 §4.3:
+
+        1. Tool not registered → observation explaining "not registered".
+        2. ValidationError on `input_schema.model_validate(arguments)`
+           → observation showing what's wrong (LLM sees the validation
+           error, not a stack trace, so it can self-correct on the next
+           iteration).
+        3. `await tool.run(**validated)` wrapped in
+           `asyncio.wait_for(timeout=timeout_s)` (None disables).
+        4. Any exception from the tool body → observation prefixed
+           `Error:`. Tools should raise rather than catch — the
+           strategy turns the raise into the LLM's observation.
+
+        Returns the observation string. The caller decides whether to
+        record a Step / increment the budget's success/error streak /
+        forward to the LLM as a `tool` message.
+        """
+        if tool is None:
+            return f"Error: tool {tool_name!r} is not registered on this agent."
+        try:
+            validated = tool.input_schema.model_validate(arguments)
+        except ValidationError as exc:
+            return f"Error: invalid arguments for {tool_name!r}: {exc}"
+        kwargs = validated.model_dump()
+        try:
+            if timeout_s is None:
+                raw = await tool.run(**kwargs)
+            else:
+                raw = await asyncio.wait_for(tool.run(**kwargs), timeout=timeout_s)
+        except TimeoutError:
+            return f"Error: tool {tool_name!r} exceeded timeout_s={timeout_s}."
+        except Exception as exc:
+            return f"Error: {type(exc).__name__}: {exc}"
+        return raw if isinstance(raw, str) else str(raw)
