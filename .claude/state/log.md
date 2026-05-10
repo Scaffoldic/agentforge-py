@@ -374,3 +374,10 @@ State: `analysing`. Pipeline rule §1 picks lowest-numbered proposed
 feature with deps shipped — feat-004 (Tools) wins (deps: feat-001
 ✓). Awaiting user approval of analysis + chunk plan in
 `state/current.md`.
+
+## 2026-05-10T14:30 — feat-004 chunk 1 done: @tool decorator
+Commit: `6ec7c13`. 25 unit tests pass via pre-commit gate.
+`agentforge._tools.decorator.tool` re-exported as `from agentforge
+import tool`. Bare and parameterised forms both work; Google-style
+docstring parser feeds Pydantic Field descriptions. Decoration-time
+errors on missing type hints / variadic / positional-only params.
