@@ -1,75 +1,108 @@
 ---
-feature: chore-self-contained-project-docs
-state: implementing
-branch: chore/self-contained-project-docs
-started_at: 2026-05-10T13:00
-last_milestone_at: 2026-05-10T13:30
-last_shipped: feat-005 (Persistence) — partial; sqlite + RAG via PR #5, neo4j + surrealdb + GraphStore via PR #7; postgres via PR #8 (open, awaiting reorg merge)
+feature: feat-004-tools-system
+state: analysing
+branch: feat/004-tools-system
+started_at: 2026-05-10T14:00
+last_milestone_at: 2026-05-10T14:00
+last_shipped: feat-005 (Persistence) shipped via PRs #5 (sqlite + RAG), #7 (graph + neo4j + surrealdb), #8 (postgres); chore PR #9 (self-contained project layout) merged at 74ea4ed
 blocker: null
-flags_for_user: []
+flags_for_user: ["design-awaiting-approval"]
 ---
 
-## Active work
+## Active feature
 
-Structural reorg, **not a feat-NNN**: agentforge-py becomes
-self-contained for AI assistants. Background:
+[`feat-004 — Tools system`](../../docs/features/feat-004-tools-system.md)
 
-- The previous decoupling PR (#2) removed `../../` references from
-  agentforge-py to the parent design workspace's pipeline files but
-  did not move those files in. Result: agentforge-py's
-  `.claude/CLAUDE.md` reading order pointed at paths that didn't
-  exist locally.
-- AI sessions reading agentforge-py couldn't find the canonical
-  pipeline / feature catalogue / state record at the parent — they
-  started inventing feat-NNN numbers from CHANGELOG/roadmap memory.
-- That's how PRs #5, #7, #8 ended up labelled feat-007/feat-009/
-  feat-008 even though all three actually implement portions of
-  canonical feat-005 (Persistence — `MemoryStore` ABC + drivers).
+Per pipeline §1: lowest-numbered `proposed` feature with all
+dependencies shipped. feat-004 depends only on feat-001 (✓). Two
+other features are also eligible (feat-007, feat-008) — feat-004
+wins by number.
 
-The user picked the structural fix: each project fully
-self-contained. Parent workspace stays as the meta layer (universal
-pipeline, design principles, ADRs); each sub-project owns its own
-feature specs, state, CHANGELOG, AGENTS.md, CLAUDE.md.
+## Scope (from canonical spec §4)
 
-## What this PR does
+The locked `Tool` ABC already shipped under feat-001
+(`agentforge_core.contracts.tool`). feat-004 layers on:
 
-1. **Moves into `agentforge-py`:**
-   - All 20 `feat-NNN-*.md` specs + `README.md` catalogue from parent
-     `docs/features/` → `agentforge-py/docs/features/`.
-   - `state/current.md`, `state/log.md`, `state/README.md` from parent
-     `.claude/state/` → `agentforge-py/.claude/state/`.
-2. **Updates `agentforge-py/.claude/CLAUDE.md`** so the reading order
-   references only files inside this repo.
-3. **Updates `agentforge-py/AGENTS.md`** with the full project
-   pipeline (analyse → design → implement → test → PR + Implementation
-   section update). Self-contained — no upward path traversal.
-4. **Updates `docs/roadmap.md`** to point at the now-local
-   `docs/features/feat-NNN-*.md`.
-5. **Logs the divergence + remediation** in `state/log.md`.
-6. **CHANGELOG entry** under `Changed`.
+1. **`@tool` decorator** — wraps a typed function as a `Tool`
+   subclass with `name` / `description` / `input_schema` inferred
+   from signature + docstring. Pydantic model built from type hints
+   (required vs optional from defaults). Description parsed from
+   Google-style docstring.
+2. **Default tools** shipped with `agentforge`:
+   - `calculator` — arithmetic via Python AST evaluator (no `eval`)
+   - `file_read` — read a file from a sandboxed working dir
+   - `web_search` — pluggable search backend; DuckDuckGo HTML
+     default (with warning when it breaks)
+   - `shell` — sandboxed subprocess (`shell=False`, command-list
+     only); **destructive** capability declared
+3. **Capability vocabulary**: `{"filesystem", "network", "shell",
+   "destructive"}` — declared per tool. Used by future safety
+   guardrails (feat-018).
+4. **Tool dispatch enhancements** in strategies' tool-call path:
+   - `Tool.input_schema.model_validate(arguments)` before calling
+     `run()`; ValidationError → observation step (LLM sees the
+     error, not a stack trace)
+   - Tool exceptions and timeouts → observation steps too
+   - Optional per-tool `timeout_s` (default 30s, config-driven)
+5. **Test isolation**:
+   - `FakeTool.fake(name, fn)` — replace any tool with a stub
+     during tests
+   - Optional record/replay helper (feat-016 may extend this)
 
-The parent workspace gets non-git updates (deletion of moved
-directories, AGENTS.md / CLAUDE.md rewrite to focus on
-workspace-level concerns) — those happen out-of-band since the
-parent isn't version-controlled.
+Out-of-scope (deferred):
+- Entry-point auto-loading of third-party tools — that's feat-010
+- MCP bridging — feat-013
+- Cost attribution per tool — feat-009 (Observability)
+- Tool-level rate limiting — feat-018 (Safety)
 
-## After merge
+## Dependencies
 
-- Rebase `feat/008-postgres` (PR #8) onto the new main. Re-apply the
-  chunk-4 doc updates inline with the new structure (Implementation
-  section now at `docs/features/feat-005-*.md`).
+- feat-001 (✓) — `Tool` ABC, `ToolCall`, `ToolSpec`, `Step`
+- feat-002 (✓) — strategies that call tools (ReAct + others)
 
-## Reading order on session resume (post-reorg)
+## Open design questions to resolve before implementing
 
-This project is fully self-contained. Read in order:
+- **Where does `@tool` live?** Spec §4.2 puts it at
+  `agentforge.tool_decorator`. Proposal:
+  `agentforge/_tools/decorator.py` and re-export from `agentforge`
+  so `from agentforge import tool` works.
+- **Docstring format**: start with Google-style only. NumPy can
+  land later if asked.
+- **`shell` tool security**: default to no-shell, command-list-only
+  execution (`subprocess.run([...], shell=False)`). No glob
+  expansion, no env-var interpolation. Document as "destructive —
+  deploy with caution".
+- **`web_search` default backend**: pluggable `search_fn`;
+  DuckDuckGo HTML default with a clear warning if it breaks. Real
+  backends (Serper, Tavily) ship as separate module packages later.
+- **Timeout default**: 30s. Per-tool override at construction OR
+  config.
 
-1. `AGENTS.md` (project rules + workflow)
-2. `.claude/CLAUDE.md` (Claude Code reading order)
-3. `.claude/state/current.md` (this file)
-4. `docs/features/README.md` (catalogue) — pick the active feature
-5. `docs/features/feat-NNN-*.md` for the active feature
-6. `docs/roadmap.md` (shipped + backlog)
+## Proposed chunks (5–6 total)
 
-No upward path traversal — everything needed lives inside this
-repo. External contributors cloning the project standalone have
-the same picture as the maintainer.
+1. **`@tool` decorator** — signature inference, Google docstring
+   parser, Pydantic model builder, `Tool` subclass synthesis. Unit
+   tests covering: simple types, optional defaults, complex types
+   (list, dict, Pydantic-nested), missing type hint error,
+   docstring parser edge cases.
+2. **Default tools — `calculator` + `file_read`** — pure-Python,
+   no I/O risks. AST-based calculator. file_read with working-dir
+   sandbox + size cap.
+3. **Default tools — `shell` + `web_search`** — subprocess sandbox
+   for shell; pluggable search backend with DuckDuckGo default.
+   Capabilities declared. Live integration tests gated on
+   `RUN_LIVE_WEB=1`.
+4. **Tool dispatch enhancements** — validation → observation,
+   timeout, capability check honesty. Updates the strategies'
+   `_call_tool` helper (or wherever the dispatch sits).
+5. **Test isolation** — `FakeTool.fake()` API. Goes in
+   `agentforge._testing` (alongside `FakeLLMClient`).
+6. **CHANGELOG + Implementation section + PR** — update
+   `docs/features/feat-004-tools-system.md` Implementation status,
+   `CHANGELOG.md`, raise PR.
+
+## TODO before next milestone
+
+- [ ] User approves this analysis + chunk plan.
+- [ ] On approval: state → `designing`, then `implementing`; begin
+      chunk 1.

@@ -357,3 +357,20 @@ keeps the meta layer (universal pipeline, design principles, ADRs);
 each sub-project owns its own feature specs, state, CHANGELOG,
 AGENTS.md, CLAUDE.md. This PR moves `docs/features/` and
 `.claude/state/` into agentforge-py.
+
+## 2026-05-10T13:30 — chore-self-contained-project-docs PR raised
+PR: https://github.com/Scaffoldic/agentforge-py/pull/9
+Branch: `chore/self-contained-project-docs`. Awaiting review + merge.
+
+## 2026-05-10T13:50 — chore PR #9 shipped
+Merged at commit `74ea4ed`. Project is now fully self-contained for
+OSS contributors. Workspace hosts the universal pipeline + shared
+templates only; no project-specific content at workspace level.
+Branch deleted local + remote.
+
+## 2026-05-10T14:00 — feat-004 started
+Branch: `feat/004-tools-system` (off main).
+State: `analysing`. Pipeline rule §1 picks lowest-numbered proposed
+feature with deps shipped — feat-004 (Tools) wins (deps: feat-001
+✓). Awaiting user approval of analysis + chunk plan in
+`state/current.md`.
