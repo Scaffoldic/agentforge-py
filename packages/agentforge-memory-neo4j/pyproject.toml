@@ -1,0 +1,67 @@
+# agentforge-memory-neo4j — Neo4j drivers for AgentForge.
+#
+# Implements MemoryStore (claim audit log) and GraphStore (knowledge
+# graph traversal) over Neo4j via the official `neo4j` async driver.
+# Neo4j is a property graph database with first-class Cypher support;
+# the ideal target for multi-hop reasoning over a curated ontology.
+#
+# Per ADR-0003 (three-tier package model — this is Tier 3, a
+# persistence module) and ADR-0014 (async-first runtime — uses the
+# neo4j AsyncDriver, not the sync one).
+
+[project]
+name = "agentforge-memory-neo4j"
+version = "0.0.0"
+description = "Neo4j-backed MemoryStore and GraphStore for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "memory", "graph", "neo4j", "cypher", "knowledge-graph"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "neo4j>=5.20",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration — feat-010 will load these.
+[project.entry-points."agentforge.memory"]
+neo4j = "agentforge_memory_neo4j.memory:Neo4jMemoryStore"
+
+[project.entry-points."agentforge.graph_stores"]
+neo4j = "agentforge_memory_neo4j.graph:Neo4jGraphStore"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_memory_neo4j"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_memory_neo4j",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

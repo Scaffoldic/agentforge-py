@@ -1,0 +1,29 @@
+# Local development stack for the agentforge-memory-neo4j driver.
+#
+# Run with:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Then exercise live integration tests:
+#   RUN_LIVE_NEO4J=1 NEO4J_URL=bolt://localhost:7687 \
+#     NEO4J_USER=neo4j NEO4J_PASSWORD=test \
+#     uv run pytest packages/agentforge-memory-neo4j/tests/integration -v
+#
+# Browser UI: http://localhost:7474
+
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: agentforge-neo4j-dev
+    ports:
+      - "7474:7474"  # HTTP / browser
+      - "7687:7687"  # Bolt protocol
+    environment:
+      NEO4J_AUTH: "neo4j/test"
+      NEO4J_dbms_memory_pagecache_size: "256m"
+      NEO4J_dbms_memory_heap_initial__size: "256m"
+      NEO4J_dbms_memory_heap_max__size: "512m"
+    volumes:
+      - neo4j-data:/data
+
+volumes:
+  neo4j-data:
