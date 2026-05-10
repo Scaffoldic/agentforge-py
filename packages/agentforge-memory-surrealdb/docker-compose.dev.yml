@@ -1,0 +1,18 @@
+# Local development stack for agentforge-memory-surrealdb.
+#
+# Run with:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Then exercise live integration tests:
+#   RUN_LIVE_SURREAL=1 SURREAL_URL=ws://localhost:8000/rpc \
+#     uv run pytest packages/agentforge-memory-surrealdb/tests/integration -v
+#
+# WebSocket RPC endpoint: ws://localhost:8000/rpc
+
+services:
+  surrealdb:
+    image: surrealdb/surrealdb:v2
+    container_name: agentforge-surreal-dev
+    command: start --user root --pass root --bind 0.0.0.0:8000 memory
+    ports:
+      - "8000:8000"
