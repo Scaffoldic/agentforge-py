@@ -1,0 +1,28 @@
+# Local development stack for the agentforge-memory-postgres driver.
+#
+# Run with:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Then exercise live integration tests:
+#   RUN_LIVE_POSTGRES=1 \
+#     POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/agentforge \
+#     uv run pytest packages/agentforge-memory-postgres/tests/integration -v
+#
+# The pgvector/pgvector image bundles Postgres 16 with pgvector
+# preinstalled (no extension setup required beyond CREATE EXTENSION).
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: agentforge-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: agentforge
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
