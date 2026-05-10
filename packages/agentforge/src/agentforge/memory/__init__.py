@@ -10,6 +10,7 @@ safe defaults; production deployments swap to real drivers
 from __future__ import annotations
 
 from agentforge.memory.in_memory import InMemoryStore
+from agentforge.memory.in_memory_graph import InMemoryGraphStore
 from agentforge.memory.in_memory_vector import InMemoryVectorStore
 
-__all__ = ["InMemoryStore", "InMemoryVectorStore"]
+__all__ = ["InMemoryGraphStore", "InMemoryStore", "InMemoryVectorStore"]

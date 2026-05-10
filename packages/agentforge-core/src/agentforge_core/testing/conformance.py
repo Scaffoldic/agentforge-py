@@ -24,10 +24,17 @@ import typing
 from collections.abc import AsyncIterator, Awaitable, Callable
 
 from agentforge_core.contracts.embedding import EmbeddingClient
+from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.claim import Claim
+from agentforge_core.values.graph import (
+    GraphEdge,
+    GraphNode,
+    GraphPattern,
+    GraphSegment,
+)
 from agentforge_core.values.state import AgentState, StepKind
 from agentforge_core.values.vector import VectorItem
 
@@ -429,3 +436,177 @@ def _unit_vector(dim: int, *, seed: int) -> list[float]:
     raw[seed % dim] = 1.0
     norm = math.sqrt(sum(x * x for x in raw))
     return [x / norm for x in raw]
+
+
+# ----------------------------------------------------------------------
+# Graph store conformance — feat-009.
+# ----------------------------------------------------------------------
+
+# Named constants used by the graph conformance suite. Kept module-
+# private; they're only meaningful inside the assertions below.
+_GRAPH_PATH_LEN_TWO = 2  # (n0)-[e]->(n1) — one segment = two nodes
+_GRAPH_DEPTH_TWO = 2  # paper:3 -> paper:2 -> paper:1
+_EXPECTED_YEAR = 2017
+
+
+async def run_graph_conformance(store: GraphStore) -> None:
+    """Run the shared `GraphStore` conformance suite.
+
+    The store must be empty when this is called and is left empty when
+    the function returns (every node and edge created here is also
+    deleted).
+
+    Verifies the locked invariants of `GraphStore`:
+
+      1. `add_node` is idempotent (re-adding the same id replaces the
+         prior `properties` rather than appending or erroring).
+      2. `get_node(id)` returns the most-recent node, or `None` if
+         absent.
+      3. `add_edge` rejects edges referencing unknown nodes
+         (`ValueError`).
+      4. `add_edge` is idempotent on `(src, dst, edge_type)`.
+      5. `get_edges(id, direction=...)` honours the direction filter
+         and the optional `edge_type` filter.
+      6. `match()` finds a single-segment pattern and returns paths of
+         length 2 (one edge, two nodes).
+      7. `match(limit=...)` caps results.
+      8. `traverse()` respects `max_depth` and never returns paths
+         longer than `max_depth` edges.
+      9. `delete_node(cascade=False)` raises if the node has incident
+         edges; `cascade=True` removes them.
+      10. `delete_edge` returns False on unknown triples and True on
+          known ones.
+      11. `supports()` is honest about unknown capabilities.
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+    await _graph_round_trip_invariants(store)
+    await _graph_seed_citation_chain(store)
+    await _graph_query_invariants(store)
+    await _graph_delete_invariants(store)
+    _graph_capability_invariants(store)
+
+
+async def _graph_round_trip_invariants(store: GraphStore) -> None:
+    """Round-trip and idempotency invariants on a single node."""
+    n1 = GraphNode(id="paper:1", labels=("Doc",), properties={"topic": "ml"})
+    await store.add_node(n1)
+
+    fetched = await store.get_node("paper:1")
+    assert fetched is not None, "get_node must return the persisted node"
+    assert fetched.id == "paper:1"
+    assert fetched.properties.get("topic") == "ml"
+
+    # Unknown id returns None, not raise.
+    missing = await store.get_node("paper:never")
+    assert missing is None, "get_node of an unknown id must return None"
+
+    # Idempotent upsert: re-add with extra properties replaces.
+    n1_v2 = GraphNode(
+        id="paper:1", labels=("Doc",), properties={"topic": "ml", "year": _EXPECTED_YEAR}
+    )
+    await store.add_node(n1_v2)
+    refetched = await store.get_node("paper:1")
+    assert refetched is not None
+    assert refetched.properties.get("year") == _EXPECTED_YEAR, (
+        "add_node must replace properties on idempotent upsert"
+    )
+
+    # add_edge rejects unknown endpoints.
+    raised_unknown = False
+    try:
+        await store.add_edge(GraphEdge(src="ghost", dst="paper:1", edge_type="CITES"))
+    except ValueError:
+        raised_unknown = True
+    assert raised_unknown, "add_edge must raise ValueError on unknown endpoint"
+
+
+async def _graph_seed_citation_chain(store: GraphStore) -> None:
+    """Seed a tiny three-paper citation chain. Assumes paper:1 exists."""
+    await store.add_node(GraphNode(id="paper:2", labels=("Doc",), properties={"topic": "ml"}))
+    await store.add_node(GraphNode(id="paper:3", labels=("Doc",), properties={"topic": "bio"}))
+    await store.add_edge(GraphEdge(src="paper:2", dst="paper:1", edge_type="CITES"))
+    await store.add_edge(GraphEdge(src="paper:3", dst="paper:2", edge_type="CITES"))
+
+    # Idempotent edge upsert.
+    await store.add_edge(
+        GraphEdge(src="paper:2", dst="paper:1", edge_type="CITES", properties={"weight": 0.9})
+    )
+    out_edges = await store.get_edges("paper:2", direction="out")
+    assert len([e for e in out_edges if e.dst == "paper:1"]) == 1, (
+        "add_edge must be idempotent on (src, dst, edge_type)"
+    )
+
+
+async def _graph_query_invariants(store: GraphStore) -> None:
+    """get_edges, match, and traverse invariants over the seeded chain."""
+    out2 = await store.get_edges("paper:2", direction="out")
+    assert all(e.src == "paper:2" for e in out2), "direction=out filter broken"
+
+    in1 = await store.get_edges("paper:1", direction="in")
+    assert all(e.dst == "paper:1" for e in in1), "direction=in filter broken"
+    assert any(e.src == "paper:2" for e in in1)
+
+    cites_only = await store.get_edges("paper:2", edge_type="CITES", direction="out")
+    assert all(e.edge_type == "CITES" for e in cites_only)
+
+    pattern = GraphPattern(
+        segments=(GraphSegment(src_label="Doc", edge_type="CITES", dst_label="Doc"),),
+    )
+    matches = await store.match(pattern, limit=10)
+    assert len(matches) >= 1, "match should find at least one CITES edge"
+    for path in matches:
+        assert len(path.nodes) == _GRAPH_PATH_LEN_TWO, (
+            "single-segment match must return length-2 paths"
+        )
+        assert len(path.edges) == 1
+        assert path.edges[0].edge_type == "CITES"
+
+    capped = await store.match(pattern, limit=1)
+    assert len(capped) <= 1
+
+    paths_d1 = await store.traverse("paper:3", max_depth=1)
+    for p in paths_d1:
+        assert len(p.edges) <= 1, f"max_depth=1 must not return path with {len(p.edges)} edges"
+
+    paths_d2 = await store.traverse("paper:3", max_depth=_GRAPH_DEPTH_TWO)
+    reaches_paper1 = any(p.nodes[-1].id == "paper:1" for p in paths_d2)
+    assert reaches_paper1, "traverse(max_depth=2) from paper:3 must reach paper:1"
+    for p in paths_d2:
+        assert len(p.edges) <= _GRAPH_DEPTH_TWO
+
+    empty_traverse = await store.traverse("ghost-node", max_depth=_GRAPH_DEPTH_TWO)
+    assert empty_traverse == [], "traverse from unknown node must return empty list"
+
+
+async def _graph_delete_invariants(store: GraphStore) -> None:
+    """Cascade and unknown-triple delete invariants. Empties the store."""
+    raised_cascade = False
+    try:
+        await store.delete_node("paper:2", cascade=False)
+    except ValueError:
+        raised_cascade = True
+    assert raised_cascade, "delete_node with cascade=False must raise on connected node"
+
+    deleted = await store.delete_node("paper:2", cascade=True)
+    assert deleted is True
+    assert await store.get_node("paper:2") is None
+    assert (await store.get_edges("paper:1", direction="in")) == []
+
+    # Unknown triple returns False, not raise.
+    assert await store.delete_edge("paper:3", "paper:never", edge_type="CITES") is False
+
+    # Empty the store fully.
+    await store.delete_node("paper:1", cascade=True)
+    await store.delete_node("paper:3", cascade=True)
+
+
+def _graph_capability_invariants(store: GraphStore) -> None:
+    """capabilities() / supports() honesty."""
+    caps = store.capabilities()
+    assert isinstance(caps, set)
+    assert store.supports("definitely-not-a-capability-2026") is False
+    if caps:
+        sample = next(iter(caps))
+        assert store.supports(sample) is True

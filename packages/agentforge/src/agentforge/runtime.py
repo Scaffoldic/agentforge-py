@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.tool import Tool
@@ -52,3 +53,11 @@ class RuntimeContext:
     """Optional RAG retriever (feat-007). Strategies that want to
     ground responses in indexed documents check `runtime.retriever
     is not None` and call `retriever.retrieve(query)`."""
+    graph_store: GraphStore | None = None
+    """Optional knowledge-graph store (feat-009). Strategies that want
+    to traverse a graph during reasoning check `runtime.graph_store is
+    not None` and call `graph_store.traverse(...)` or `.match(...)`.
+
+    Usually unset for vanilla agents; populated when the user passes
+    `Agent(graph_store=...)` or configures a graph driver via
+    `agentforge.yaml`."""
