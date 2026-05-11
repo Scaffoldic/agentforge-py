@@ -1,75 +1,76 @@
 ---
-feature: feat-009-observability
+feature: feat-010-module-discovery
 state: pre-pr
-branch: feat/009-observability
-started_at: 2026-05-11T16:30
-last_milestone_at: 2026-05-11T18:00
-last_shipped: feat-006 (Evaluators) shipped via PR #14 @ 09ab1cf
+branch: feat/010-module-discovery
+started_at: 2026-05-11T18:30
+last_milestone_at: 2026-05-11T19:30
+last_shipped: feat-009 (Observability — OTel only) shipped via PR #15 @ cd6ec09
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-[`feat-009 — Observability`](../../docs/features/feat-009-observability.md)
+[`feat-010 — Module discovery & resolution`](../../docs/features/feat-010-module-discovery-and-cli.md)
 
-All 7 chunks landed locally. Ready to push + raise PR.
+All 3 chunks landed. Ready to push + raise PR.
 
 ## Chunks shipped
 
 | Chunk | Commit | Scope |
 |---|---|---|
-| 1 | `d369dc2` | Hook fan-out + on_step wiring + error isolation. |
-| 2 | `ccee40d` | JSON log format (`JsonFormatter`, install/uninstall, Agent wiring). |
-| 3-6 | `7901253` | OTel tracing in core (api dep, `get_tracer`) + `agent.run` root span instrumentation in Agent.run + new `agentforge-otel` workspace package (`OpenTelemetryHook`). |
-| 7 | (this commit) | Implementation status + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
+| 1 | `ece4195` | Entry-point discovery + `ModuleInfo` + `Resolver.list_installed`. |
+| 2 | `409067e` | `agentforge` CLI scaffold + `list modules` (text + JSON). |
+| 3 | (this commit) | Implementation status + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
 
 ## Scope decision recap
 
-User chose Option B (single PR, OTel only). Vendor packages
-(`agentforge-langfuse`, `-phoenix`, `-evidently`, `-statsd`)
-deferred to follow-up sub-feats. Documented as such in:
-- `docs/roadmap.md` new "feat-009 vendor-package sub-feats" section.
+Option B (single PR, runtime + read-only `list` CLI). Destructive
+CLI (`add`, `swap`, `remove`) depends on feat-012 — deferred to a
+follow-up sub-feat. `Resolver.list_available()` (PyPI query) also
+deferred. Documented in:
+- `docs/roadmap.md` new "feat-010 destructive-CLI sub-feat" section.
 - `docs/features/README.md` catalogue row.
-- `feat-009` spec's Implementation status + Runbook ("Which vendor
-  can ingest these traces?").
+- `feat-010` spec's Implementation status + Runbook.
 
 ## Forward-reference sweep (per AGENTS.md rule)
 
-- `docs/features/README.md`: feat-009 status `proposed` → `shipped
-  (Python, OTel only)`; module package list updated.
-- `docs/features/feat-004-tools-system.md`: "Cost attribution per
-  tool — feat-009 (Observability)" moved out of "what's not yet"
-  list; replaced with a note that feat-009 has shipped tool-call
-  attribution via the OTel hook.
-- `docs/features/feat-007-production-rails.md` references feat-009
-  in "Blocks" — design-section dependency declaration, not
-  forward-tense; no change needed.
-- Other specs (`feat-014` A2A trace propagation, `feat-018`
-  guardrail spans) reference feat-009 in unshipped designs — their
-  own ship-time PRs will refresh forward-tense language per the
-  AGENTS.md rule.
+- `docs/features/README.md` — feat-010 status updated.
+- `docs/features/feat-003-llm-provider-abstraction.md` — custom-
+  provider runbook rewritten: feat-010 has now shipped auto-load.
+- `docs/features/feat-004-tools-system.md` — "Entry-point auto-
+  loading of third-party tool packages — that's feat-010" moved
+  out of "What's not yet implemented".
+- `docs/features/feat-006-evaluators-and-benchmarks.md` —
+  "String-name resolution... needs feat-010" reworded.
+
+Unshipped specs (feat-011, feat-013, feat-017) reference feat-010
+in dependency declarations — those features' own ship-time PRs
+will refresh forward-tense language per the AGENTS.md rule.
 
 ## Pre-commit gate
 
-Every chunk's commit went through the full local gate (ruff format
-+ check, mypy strict, bandit, pytest unit + integration, coverage
-≥ 90%) and passed.
+Each chunk's commit passed the full gate (ruff format + check,
+mypy --strict, bandit, pytest unit + integration, coverage ≥ 90%).
 
 ## Next after this PR merges
 
-1. Sync `main`, delete `feat/009-observability` local + remote.
-2. Next eligible per pipeline §1: lowest-numbered proposed feature
-   with deps shipped. After feat-009:
-   - **feat-010** (Module discovery & CLI) — deps feat-001 ✓.
-   - feat-011 (Scaffolding & upgrade) — deps feat-001 ✓.
+1. Sync `main`, delete `feat/010-module-discovery` local + remote.
+2. Next eligible per pipeline §1: lowest-numbered proposed with
+   deps shipped. After feat-010:
+   - **feat-011** (Scaffolding & upgrade) — deps feat-010 ✓.
    - feat-012 (Configuration system) — deps feat-001 ✓.
 
-   feat-010 wins by lowest number.
+   feat-011 wins by lowest number, but it specifically needs the
+   destructive CLI / manifest format from feat-010 which is
+   deferred — so feat-012 is the realistic next pick to unblock
+   the rest. **Worth flagging to the user when they pick up.**
 
 ## Reading order on session resume
 
 1. `AGENTS.md`
 2. `.claude/CLAUDE.md`
 3. `.claude/state/current.md` (this file)
-4. After this PR merges: `docs/features/feat-010-module-discovery-and-cli.md`
+4. After merge: `docs/features/feat-012-configuration-system.md`
+   (next realistic feature given the feat-011 dep on the deferred
+   CLI half of feat-010).

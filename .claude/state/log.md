@@ -709,3 +709,38 @@ format"). Branched `feat/009-observability` and drafted 7-chunk plan.
   note that feat-009 has shipped it via the OTel hook.
 
 Ready to push.
+
+## 2026-05-11T18:30 — feat-009 merged @ #15; picking up feat-010
+User chose Option B — single PR, runtime side + read-only `list`
+CLI. Destructive `add/swap/remove` CLI commands depend on feat-012
+(Configuration system) for manifest application + config-schema
+validation; deferred to follow-up sub-feat. Branched
+`feat/010-module-discovery` and drafted 3-chunk plan.
+
+## 2026-05-11T19:00 — feat-010 chunks 1-2 done
+- chunk 1 `ece4195`: `ModuleInfo` value type, entry-point scanner
+  (`agentforge_core.resolver.discover`), `Resolver.list_installed`.
+  Lazy + cached scan; conflict first-wins + WARN; load failures
+  isolated + WARN. `Resolver.clear()` no longer resets discovery
+  (would have broken import-time `@register` decorators).
+- chunk 2 `409067e`: `agentforge` CLI scaffold (`agentforge.cli.*`),
+  `agentforge list modules` command with `--category` + `--json`,
+  `[project.scripts]` entry point. argparse-based, no third-party
+  CLI deps.
+
+## 2026-05-11T19:30 — feat-010 chunk 3 done, PR pending
+- `docs/features/feat-010-module-discovery-and-cli.md`: status →
+  `shipped (Python — runtime + read-only list CLI)`; added
+  Implementation status (3-chunk table; deviations: read-only
+  scope, `list_available` deferred, `clear` semantics changed);
+  added Runbook (6 task entries).
+- `docs/features/README.md`: feat-010 row updated.
+- `docs/roadmap.md`: feat-010 moved Backlog → Shipped; new
+  "feat-010 destructive-CLI sub-feat" section documents deferred
+  half.
+- `CHANGELOG.md`: full feat-010 entry + knock-on notes.
+- **Forward-reference sweep**: feat-003 / feat-004 / feat-006
+  forward-tense feat-010 references rewritten to reflect shipped
+  state.
+
+Ready to push.

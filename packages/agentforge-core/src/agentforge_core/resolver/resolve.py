@@ -9,9 +9,16 @@ integration tests in feat-001 without entry-point machinery.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from agentforge_core.production.exceptions import ModuleError
+from agentforge_core.resolver.discover import (
+    ensure_discovered,
+    module_info_for,
+)
+
+if TYPE_CHECKING:
+    from agentforge_core.values.module import ModuleInfo
 
 T = TypeVar("T", bound=type)
 
@@ -43,6 +50,11 @@ class Resolver:
         self._registry[key] = cls
 
     def resolve(self, category: str, name: str) -> type:
+        # Lazy entry-point discovery (feat-010): the first call to
+        # `resolve()` triggers a one-shot scan of installed
+        # `agentforge.*` entry points so packages-by-pip-install are
+        # available without explicit imports.
+        ensure_discovered(self)
         key = (category, name)
         if key not in self._registry:
             available = sorted(n for c, n in self._registry if c == category)
@@ -55,12 +67,37 @@ class Resolver:
         return self._registry[key]
 
     def list_(self, category: str | None = None) -> list[tuple[str, str, type]]:
+        ensure_discovered(self)
         items = [(c, n, cls) for (c, n), cls in self._registry.items()]
         if category is not None:
             items = [item for item in items if item[0] == category]
         return sorted(items, key=lambda item: (item[0], item[1]))
 
+    def list_installed(self, category: str | None = None) -> list[ModuleInfo]:
+        """Return `ModuleInfo` for every registered module (feat-010).
+
+        Triggers entry-point discovery first so the returned list
+        reflects every `agentforge-*` package pip-installed in the
+        active environment plus anything registered manually via
+        `@register`.
+        """
+        ensure_discovered(self)
+        items: list[ModuleInfo] = []
+        for (cat, name), cls in self._registry.items():
+            if category is not None and cat != category:
+                continue
+            items.append(module_info_for(cat, name, cls))
+        return sorted(items, key=lambda m: (m.category, m.name))
+
     def clear(self) -> None:
+        """Empty the in-process registry.
+
+        Does NOT reset the entry-point discovery cache — call
+        `reset_discovery()` separately if you need a fresh scan on
+        the next `resolve()`. Typical tests want a clean slate
+        without re-triggering discovery; tests that install fake
+        entry points opt in to the rediscovery explicitly.
+        """
         self._registry.clear()
 
 

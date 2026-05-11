@@ -35,7 +35,8 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-007](./features/feat-007-production-rails.md) | Production rails — `BudgetPolicy` + `RunContext` + `idempotency_key_for` + `RunIdFilter` (shipped under feat-001) + `FallbackChain` cross-provider failover | [#11](https://github.com/Scaffoldic/agentforge-py/pull/11) |
 | [feat-008](./features/feat-008-findings-and-output-shapes.md) | Findings & output shapes — `SimpleFinding` / `PatchFinding` / `NarrativeFinding` / `MultiSpanFinding` variants + `Patch` / `Span` helpers + `FindingRenderer` ABC + `RendererRegistry` + 4 built-in renderers (scorecard / patch-applier / markdown / span-table) | [#13](https://github.com/Scaffoldic/agentforge-py/pull/13) |
 | [feat-006](./features/feat-006-evaluators-and-benchmarks.md) | Evaluators — `Coverage` / `FormatCompliance` / `RegressionVsBaseline` / `Consistency` deterministic graders + `Agent.run()` evaluator loop + `RunResult.eval_scores` + `agentforge-eval-geval` package (`GEval` engine + `Correctness` / `Faithfulness` / `Groundedness` / `Hallucination` / `Relevance` / `Helpfulness` named judges) | [#14](https://github.com/Scaffoldic/agentforge-py/pull/14) |
-| [feat-009](./features/feat-009-observability.md) | Observability — `on_step` wiring + hook fan-out + error isolation + JSON log format + `agentforge-otel` package (`OpenTelemetryHook`, framework root span) | (this PR) |
+| [feat-009](./features/feat-009-observability.md) | Observability — `on_step` wiring + hook fan-out + error isolation + JSON log format + `agentforge-otel` package (`OpenTelemetryHook`, framework root span) | [#15](https://github.com/Scaffoldic/agentforge-py/pull/15) |
+| [feat-010](./features/feat-010-module-discovery-and-cli.md) | Module discovery (runtime + read-only CLI) — `importlib.metadata.entry_points` scan, `ModuleInfo`, `Resolver.list_installed`, `agentforge list modules` command | (this PR) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -49,12 +50,18 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **[feat-010](./features/feat-010-module-discovery-and-cli.md) —
-  Module discovery & CLI.** Entry-point auto-loader so
-  `pip install agentforge-X` enables `Agent(model="X:…")` without
-  explicit import.
 - **feat-011 through feat-020** — see specs under
   [`docs/features/`](./features/).
+
+### feat-010 destructive-CLI sub-feat (deferred)
+
+feat-010 shipped the runtime side (entry-point discovery, `Resolver.
+list_installed`) plus the read-only `agentforge list modules` CLI.
+The destructive CLI commands (`add module X`, `swap memory sqlite
+postgres`, `remove module X`) depend on feat-012 (Configuration
+system) for manifest application + per-module config-schema
+validation, and ship as a follow-up sub-feat alongside / right
+after feat-012.
 
 ### feat-009 vendor-package sub-feats (deferred)
 

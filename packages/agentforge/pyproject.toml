@@ -50,8 +50,10 @@ dependencies = [
 # Empty until provider modules ship in subsequent features.
 
 [project.scripts]
-# CLI entry point lands with feat-017.
-# agentforge = "agentforge.cli:app"
+# feat-010 ships the read-only `list` command. Destructive commands
+# (`add`, `swap`, `remove`) ship in a follow-up sub-feat alongside
+# feat-012 (Configuration system).
+agentforge = "agentforge.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/Scaffoldic/agentforge-py"

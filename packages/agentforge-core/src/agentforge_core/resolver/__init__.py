@@ -15,6 +15,10 @@ feat-003).
 
 from __future__ import annotations
 
+from agentforge_core.resolver.discover import (
+    discover_entry_points,
+    reset_discovery,
+)
 from agentforge_core.resolver.resolve import (
     Resolver,
     parse_model_string,
@@ -25,8 +29,10 @@ from agentforge_core.resolver.resolve import (
 
 __all__ = [
     "Resolver",
+    "discover_entry_points",
     "parse_model_string",
     "register",
     "register_embedding_provider",
     "register_provider",
+    "reset_discovery",
 ]
