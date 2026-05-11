@@ -3,8 +3,8 @@ feature: none
 state: idle
 branch: main
 started_at: null
-last_milestone_at: 2026-05-12T00:30
-last_shipped: feat-017 shipped via PR #20 (awaiting merge)
+last_milestone_at: 2026-05-12T01:30
+last_shipped: feat-016 shipped via PR #21 (awaiting merge)
 blocker: null
 flags_for_user: []
 ---
@@ -15,30 +15,34 @@ flags_for_user: []
 
 ## Last shipped
 
-[`feat-017 — CLI runtime`](../../docs/features/feat-017-cli-runtime.md)
-shipped in PR #20 with full Python scope:
+[`feat-016 — Testing framework`](../../docs/features/feat-016-testing-framework.md)
+shipped in PR #21 with full Python scope:
 
-- CLI: `agentforge run` (+ `--replay`/`--record`),
-  `agentforge eval`, `agentforge debug`, `agentforge db
-  {migrate,backup,restore,purge,query}`, `agentforge health`.
-- Foundations: `MemoryStore.delete()` on the ABC + every driver,
-  run-recording protocol (`__step`/`__eval`/`__run` categories),
-  `ReplayLLMClient` + `replay_tools`, `build_agent_from_config`.
-- Exit codes locked at 0/1/2/3/4/5.
+- `agentforge.testing` namespace inside the runtime package:
+  `MockLLMClient` (from_script / deterministic / from_recording),
+  `FakeTool`, `FakeLLMClient`, `agent_factory`, pytest fixtures
+  (`mock_llm`, `temp_memory_store`), conformance re-exports
+  (`run_memory_conformance`, `run_strategy_conformance`,
+  `run_vector_conformance`), `record_llm` + `load_recording`.
+- `agentforge-testing` sister package (new workspace member):
+  `GoldenSetRunner` (exact / contains / regex / any_of),
+  `assert_snapshot` (UPDATE_SNAPSHOTS env), `analyze_recording`
+  → `RecordingStats`.
+- 22 unit tests across both packages.
 
-Deviations recorded in the spec §10:
+Deviations recorded in spec §10:
 
-- `agentforge status` (spec) → `agentforge health` (to avoid
-  collision with feat-011's scaffolding `status`).
-- argparse instead of Typer.
-- Templates ship in-wheel (inherited from feat-011).
-- `db migrate` is a no-op for `InMemoryStore` / `SqliteMemoryStore`.
-- TS engine and CI upgrade matrix deferred.
+- `_testing` private namespace retained as a compat shim.
+- `MockLLMClient` doesn't yet satisfy a `run_llm_conformance`
+  harness (none exists in core yet).
+- Replay matches by sequence today; request_hash persisted for
+  future hash-keyed replay.
+- VCR-style full redaction pipeline deferred; basic redaction
+  (api_key / authorization / bearer) ships.
+- TypeScript port deferred.
 
 ## Next pick candidates (canonical numbering)
 
-- **feat-016** — Testing framework (MockLLMClient + fake tools +
-  pytest/vitest helpers in `agentforge-testing`).
 - **feat-018** — Safety guardrails (InputValidator /
   OutputValidator / ToolCallGate + prompt-injection + PII +
   capability gates).

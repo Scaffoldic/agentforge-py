@@ -21,6 +21,64 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-016 — Testing framework (full surface).** Public test
+  helpers in the `agentforge` runtime package plus a new sister
+  package for richer use cases.
+
+  *New public namespace `agentforge.testing` in `agentforge`:*
+  - `MockLLMClient` (`llm.py`) implementing `LLMClient`.
+    Factories: `from_script([{text, tool_calls, stop_reason,
+    usage, ...}])`, `deterministic(response)`,
+    `from_recording(path)`. Tracks `call_count` and
+    `tool_calls_observed` so tests can assert on what the agent
+    asked the LLM to call without manually inspecting each
+    response. Exhausted calls raise `ModuleError`.
+  - `FakeTool` and `FakeLLMClient` are re-exported from the
+    private `_testing` namespace; new code uses the public path,
+    the private one stays as a back-compat shim for the
+    framework's own pre-feat-016 internal tests.
+  - `agent_factory(model, tools, strategy, **overrides)` —
+    constructs an Agent with safe test defaults
+    (`MockLLMClient.deterministic("ok")`, no tools, single-step
+    LLM-call strategy, in-memory store, budget 0.10 USD, max
+    iterations 3, no log-filter mutation). All defaults
+    overridable.
+  - `agentforge.testing.fixtures.mock_llm` and
+    `temp_memory_store` — pytest fixtures.
+  - `agentforge.testing.conformance` re-exports
+    `run_memory_conformance`, `run_strategy_conformance`,
+    `run_vector_conformance` from `agentforge-core` so external
+    driver authors have one canonical import path.
+  - `record_llm(real, path, *, redactions=None)` wraps a real
+    `LLMClient` and writes a JSONL cassette (`{request_hash,
+    request, response}` per call, with a versioned header line).
+    Default redactions cover `api_key` / `authorization` /
+    `bearer` recursively. `load_recording(path)` returns
+    `(header, entries)` for inspection.
+
+  *New Tier-3 package `agentforge-testing`:*
+  - `GoldenSetRunner.from_jsonl(path).run(agent_factory)` — load
+    JSONL fixtures, drive an agent through each, compare outputs
+    via exact / `contains` / `regex` / `any_of` matchers.
+    `mode="fail-fast"` raises `GoldenMismatch` (an
+    `AssertionError` subclass) on the first mismatch.
+  - `assert_snapshot(actual, path)` — Approval-style file
+    snapshot. Creates the file on first run; subsequent runs
+    compare byte-for-byte. `UPDATE_SNAPSHOTS=1` in the
+    environment re-records.
+  - `analyze_recording(path) -> RecordingStats` — aggregate
+    stats (call_count, tokens_in/out, cost_usd, tool-call
+    histogram, redactions, format_version).
+
+  *Workspace + CI*:
+  - New workspace member `packages/agentforge-testing/`.
+  - Root `pyproject.toml`, `.pre-commit-config.yaml`, and
+    `.github/workflows/ci.yml` extended with the new src + tests
+    paths.
+
+  *Spec*: `docs/features/feat-016-testing-framework.md` —
+  Implementation status §10 + Runbook §11.
+
 - **feat-017 — CLI runtime (full operator surface).** Ships the
   v0.1 / v0.2 operator commands plus the persistence + replay
   foundations they need.
