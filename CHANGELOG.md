@@ -21,6 +21,88 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-017 — CLI runtime (full operator surface).** Ships the
+  v0.1 / v0.2 operator commands plus the persistence + replay
+  foundations they need.
+
+  *New CLI subcommands in `agentforge`:*
+  - **`agentforge run`** — positional task xor `--task-file`,
+    `--override key=value` (repeatable, dotted-path),
+    `--output-format {rich,json,plain}` (default rich on TTY else
+    plain; Rich is soft-imported), `--replay RUN_ID --to-step N`
+    (replays via `ReplayLLMClient`), `--record` (installs the
+    recording hook). Exit codes locked at 0/1/2/3/4 (success,
+    generic, config-invalid, budget-exceeded, guardrail-tripped).
+  - **`agentforge eval --fixtures JSONL --threshold T`** —
+    iterates fixtures (`{task, expected, metadata}`), applies the
+    config's evaluators, aggregates a mean score, exits 5 on
+    threshold failure. Output formats: rich, json, junit (JUnit
+    XML via stdlib `xml.etree`, output-only).
+  - **`agentforge debug --replay RUN_ID`** — interactive stdlib
+    `cmd.Cmd` REPL with `step` / `back` / `state` / `inspect
+    FIELD` / `steps` / `quit`. Plain text only, no Rich
+    dependency.
+  - **`agentforge db {migrate,backup,restore,purge,query}`** —
+    routes to the configured `MemoryStore`. `migrate` calls
+    `init_schema()` when present (no-op + exit 0 otherwise).
+    `backup` / `restore` round-trip every claim as JSON Lines.
+    `purge --older-than DUR|--run-id|--category` confirms unless
+    `--yes`. `query` parses a tiny `key:value` DSL with keys
+    `category|agent|project|run_id`.
+  - **`agentforge health`** — preflight: config loads + validates,
+    every module returned by `Resolver.list_installed()` is
+    resolvable, every declared backend is reachable. Output
+    formats: plain, json. Renamed from the spec's `agentforge
+    status` to avoid collision with feat-011's scaffolding-state
+    `status` command — recorded as a deviation in the feat-017
+    spec.
+
+  *New foundations:*
+  - **`MemoryStore.delete(*, run_id=None, older_than=None,
+    category=None) -> int`** added to the ABC. Conjunctive
+    filters, refuses to wipe when every filter is None, returns
+    affected-row count. Implemented on the in-memory default and
+    every shipped driver (sqlite, postgres, neo4j, surrealdb).
+    Conformance suite gains a `_run_delete_conformance` sub-suite
+    (no-filter-refuses, delete-by-run-id, delete-by-category).
+    Postgres runner gains
+    `execute_returning_count(sql, *params)` parsing the asyncpg
+    `DELETE N` status tag.
+  - **Run-recording protocol** (`agentforge.recording`).
+    `RecordRunHook(memory, project, agent_name)` persists every
+    emitted `Step` under `category="__step"`, every `EvalResult`
+    under `category="__eval"`, and a final summary claim under
+    `category="__run"`. Reserved category names are part of the
+    v0.1 on-disk contract.
+  - **Replay primitives** (`agentforge.replay`).
+    `ReplayLLMClient.from_recording(memory, run_id)` implements
+    `LLMClient` by replaying recorded LLM responses in order.
+    `replay_tools(memory, run_id, tools)` wraps each tool so
+    `run()` returns recorded observations. `ReplayExhausted`
+    surfaces overshoots clearly.
+  - **`Agent(record_runs=memory)`** — opt-in hook wiring so the
+    agent persists its own trace when configured.
+  - **`build_agent_from_config(config)`** in
+    `agentforge.cli._build` — central wiring helper resolving
+    providers / memory / evaluators / strategy / tools from
+    `agentforge.yaml` via the global `Resolver`. Forwards
+    strategy / system_prompt / budget / max_iterations into
+    `Agent()` so the wired agent honours the YAML without
+    needing `config_path`.
+
+  *Other notes:*
+  - argparse-based (no Typer dep added) — matches feat-010/011/012.
+  - Templates ship in-wheel (inherited from feat-011).
+  - `pyproject.toml`: `filterwarnings` demotes `ResourceWarning`
+    and `PytestUnraisableExceptionWarning` from error → warning.
+    Multiple `asyncio.run` callsites in the test suite on macOS
+    occasionally surface a stale kqueue selector reference during
+    interpreter shutdown; the loops have actually been closed.
+
+  *Spec*:
+  `docs/features/feat-017-cli-runtime.md` — Implementation status
+  §10 + Runbook §11 + exit-codes contract.
+
 - **feat-011 — Scaffolding & upgrade.** Ships the `agentforge new`
   scaffolder, six starter templates, three-way-merge `agentforge
   upgrade`, and the `fork` / `unfork` / `status` file-ownership
