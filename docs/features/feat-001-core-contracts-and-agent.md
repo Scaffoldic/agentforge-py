@@ -339,7 +339,10 @@ logging:
   level: "INFO"
 ```
 
-Full schema specified in feat-012 (Configuration system).
+Full schema is now shipped under feat-012 — `agent`, `modules`,
+`providers`, `logging`, `output` sections with per-module schema
+composition. Run `agentforge config schema` to dump the JSON
+Schema for editor autocomplete.
 
 ## 5. Plug-and-play & upgrade story
 
@@ -542,9 +545,12 @@ agent:
 agent = Agent()  # all settings come from agentforge.yaml
 ```
 
-Constructor kwargs override file values; env vars are only
-expanded inside the YAML via `${VAR}` interpolation (full schema
-ships with feat-012).
+Constructor kwargs override file values; env vars are expanded
+inside the YAML via `${VAR}` interpolation. feat-012 shipped the
+full schema (`agent`, `modules`, `providers`, `logging`, `output`),
+layered env files (`agentforge.<env>.yaml` via `AGENTFORGE_ENV`),
+dotted-path overrides (`--override agent.budget.usd=10`), and the
+`agentforge config validate/show/schema` CLI.
 
 ### How do I switch providers without changing code?
 

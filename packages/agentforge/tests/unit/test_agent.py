@@ -108,14 +108,14 @@ def test_agent_resolves_registered_provider_from_model_string() -> None:
 
 def test_agent_loads_config_from_explicit_path(tmp_path: Path) -> None:
     yaml_path = tmp_path / "agentforge.yaml"
-    yaml_path.write_text("agent:\n  budget_usd: 7.5\n")
+    yaml_path.write_text("agent:\n  budget:\n    usd: 7.5\n")
     agent = Agent(strategy=_NoOpStrategy(), config_path=yaml_path)
     assert agent.budget.usd == pytest.approx(7.5)
 
 
 def test_kwarg_overrides_config_file(tmp_path: Path) -> None:
     yaml_path = tmp_path / "agentforge.yaml"
-    yaml_path.write_text("agent:\n  budget_usd: 7.5\n")
+    yaml_path.write_text("agent:\n  budget:\n    usd: 7.5\n")
     agent = Agent(strategy=_NoOpStrategy(), config_path=yaml_path, budget_usd=10.0)
     assert agent.budget.usd == pytest.approx(10.0)
 
