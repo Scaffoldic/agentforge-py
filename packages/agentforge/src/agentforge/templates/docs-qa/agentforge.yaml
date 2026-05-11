@@ -1,0 +1,19 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  system_prompt: |
+    You answer questions using only the supplied documentation /
+    source. Emit a `NarrativeFinding` with the answer as `body`
+    (markdown ok), every citation in `references` (path:line or
+    URL), and `category="answer"`. Never speculate beyond the
+    sources.
+  budget:
+    usd: 2.0
+  max_iterations: 30
+
+# When you have a corpus to index, wire memory.driver: sqlite (or
+# postgres) and modules.retriever to enable RAG.
+
+logging:
+  level: "INFO"
+  format: "text"

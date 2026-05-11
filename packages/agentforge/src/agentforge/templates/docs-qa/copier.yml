@@ -1,0 +1,31 @@
+# Copier template: docs-qa agent (feat-011).
+#
+# Answers questions from documentation / source. Emits
+# NarrativeFinding (feat-008) — markdown prose with citations.
+# Add a vector store + Retriever once you have a corpus to index.
+
+_min_copier_version: "9.4.0"
+_answers_file: ".agentforge-state/answers.yml"
+_templates_suffix: ""
+
+project_name:
+  type: str
+  default: "Docs QA"
+
+project_slug:
+  type: str
+  default: "docs-qa"
+
+llm_provider:
+  type: str
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  default: "A docs / source Q&A AgentForge agent."
+
+_template_name: "docs-qa"

@@ -106,6 +106,30 @@ def test_unknown_template_errors(tmp_path: Path, capsys):
     assert "not shipped" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    "template",
+    ["minimal", "code-reviewer", "patch-bot", "docs-qa", "triage", "research"],
+)
+def test_every_shipped_template_renders(tmp_path: Path, template: str):
+    """Every template ships a working scaffold — Copier renders
+    cleanly with `--no-prompts` and produces the expected files."""
+    dst = tmp_path / f"check-{template}"
+    code = _run_new(
+        argparse.Namespace(
+            project_slug=f"check-{template}",
+            template=template,
+            provider="bedrock",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    assert code == 0
+    # Every template must produce these three at the project root.
+    assert (dst / "agentforge.yaml").exists()
+    assert (dst / "pyproject.toml").exists()
+    assert (dst / "README.md").exists()
+
+
 def test_rendered_python_package_has_underscore_name(tmp_path: Path):
     """Kebab-case slug → snake_case package name in `src/`."""
     dst = tmp_path / "my-pr-reviewer"

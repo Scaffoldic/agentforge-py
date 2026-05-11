@@ -1,0 +1,31 @@
+# Copier template: triage agent (feat-011).
+#
+# Classifies incoming issues / tickets / alerts by severity +
+# category. Emits SimpleFinding per item; pairs well with a
+# Coverage evaluator against a known-issue set.
+
+_min_copier_version: "9.4.0"
+_answers_file: ".agentforge-state/answers.yml"
+_templates_suffix: ""
+
+project_name:
+  type: str
+  default: "Triage"
+
+project_slug:
+  type: str
+  default: "triage"
+
+llm_provider:
+  type: str
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  default: "A triage AgentForge agent."
+
+_template_name: "triage"
