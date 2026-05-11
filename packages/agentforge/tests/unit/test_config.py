@@ -14,9 +14,10 @@ def test_default_config_when_no_file_present(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("AGENTFORGE_CONFIG", raising=False)
     cfg = load_config()
     assert isinstance(cfg, AgentForgeConfig)
-    assert cfg.agent.budget_usd == 1.0
+    assert cfg.agent.budget.usd == 1.0
     assert cfg.agent.max_iterations == 25
     assert cfg.logging.run_id_filter is True
 
@@ -24,11 +25,14 @@ def test_default_config_when_no_file_present(
 def test_loads_explicit_path(tmp_path: Path) -> None:
     yaml_path = tmp_path / "agentforge.yaml"
     yaml_path.write_text(
-        "agent:\n  model: anthropic:claude-sonnet-4.7\n  budget_usd: 5.0\n  max_iterations: 50\n"
+        "agent:\n"
+        "  model: anthropic:claude-sonnet-4.7\n"
+        "  budget:\n    usd: 5.0\n"
+        "  max_iterations: 50\n"
     )
     cfg = load_config(yaml_path)
     assert cfg.agent.model == "anthropic:claude-sonnet-4.7"
-    assert cfg.agent.budget_usd == pytest.approx(5.0)
+    assert cfg.agent.budget.usd == pytest.approx(5.0)
     assert cfg.agent.max_iterations == 50
 
 
@@ -90,6 +94,16 @@ def test_invalid_yaml_top_level_raises(tmp_path: Path) -> None:
 
 def test_negative_budget_rejected(tmp_path: Path) -> None:
     yaml_path = tmp_path / "agentforge.yaml"
-    yaml_path.write_text("agent:\n  budget_usd: -1.0\n")
+    yaml_path.write_text("agent:\n  budget:\n    usd: -1.0\n")
     with pytest.raises(ValidationError):
+        load_config(yaml_path)
+
+
+def test_flat_budget_usd_no_longer_valid(tmp_path: Path) -> None:
+    """feat-012 deprecates the flat `agent.budget_usd: float` form in
+    favour of nested `agent.budget.usd`. The schema now rejects the
+    flat field as `extra="forbid"`."""
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text("agent:\n  budget_usd: 5.0\n")
+    with pytest.raises(ValidationError, match="budget_usd"):
         load_config(yaml_path)
