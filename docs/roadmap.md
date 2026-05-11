@@ -39,6 +39,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-010](./features/feat-010-module-discovery-and-cli.md) | Module discovery + full CLI — entry-point scan, `ModuleInfo`, `Resolver.list_installed`, `agentforge list/add/remove/swap module` commands, manifest-driven module wiring | [#16](https://github.com/Scaffoldic/agentforge-py/pull/16) (read-only) + (this PR — destructive CLI) |
 | [feat-012](./features/feat-012-configuration-system.md) | Configuration system — widened root schema (`agent` + `modules` + `providers` + `output`), `BudgetConfig` (replaces flat `budget_usd`), layered env files, dotted-path overrides, `AGENTFORGE_CONFIG` / `AGENTFORGE_LOG_LEVEL` shortcuts, module-side schema integration, `agentforge config {validate,show,schema}` CLI | [#17](https://github.com/Scaffoldic/agentforge-py/pull/17) |
 | [feat-011](./features/feat-011-scaffolding-and-upgrade.md) | Scaffolding & upgrade — `agentforge new` + 6 starter templates (minimal, code-reviewer, patch-bot, docs-qa, triage, research) rendered via Copier, `.agentforge-state/managed-files.lock` + `AGENTFORGE-MANAGED:` marker headers, `agentforge upgrade` (Copier three-way merge), `agentforge fork`/`unfork`/`status` | [#19](https://github.com/Scaffoldic/agentforge-py/pull/19) |
+| [feat-017](./features/feat-017-cli-runtime.md) | CLI runtime — `agentforge run` (+ `--replay`/`--record`), `agentforge eval` (JSONL fixtures + JUnit), `agentforge debug` (interactive REPL), `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight). Foundations: `MemoryStore.delete` on the ABC, run-recording protocol (reserved `__step`/`__eval`/`__run` categories), `ReplayLLMClient` + `replay_tools`, `build_agent_from_config` helper. Exit codes 0/1/2/3/4/5 locked. | [#20](https://github.com/Scaffoldic/agentforge-py/pull/20) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -52,7 +53,8 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **feat-013 through feat-020** — see specs under
+- **feat-013, feat-014, feat-015, feat-016, feat-018, feat-019,
+  feat-020** — see specs under
   [`docs/features/`](./features/).
 
 ### feat-009 vendor-package sub-feats (deferred)
