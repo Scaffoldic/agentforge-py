@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-018 |
 | **Title** | Safety & security guardrails — `InputValidator`, `OutputValidator`, `ToolCallGate` |
-| **Status** | proposed |
+| **Status** | shipped (Python — ABCs + 4 built-ins + Agent integration + 4 vendor modules) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -344,7 +344,183 @@ SDKs allow:
 - **Constitutional AI / self-critique loops.** Out of scope; build on
   reasoning strategies (feat-002) if needed.
 
-## 10. References
+## 10. Implementation status (Python)
+
+Shipped in PR #22 across the framework + four sister packages.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `25abbf7` | ABCs (`InputValidator` / `OutputValidator` / `ToolCallGate`) + `ValidationResult` value + `GuardrailPolicy` + `GuardrailsConfig` / `GuardrailEntry` schema additions |
+| 2 | `a7743cb` | Built-in basic validators: `prompt_injection_basic`, `pii_redact_basic`, `capability_check`, `allowlist`. Registered with the Resolver under `guardrails.{input,output,tool_gates}` |
+| 3 | `0123cb4` | `GuardrailEngine` (input check / LLM wrapper / tool wrapper / audit emission / fail-open / fail-closed); `Agent.__init__` accepts `input_validators` / `output_validators` / `tool_gates` / `guardrail_policy`; `RunResult.guardrail_events` field added |
+| 4 | `887079f` | Conformance harnesses (`run_input_validator_conformance`, `run_output_validator_conformance`, `run_tool_gate_conformance`) re-exported from `agentforge.testing` |
+| 5 | `3b3bce7` | `agentforge-guard-llmguard` — LLM Guard scanner adapter |
+| 6 | `6148298` | `agentforge-guard-presidio` — Microsoft Presidio PII detector |
+| 7 | `529e54d` | `agentforge-guard-nemo` — NeMo Guardrails Colang rails |
+| 8 | `4415239` | `agentforge-guard-llamaguard` — Llama Guard 3 classifier |
+| 9 | (this PR) | Docs + Runbook + CHANGELOG + roadmap + state |
+
+### Deviations from the design
+
+- **`GuardrailPolicy` lives in `agentforge_core.config.schema`,
+  not `values/guardrails.py`** — moving it under `values` causes
+  an import cycle because the values package's `__init__` pulls
+  in `state.py` which transitively imports
+  `contracts.strategy` → `values.state`. The runtime
+  `ValidationResult` remains in `values.guardrails`.
+- **String-form normalisation for `GuardrailEntry`** (e.g.
+  `- prompt_injection_basic` short-hand) deferred. The loader
+  expects `{name: ..., config: ...}` dicts today; the comment in
+  `EvaluatorEntry`'s docstring (which uses the same convention)
+  applies — string form is reserved for a future loader-side
+  normaliser.
+- **`config.modules.guardrails.defaults` does not yet auto-install
+  the built-in basics.** Tests register validators explicitly via
+  the `Agent(input_validators=..., output_validators=...,
+  tool_gates=...)` kwargs. Wiring `defaults: true` to
+  auto-install lands alongside the build_agent_from_config
+  resolution of `modules.guardrails` — deferred to a follow-up.
+- **No latency benchmarking yet (spec §7).** The built-in
+  validators' `cost_estimate_ms` ClassVar advertises 1-2 ms per
+  call; real benchmarks deferred until the
+  `agentforge eval --bench` harness lands.
+- **TypeScript port deferred.** Python defines the ABC shapes the
+  TS engine will mirror.
+- **Audit channel sampling + dedicated stream** mentioned in §8 —
+  audit events go to a stdlib logger named `agentforge.audit`;
+  sampling / structured-stream split is downstream of feat-009's
+  observability hooks.
+
+### Reserved namespaces
+
+- `guardrails.input` / `guardrails.output` / `guardrails.tool_gates`
+  — Resolver categories. All four built-ins register here at
+  framework import time (via `agentforge.guardrails` being
+  imported from `agentforge/__init__.py`).
+- `agentforge.audit` — logger name for the audit channel. Part of
+  the v0.1 on-disk contract.
+- `__step` / `__eval` / `__run` reserved categories (feat-017)
+  are unaffected.
+
+## 11. Runbook
+
+### Default-on basics
+
+The framework ships four built-in validators registered with the
+Resolver at import time. They're *available* by name — installing
+them is opt-in in v0.1 by passing them explicitly to `Agent(...)`:
+
+```python
+from agentforge import Agent
+from agentforge.guardrails import (
+    Allowlist, CapabilityCheck, PIIRedactBasic, PromptInjectionBasic,
+)
+
+agent = Agent(
+    model="bedrock:anthropic.claude-sonnet-4-7",
+    tools=[...],
+    input_validators=[PromptInjectionBasic()],
+    output_validators=[PIIRedactBasic()],
+    tool_gates=[CapabilityCheck(), Allowlist(allowed=["web_search"])],
+)
+```
+
+The Resolver names (`prompt_injection_basic` / `pii_redact_basic`
+/ `capability_check` / `allowlist`) are the IDs that future
+`build_agent_from_config(...)` integration will look up.
+
+### Block / redact / warn semantics
+
+`GuardrailPolicy` controls what happens on violation:
+
+```python
+from agentforge_core.config.schema import GuardrailPolicy
+
+policy = GuardrailPolicy(
+    on_input_violation="block",   # block | redact | warn | allow
+    on_output_violation="redact", # redact uses ValidationResult.redacted_content
+    on_tool_violation="block",    # block | warn
+    fail_open=False,              # validator exception → fail closed
+)
+agent = Agent(..., guardrail_policy=policy)
+```
+
+A `block` decision raises `GuardrailViolation`, which `Agent.run`
+catches and reports as `finish_reason="guardrail"` plus exit code
+`4` from `agentforge run` (feat-017).
+
+### Auditing every decision
+
+Each validator decision emits one log record on
+`agentforge.audit`:
+
+```
+guardrail input: prompt_injection_basic passed=True violations=[] action=block
+```
+
+The same data lands on `RunResult.guardrail_events` as a tuple of
+dicts: `stage` / `validator` / `passed` / `violations` / `score`
+/ `action` / `content_hash` (full content never persisted).
+
+### Adding a vendor module
+
+```bash
+pip install agentforge-guard-llmguard
+# or:
+pip install agentforge-guard-presidio
+# or:
+pip install agentforge-guard-nemo
+# or:
+pip install agentforge-guard-llamaguard
+```
+
+Each module registers itself via pyproject entry-points under
+`agentforge.guardrails.{input,output}` — once installed, they are
+addressable by name (`llmguard`, `presidio`, `nemo`, `llamaguard`).
+
+### Writing a custom validator
+
+```python
+from agentforge_core.contracts.guardrails import OutputValidator
+from agentforge_core.resolver import register
+from agentforge_core.values.guardrails import ValidationResult
+
+@register("guardrails.output", "no_internal_paths")
+class NoInternalPaths(OutputValidator):
+    name = "no_internal_paths"
+    description = "Reject outputs that leak `/internal/` or `secret://` paths."
+
+    async def validate(self, content, context):
+        if "/internal/" in content or "secret://" in content:
+            return ValidationResult(
+                passed=False,
+                violations=("leaked_internal_path",),
+                redacted_content=content.replace("/internal/", "/[redacted]/"),
+            )
+        return ValidationResult.ok()
+```
+
+Pass the validator class through the same `output_validators=[...]`
+kwarg.
+
+### Conformance-test your validator
+
+```python
+from agentforge.testing import run_output_validator_conformance
+
+async def test_my_validator() -> None:
+    await run_output_validator_conformance(
+        NoInternalPaths(),
+        benign="hello world",
+        obvious_violation="/internal/secret-doc",
+    )
+```
+
+The harness asserts the locked-contract invariants (ClassVar
+strings + `ValidationResult` shape + benign-passes / violation-
+fails semantics).
+
+## 12. References
 
 - [`design-principles.md`](../design/design-principles.md) — P3 (cost
   safety), P6 (loud defaults), P11 (fail at startup)

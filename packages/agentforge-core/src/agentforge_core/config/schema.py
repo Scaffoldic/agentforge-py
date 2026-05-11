@@ -15,7 +15,7 @@ is the data-side representation.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -120,6 +120,61 @@ class ObservabilityEntry(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class GuardrailPolicy(BaseModel):
+    """Framework-wide guardrail policy (feat-018).
+
+    Read from `agentforge.yaml` under the top-level
+    `guardrail_policy:` key. Defaults are conservative (per P6 —
+    loud defaults). Lives here rather than in `values/guardrails.py`
+    so the config-schema module doesn't have to reach into
+    `values` (avoids an import cycle through `values.state`).
+    The runtime `ValidationResult` remains in `values.guardrails`.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    on_input_violation: Literal["block", "redact", "warn", "allow"] = "block"
+    on_output_violation: Literal["block", "redact", "warn", "allow"] = "redact"
+    on_tool_violation: Literal["block", "warn"] = "block"
+    audit_channel: str = "agentforge.audit"
+    fail_open: bool = False
+
+
+class GuardrailEntry(BaseModel):
+    """One entry inside `modules.guardrails.{input,output,tool_gates}`.
+
+    Two YAML shapes are valid (mirrors `EvaluatorEntry`):
+
+    - String form: `- prompt_injection_basic` (just the name).
+    - Mapping form: `- presidio: {entities: ["EMAIL_ADDRESS"]}`.
+
+    Both normalise to `GuardrailEntry(name=..., config={})` before
+    validation.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    name: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class GuardrailsConfig(BaseModel):
+    """`modules.guardrails:` — input / output / tool-call validators.
+
+    `defaults: true` keeps the framework's built-in basic validators
+    (prompt_injection_basic, pii_redact_basic, capability_check)
+    installed alongside whatever's listed here. Disabling them is
+    explicit and emits a startup warning per P6 (loud defaults).
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    defaults: bool = True
+    input: list[GuardrailEntry] = Field(default_factory=list)
+    output: list[GuardrailEntry] = Field(default_factory=list)
+    tool_gates: list[GuardrailEntry] = Field(default_factory=list)
+
+
 class ModulesConfig(BaseModel):
     """`modules:` — every plug-and-play module the agent uses.
 
@@ -130,6 +185,10 @@ class ModulesConfig(BaseModel):
           memory: {driver: postgres, config: {...}}
           evaluators: [faithfulness, {geval: {rubric: "..."}}]
           observability: [{name: otel, config: {endpoint: "..."}}]
+          guardrails:
+            input: [prompt_injection_basic]
+            output: [pii_redact_basic]
+            tool_gates: [capability_check]
     """
 
     model_config = ConfigDict(strict=True, extra="forbid")
@@ -141,6 +200,7 @@ class ModulesConfig(BaseModel):
     observability: list[ObservabilityEntry] = Field(default_factory=list)
     tools: list[str | dict[str, Any]] = Field(default_factory=list)
     protocols: list[ObservabilityEntry] = Field(default_factory=list)
+    guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
 
 
 class ProviderConfig(BaseModel):
@@ -183,3 +243,4 @@ class AgentForgeConfig(BaseModel):
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
+    guardrail_policy: GuardrailPolicy = Field(default_factory=GuardrailPolicy)

@@ -41,6 +41,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-011](./features/feat-011-scaffolding-and-upgrade.md) | Scaffolding & upgrade — `agentforge new` + 6 starter templates (minimal, code-reviewer, patch-bot, docs-qa, triage, research) rendered via Copier, `.agentforge-state/managed-files.lock` + `AGENTFORGE-MANAGED:` marker headers, `agentforge upgrade` (Copier three-way merge), `agentforge fork`/`unfork`/`status` | [#19](https://github.com/Scaffoldic/agentforge-py/pull/19) |
 | [feat-017](./features/feat-017-cli-runtime.md) | CLI runtime — `agentforge run` (+ `--replay`/`--record`), `agentforge eval` (JSONL fixtures + JUnit), `agentforge debug` (interactive REPL), `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight). Foundations: `MemoryStore.delete` on the ABC, run-recording protocol (reserved `__step`/`__eval`/`__run` categories), `ReplayLLMClient` + `replay_tools`, `build_agent_from_config` helper. Exit codes 0/1/2/3/4/5 locked. | [#20](https://github.com/Scaffoldic/agentforge-py/pull/20) |
 | [feat-016](./features/feat-016-testing-framework.md) | Testing framework — `agentforge.testing` namespace (`MockLLMClient` with from_script/deterministic/from_recording, `FakeTool`, `agent_factory`, pytest fixtures, conformance re-exports, `record_llm` with redaction) + `agentforge-testing` package (`GoldenSetRunner`, `assert_snapshot`, `analyze_recording`). | [#21](https://github.com/Scaffoldic/agentforge-py/pull/21) |
+| [feat-018](./features/feat-018-safety-and-security-guardrails.md) | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs + `ValidationResult` + `GuardrailPolicy` + audit channel; built-in basics (`prompt_injection_basic`, `pii_redact_basic`, `capability_check`, `allowlist`); `GuardrailEngine` wired into `Agent.run`; conformance harnesses; four vendor sister packages (LLM Guard, Presidio, NeMo, Llama Guard); `RunResult.guardrail_events`. | [#22](https://github.com/Scaffoldic/agentforge-py/pull/22) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -54,8 +55,8 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **feat-013, feat-014, feat-015, feat-018, feat-019, feat-020**
-  — see specs under [`docs/features/`](./features/).
+- **feat-013, feat-014, feat-015, feat-019, feat-020** — see
+  specs under [`docs/features/`](./features/).
 
 ### feat-009 vendor-package sub-feats (deferred)
 
