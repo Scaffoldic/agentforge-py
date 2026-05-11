@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-006 |
 | **Title** | Evaluators — `Evaluator` ABC, built-in graders, LLM-judge |
-| **Status** | proposed |
+| **Status** | shipped (Python — `agentforge-py` PR pending merge; TypeScript pending) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -278,3 +278,295 @@ G-Eval module Python first; TS at 0.4.
 - feat-001, feat-003, feat-008
 - Archived: `docs/archive/cr/CR-017*.md`, `docs/archive/subsystem-evaluation.md`
 - Prior art: Ragas, DeepEval, G-Eval paper (NG et al. 2023)
+
+---
+
+## Implementation status
+
+**Status: shipped (Python).** Landed across 8 chunks on
+`feat/006-evaluators-and-benchmarks`.
+
+| Chunk | Scope |
+|---|---|
+| 1 | `RunResult.eval_scores: tuple[EvalResult, ...]` field + `Agent.run` evaluator loop (budget-gated, ordered, logs skips at WARN via `agentforge.evaluators` logger). |
+| 2 | `Coverage` deterministic grader — fraction of expected items found, default substring match, optional `extractor=` for structured output. |
+| 3 | `FormatCompliance` deterministic grader — three modes (`regex=`, `pydantic_model=`, `json_parseable=True`); rejects multi-mode at construction. |
+| 4 | `RegressionVsBaseline` deterministic grader — JSONL baseline file, `exact` / `structural` modes, `no_baseline` label with NaN score for unmatched tasks. |
+| 5 | `Consistency` deterministic grader — N re-runs via caller-supplied `runner` callable, fraction-of-agreement score, custom `matcher=` for fuzzy compare. |
+| 6+7 | `agentforge-eval-geval` package (new workspace member): `GEval` engine + 6 named graders (`Correctness`, `Faithfulness`, `Groundedness`, `Hallucination`, `Relevance`, `Helpfulness`) + 6 versioned YAML rubrics shipped inside the package + entry-point registration under `agentforge.evaluators`. |
+| 8 | This Implementation section + Runbook + CHANGELOG + roadmap + forward-reference sweep. |
+
+### Deviations from this spec
+
+- **`Agent(evaluators=[...])` plumbing.** The constructor kwarg
+  shipped under feat-001 but `Agent.run()` never iterated the list.
+  This PR closes the gap. Evaluators receive the `RunResult` as
+  `finding` (the spec's signature allowed `Any`) and a `context`
+  dict carrying `task`, `state`, `budget`.
+- **`RunResult.eval_scores` is a `tuple[EvalResult, ...]`, not a
+  dict.** Spec §4.1's example showed a flat dict; the tuple preserves
+  configured order (which matters when the same rubric runs more than
+  once with different inputs) and matches the rest of `RunResult`'s
+  frozen-tuple convention. Callers index by name via
+  `{r.evaluator: r for r in result.eval_scores}`.
+- **`format_compliance` ships three modes (`regex`, `pydantic_model`,
+  `json_parseable`)**, not the spec's "JSON schema, regex, grammar"
+  triple. JSON-Schema-Draft validation would add the `jsonschema`
+  dependency; Pydantic v2 covers schema enforcement using a
+  dependency the project already takes. Grammar mode (Lark / ANTLR)
+  is deferred.
+- **`regression_vs_baseline`** ships `exact` and `structural` modes
+  only. Semantic-via-embedding mode is deferred — would require an
+  `EmbeddingClient` dependency.
+- **`consistency`** uses a caller-supplied
+  `runner: Callable[[str], Awaitable[Any]]` rather than auto-
+  constructing a new `Agent`. Keeps the grader usable with arbitrary
+  re-execution strategies (different seed, different judge,
+  re-prompted, etc.) and avoids the reentrancy hazard of calling
+  `self.run()` from inside the run.
+- **G-Eval cost accounting.** Judge call cost is committed to the
+  run's `BudgetPolicy` via `contextlib.suppress(Exception)` — failure
+  to commit (e.g. cap exceeded mid-run) does not void the
+  `EvalResult`, since the score is still informative. The skip-gate
+  on `evaluator.cost_estimate_usd` is the primary cap enforcement.
+- **No `agentforge eval` CLI** (the spec's §3 mentions
+  `agentforge eval --fixtures ... --threshold 0.8`). CLI tooling
+  lives in feat-017; this PR ships only the runtime side.
+
+### What's *not* yet implemented
+
+- **`agentforge eval` CLI** + fixture-runner — feat-017.
+- **Configuration loading** of evaluators from `agentforge.yaml`
+  (`agent.evaluators: ["faithfulness", ...]`) — feat-012.
+- **String-name resolution** through the resolver (`Agent(evaluators=
+  ["coverage"])` constructing the grader by name) — needs feat-010
+  (Module discovery). Today, agents pass constructed grader
+  instances.
+- **`agentforge-eval-ragas`**, **`agentforge-eval-deepeval`**,
+  **`agentforge-eval-toxicity`**, **`agentforge-eval-codeexec`**
+  adapter packages.
+- **Tree-of-Thoughts `scorer="judge"` rewiring** to use a separate
+  judge provider — still uses `Agent.model` (same model, separate
+  calls). Documented in feat-002's runbook update.
+- **TypeScript port** of the whole feat-006 surface.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
+
+### How do I add evaluators to an agent?
+
+Pass constructed grader instances to `Agent(evaluators=[...])`:
+
+```python
+from agentforge import Agent
+from agentforge.eval import Coverage, FormatCompliance
+from agentforge_bedrock import BedrockClient
+from agentforge_eval_geval import Correctness, Faithfulness
+
+judge = BedrockClient(model_id="us.anthropic.claude-haiku-4-5")
+
+agent = Agent(
+    model="bedrock:us.anthropic.claude-sonnet-4-5-20250929",
+    evaluators=[
+        Coverage(reference={"alpha", "beta", "gamma"}),
+        FormatCompliance(pydantic_model=MyAnswerSchema),
+        Correctness(judge=judge, ground_truth_field="expected"),
+        Faithfulness(judge=judge, sources_field="retrieved_docs"),
+    ],
+    budget_usd=2.0,
+)
+
+result = await agent.run("Summarise this PR")
+for r in result.eval_scores:
+    print(f"{r.evaluator}: {r.score:.2f} ({r.label})")
+```
+
+Evaluators run **after** the strategy completes, in configured
+order. The `RunResult` carries every result on `eval_scores`.
+
+### How do I pick deterministic vs LLM-judge?
+
+| Use deterministic when… | Use LLM-judge when… |
+|---|---|
+| Ground truth is structured (expected items, schema) | Ground truth is fuzzy ("did it answer the question?") |
+| You need every-run scoring (no LLM cost) | You only need scoring on a sample |
+| Score must be reproducible across runs | Subjective judgement is acceptable |
+| Output is a fixed format | Output is open-ended prose |
+
+Mix and match — deterministic graders are free (`cost_estimate_usd =
+0.0`) and run on every call; LLM judges are budget-gated and skip
+when remaining budget falls below their declared cost.
+
+### How does budget gating work?
+
+Before each evaluator's `evaluate(...)`, the run loop checks
+`budget.remaining_usd() >= evaluator.cost_estimate_usd`. If not,
+the grader is skipped and `agentforge.evaluators` logs a WARN.
+Skipped graders don't appear in `result.eval_scores`.
+
+Tighten budgets to cap judge cost:
+
+```python
+# Total $5 cap; if the strategy spent $4.95, only graders declaring
+# <= $0.05 will run.
+agent = Agent(model="...", evaluators=[judge_grader], budget_usd=5.0)
+```
+
+Each grader declares its own estimate. The G-Eval engine defaults
+to `0.01`; override per-instance via the `cost_estimate_usd=`
+kwarg if your judge is cheaper / more expensive.
+
+### How do I use a cheap judge for an expensive agent?
+
+```python
+from agentforge_bedrock import BedrockClient
+from agentforge_eval_geval import Correctness
+
+# Cheap judge (Haiku) scores Sonnet-powered agent output.
+judge = BedrockClient(model_id="us.anthropic.claude-haiku-4-5")
+
+agent = Agent(
+    model="bedrock:us.anthropic.claude-sonnet-4-5-20250929",
+    evaluators=[Correctness(judge=judge)],
+)
+```
+
+Separate judge models reduce cost **and** reduce the "judge agrees
+with itself" bias when the same model answers and scores. The
+named-provider config from feat-003 makes this a config edit when
+feat-012 ships.
+
+### How do I write a custom rubric?
+
+Use `GEval` directly with a dict rubric:
+
+```python
+from agentforge_eval_geval import GEval
+
+grader = GEval(
+    judge=judge,
+    name="pr-description-quality",
+    rubric={
+        "criteria": "Score whether the PR description accurately describes the diff.",
+        "scoring": "1.0 = accurate and complete; 0.0 = inaccurate or empty",
+        "inputs": ["diff"],   # injects context['diff'] into the prompt
+        "examples": [
+            {"output": "...", "score": 0.9, "reasoning": "..."},
+        ],
+    },
+    cost_estimate_usd=0.005,
+)
+```
+
+Or load a YAML rubric file shipped in your agent's repo:
+
+```python
+grader = GEval.from_rubric_file("./rubrics/pr-quality.yaml", judge=judge)
+```
+
+The judge must return a JSON object with `score` (float in [0, 1])
+and `reasoning` (string). The engine parses defensively — markdown
+fences, chatter before/after the JSON, score-out-of-range are all
+tolerated.
+
+### How do I score against a baseline?
+
+Lock a baseline file (JSONL, one entry per task with `task` +
+`expected` keys), then point `RegressionVsBaseline` at it:
+
+```python
+# baselines/v0.4.jsonl
+{"task": "Summarise PR #42", "expected": "PR #42 adds X."}
+{"task": "List failing tests", "expected": ["test_a", "test_b"]}
+```
+
+```python
+from agentforge.eval import RegressionVsBaseline
+
+agent = Agent(
+    model="...",
+    evaluators=[
+        RegressionVsBaseline(baseline_path="./baselines/v0.4.jsonl"),
+    ],
+)
+```
+
+Default mode is `exact` (string equality). For structured outputs:
+
+```python
+RegressionVsBaseline(baseline_path="...", mode="structural")
+```
+
+→ score = matching keys / total keys; `raw` carries
+`missing_keys`, `extra_keys`, `mismatched_keys`. Tasks without a
+baseline entry get `score=NaN`, label `"no_baseline"` — the grader
+doesn't claim regression in that case.
+
+### How do I check consistency across re-runs?
+
+```python
+from agentforge.eval import Consistency
+
+async def rerun(task: str) -> str:
+    async with Agent(model="...") as sub_agent:
+        sub_result = await sub_agent.run(task)
+        return sub_result.output
+
+agent = Agent(
+    model="...",
+    evaluators=[Consistency(runner=rerun, n_samples=3)],
+)
+```
+
+The runner is the seam — pass a function that returns the new
+output for a task. Score is `agreements / n_samples`. The re-runs'
+LLM cost bills against the runner's own `Agent` (or whatever the
+runner calls); use the same `budget_usd` to keep the run within a
+unified cap.
+
+### How do I read what each evaluator decided?
+
+```python
+result = await agent.run("…")
+by_name = {r.evaluator: r for r in result.eval_scores}
+print(by_name["correctness"].score, by_name["correctness"].label)
+print(by_name["faithfulness"].reasoning)
+print(by_name["coverage"].raw["missing"])
+```
+
+`EvalResult.raw` is grader-specific — `Coverage` reports
+`matched/missing/extracted`, `PatchFinding`'s renderer reports
+hunk info, `GEval` reports `judge_cost_usd`, `judge_tokens_in`,
+`judge_tokens_out`, and `raw_text`.
+
+### How do I debug "an evaluator never ran"?
+
+Most common cause: budget exhausted before the evaluator's turn.
+Look for `WARN agentforge.evaluators: skipping evaluator ...` in
+logs. Fix: lower the judge's `cost_estimate_usd` if it's
+over-declared, or raise `budget_usd` enough to cover both the run
+and the evaluator pass.
+
+Second cause: the grader raised an exception inside `evaluate`. The
+loop catches LLM-call failures inside `GEval` and turns them into
+`fail` `EvalResult`s, but a bug in a custom grader's `evaluate`
+will propagate — wrap it in a `try` if you want soft failure.
+
+### When should I NOT add an evaluator?
+
+- **Real-time gating.** Evaluators score *after* the run; they
+  cannot refuse a tool call or redact PII before output. Use
+  feat-018 safety guardrails for inline defenses.
+- **Per-step scoring** (mid-loop). Evaluators are post-run only.
+  For per-step assertions, write a custom `ReasoningStrategy`
+  subclass that asserts in its body.
+- **Catastrophic-failure detection.** A `fail` `EvalResult` is
+  informational — it doesn't raise. If you need the run to fail
+  hard on a score below threshold, check `result.eval_scores`
+  yourself after `await agent.run(...)` and raise.

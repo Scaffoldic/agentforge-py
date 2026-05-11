@@ -20,12 +20,13 @@ features.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from types import TracebackType
 
-from agentforge_core.contracts.evaluator import Evaluator
+from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
@@ -55,6 +56,9 @@ from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
 from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
+
+_evaluator_log = logging.getLogger("agentforge.evaluators")
+
 
 StepHook = Callable[..., Awaitable[None] | None]
 """Hook signature: takes a Step, returns awaitable-or-None."""
@@ -244,7 +248,7 @@ class Agent:
             output = self._extract_output(state)
             tokens_in = sum(s.tokens_in for s in state.steps)
             tokens_out = sum(s.tokens_out for s in state.steps)
-            result = RunResult(
+            interim = RunResult(
                 output=output,
                 steps=tuple(state.steps),
                 cost_usd=run_budget.spent_usd,
@@ -254,10 +258,54 @@ class Agent:
                 duration_ms=duration_ms,
                 finish_reason=finish_reason,
             )
+            eval_scores = await self._run_evaluators(
+                interim, task=task, state=state, budget=run_budget
+            )
+            result = interim.model_copy(update={"eval_scores": eval_scores})
             await self._fire_finish(result)
             return result
         finally:
             reset_run(token)
+
+    async def _run_evaluators(
+        self,
+        result: RunResult,
+        *,
+        task: str,
+        state: AgentState,
+        budget: BudgetPolicy,
+    ) -> tuple[EvalResult, ...]:
+        """Iterate configured evaluators, gating each by remaining budget.
+
+        Per feat-006 §4.3: skip an evaluator if
+        `budget.remaining_usd() < evaluator.cost_estimate_usd`; log at
+        WARN. The evaluator receives the just-built `RunResult` as
+        `finding` and a context dict carrying `task`, `state`, and
+        `budget` so judge graders can reserve / commit against the
+        live policy.
+
+        Skipped evaluators do not appear in the returned tuple — only
+        evaluators that actually ran. Order preserved.
+        """
+        if not self._evaluators:
+            return ()
+
+        context: dict[str, object] = {"task": task, "state": state, "budget": budget}
+        out: list[EvalResult] = []
+        for evaluator in self._evaluators:
+            est = float(getattr(evaluator, "cost_estimate_usd", 0.0))
+            remaining = budget.remaining_usd()
+            if est > remaining:
+                _evaluator_log.warning(
+                    "skipping evaluator %r: budget exhausted (need=$%.4f, remaining=$%.4f)",
+                    evaluator.name,
+                    est,
+                    remaining,
+                )
+                continue
+            eval_result = await evaluator.evaluate(result, context)
+            out.append(eval_result)
+        return tuple(out)
 
     async def close(self) -> None:
         """Release resources held by the agent (LLM, memory, log filter)."""

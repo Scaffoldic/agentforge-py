@@ -1,0 +1,21 @@
+# Faithfulness rubric — "is the output supported by the retrieved evidence?"
+#
+# Distinct from groundedness: faithfulness allows additional accurate
+# content that wasn't in the retrieved sources, as long as nothing
+# the output asserts contradicts what was retrieved.
+
+version: 1
+criteria: |
+  Determine whether every factual claim in the output is supported
+  by the retrieved sources. A claim is "supported" when the sources
+  directly state it or clearly imply it. A claim is "unsupported"
+  when nothing in the sources backs it. Unsupported claims may
+  still be factually correct in the world — that's groundedness's
+  concern — but they fail faithfulness.
+scoring: |
+  1.0 — every claim is supported by the retrieved sources.
+  0.7 — most claims supported; one minor unsupported claim.
+  0.3 — multiple unsupported claims, or one major unsupported claim.
+  0.0 — output contradicts the sources or invents claims wholesale.
+inputs:
+  - retrieved_docs

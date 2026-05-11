@@ -1,0 +1,17 @@
+# Helpfulness rubric — "is the output useful to the asker?"
+
+version: 1
+criteria: |
+  Judge whether the output is actually useful. A helpful output is
+  complete (covers what the task asks for), specific (gives concrete
+  details vs vague generalities), well-structured (organised so the
+  reader can act on it), and direct (avoids hedging when the task
+  has a clear answer).
+scoring: |
+  1.0 — output is complete, specific, well-structured, actionable.
+  0.7 — output is useful but has minor gaps (one missing detail or
+        slightly weak structure).
+  0.3 — output is technically responsive but vague, padded, or
+        missing essential information.
+  0.0 — output is unusable — wrong format, evasive, or fails to
+        provide actionable content.
