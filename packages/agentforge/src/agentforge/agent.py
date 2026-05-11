@@ -33,6 +33,7 @@ from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.observability import get_tracer
 from agentforge_core.production.budget import BudgetPolicy
 from agentforge_core.production.exceptions import (
     AgentForgeError,
@@ -222,68 +223,88 @@ class Agent:
         token = bind_run(ctx)
         started_ms = time.monotonic()
         finish_reason: FinishReason = "completed"
+        # Root span for the whole run. When no OTel SDK is installed
+        # this is a no-op `NonRecordingSpan` — near-zero cost. With
+        # `agentforge-otel` installed, this becomes the parent of
+        # every strategy.iteration / llm.call / tool.<name> span the
+        # framework emits.
+        tracer = get_tracer()
         try:
-            # Construct a fresh BudgetPolicy per run so per-run mutable
-            # state (spent_usd, iteration, error_streak) doesn't leak
-            # across runs of the same Agent instance.
-            run_budget = BudgetPolicy(
-                usd=self._budget.usd,
-                max_tokens=self._budget.max_tokens,
-                max_iterations=self._budget.max_iterations,
-                error_streak_limit=self._budget.error_streak_limit,
-            )
-            metadata: dict[str, object] = {}
-            if self._llm is not None:
-                metadata[RUNTIME_KEY] = RuntimeContext(
-                    llm=self._llm,
-                    tools=tuple(self._tools),
-                    memory=self._memory,
-                    budget=run_budget,
-                    system_prompt=self._system_prompt,
-                    retriever=self._retriever,
-                    graph_store=self._graph_store,
+            with tracer.start_as_current_span(
+                "agent.run",
+                attributes={
+                    "agentforge.run_id": ctx.run_id,
+                    "agentforge.task": task,
+                },
+            ) as run_span:
+                # Construct a fresh BudgetPolicy per run so per-run mutable
+                # state (spent_usd, iteration, error_streak) doesn't leak
+                # across runs of the same Agent instance.
+                run_budget = BudgetPolicy(
+                    usd=self._budget.usd,
+                    max_tokens=self._budget.max_tokens,
+                    max_iterations=self._budget.max_iterations,
+                    error_streak_limit=self._budget.error_streak_limit,
                 )
-            state = AgentState(
-                run_id=ctx.run_id,
-                task=task,
-                metadata=metadata,
-            )
-            try:
-                await self._strategy.run(state)
-            except BudgetExceeded:
-                finish_reason = "budget_exceeded"
-                raise
-            except GuardrailViolation:
-                finish_reason = "guardrail"
-                raise
-            except AgentForgeError:
-                finish_reason = "error"
-                raise
-            finally:
-                # Fire `on_step` for every step the strategy appended,
-                # even on error paths — observability of the partial
-                # trace is just as important as the happy path.
-                await self._fire_steps(list(state.steps))
-            duration_ms = int((time.monotonic() - started_ms) * 1000)
-            output = self._extract_output(state)
-            tokens_in = sum(s.tokens_in for s in state.steps)
-            tokens_out = sum(s.tokens_out for s in state.steps)
-            interim = RunResult(
-                output=output,
-                steps=tuple(state.steps),
-                cost_usd=run_budget.spent_usd,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                run_id=ctx.run_id,
-                duration_ms=duration_ms,
-                finish_reason=finish_reason,
-            )
-            eval_scores = await self._run_evaluators(
-                interim, task=task, state=state, budget=run_budget
-            )
-            result = interim.model_copy(update={"eval_scores": eval_scores})
-            await self._fire_finish(result)
-            return result
+                metadata: dict[str, object] = {}
+                if self._llm is not None:
+                    metadata[RUNTIME_KEY] = RuntimeContext(
+                        llm=self._llm,
+                        tools=tuple(self._tools),
+                        memory=self._memory,
+                        budget=run_budget,
+                        system_prompt=self._system_prompt,
+                        retriever=self._retriever,
+                        graph_store=self._graph_store,
+                    )
+                state = AgentState(
+                    run_id=ctx.run_id,
+                    task=task,
+                    metadata=metadata,
+                )
+                try:
+                    await self._strategy.run(state)
+                except BudgetExceeded:
+                    finish_reason = "budget_exceeded"
+                    raise
+                except GuardrailViolation:
+                    finish_reason = "guardrail"
+                    raise
+                except AgentForgeError:
+                    finish_reason = "error"
+                    raise
+                finally:
+                    # Fire `on_step` for every step the strategy appended,
+                    # even on error paths — observability of the partial
+                    # trace is just as important as the happy path.
+                    await self._fire_steps(list(state.steps))
+                duration_ms = int((time.monotonic() - started_ms) * 1000)
+                output = self._extract_output(state)
+                tokens_in = sum(s.tokens_in for s in state.steps)
+                tokens_out = sum(s.tokens_out for s in state.steps)
+                interim = RunResult(
+                    output=output,
+                    steps=tuple(state.steps),
+                    cost_usd=run_budget.spent_usd,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    run_id=ctx.run_id,
+                    duration_ms=duration_ms,
+                    finish_reason=finish_reason,
+                )
+                eval_scores = await self._run_evaluators(
+                    interim, task=task, state=state, budget=run_budget
+                )
+                result = interim.model_copy(update={"eval_scores": eval_scores})
+                # Tag the root span with the run summary before it closes.
+                run_span.set_attribute("agentforge.finish_reason", finish_reason)
+                run_span.set_attribute("agentforge.cost_usd", result.cost_usd)
+                run_span.set_attribute("agentforge.tokens_in", result.tokens_in)
+                run_span.set_attribute("agentforge.tokens_out", result.tokens_out)
+                run_span.set_attribute("agentforge.duration_ms", result.duration_ms)
+                run_span.set_attribute("agentforge.n_steps", len(result.steps))
+                await self._fire_finish(result)
+                return result
         finally:
             reset_run(token)
 
