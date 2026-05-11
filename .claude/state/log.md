@@ -1050,3 +1050,54 @@ Tooling notes:
   every new workspace member.
 
 Ready to push and raise PR #22.
+
+---
+
+## 2026-05-12T05:30 — feat-019 chunk 8 done, PR pending
+
+All eight chunks of feat-019 landed on
+`feat/019-developer-experience-and-ai-rules`:
+
+- `85aaf70` — chunk 1: three-section managed/custom file
+  format with `split_three_section` / `merge_three_section`
+  helpers + the `<!-- agentforge:end-managed -->` /
+  `<!-- agentforge:custom -->` markers.
+- `58663de` — chunk 2: `inject_shared_scaffold` post-render
+  hook walks `agentforge.templates._shared`, renders `.tmpl`
+  files through Jinja, prepends markers, extends the lock.
+  Wired into `agentforge new`.
+- `5302bc1` — chunk 3: AGENTS.md.tmpl (~115 lines) + CLAUDE.md
+  + .cursorrules. AGENTS.md is the canonical AI-rules document;
+  the other two are thin pointers. All three use the three-
+  section format.
+- `8cf6412` — chunk 4: runbooks 01-05 (set-up, add-tool,
+  add-pipeline-task, pick-strategy, write-prompts).
+- `f5d4812` — chunk 5: runbooks 06-10 (test, debug, add-memory,
+  add-mcp, add-evaluators).
+- `7d03021` — chunk 6: runbooks 11-16 + README index (safety,
+  observability, multi-provider, deploy, upgrade, config-ref).
+- `1cc3fa9` — chunk 7: `agentforge docs` CLI (list / open by
+  stem/number/alias / `--check` drift / `--serve` local HTTP).
+- (about-to-commit) chunk 8: spec status → shipped + §10
+  Implementation Status table + §11 Runbook; features README;
+  roadmap; CHANGELOG `[Unreleased]/Added`; state refreshed.
+
+Deviations captured in spec §10:
+
+- Post-Copier injection step rather than Copier primitives —
+  Copier lacks clean cross-template `_extra_paths`.
+- AGENTS.md `module_list` ships empty for now; auto-population
+  is follow-up.
+- `--serve` is bare `SimpleHTTPRequestHandler` (no markdown
+  rendering).
+- CI link-check + TS port deferred.
+
+Tooling notes:
+- Jinja2 `autoescape=False` is intentional: markdown / YAML
+  output, never HTML in a browser. Bandit B701 + ruff S701
+  both noqa'd at the call site.
+- `subprocess.run([editor, path])` in `docs <topic>` is
+  argv-form with `$EDITOR` from the user's own environment;
+  bandit B404/B603 noqa'd.
+
+Ready to push and raise PR #23.

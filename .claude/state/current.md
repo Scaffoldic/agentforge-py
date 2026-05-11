@@ -3,8 +3,8 @@ feature: none
 state: idle
 branch: main
 started_at: null
-last_milestone_at: 2026-05-12T03:00
-last_shipped: feat-018 shipped via PR #22 (awaiting merge)
+last_milestone_at: 2026-05-12T05:30
+last_shipped: feat-019 shipped via PR #23 (awaiting merge)
 blocker: null
 flags_for_user: []
 ---
@@ -15,47 +15,48 @@ flags_for_user: []
 
 ## Last shipped
 
-[`feat-018 — Safety guardrails`](../../docs/features/feat-018-safety-and-security-guardrails.md)
-shipped in PR #22 with full Python scope:
+[`feat-019 — Developer experience + AI rules`](../../docs/features/feat-019-developer-experience-and-ai-rules.md)
+shipped in PR #23 with full Python scope:
 
-- ABCs (`InputValidator` / `OutputValidator` / `ToolCallGate`) +
-  `ValidationResult` value + `GuardrailPolicy` schema model +
-  `GuardrailsConfig` + `GuardrailEntry`.
-- Built-in basics: `prompt_injection_basic`, `pii_redact_basic`,
-  `capability_check`, `allowlist`. Auto-registered with the
-  Resolver under `guardrails.{input,output,tool_gates}`.
-- `GuardrailEngine` wrapping LLM + tools transparently; audit
-  channel emits one log record per decision plus
-  `RunResult.guardrail_events`.
-- Conformance harnesses for all three ABCs.
-- Four sister packages: `agentforge-guard-llmguard`,
-  `agentforge-guard-presidio`, `agentforge-guard-nemo`,
-  `agentforge-guard-llamaguard`. Each wraps the upstream SDK
-  behind a `Runner` protocol so tests don't need the SDK.
+- Three-section managed/custom file format
+  (`split_three_section` / `merge_three_section`) so framework-
+  owned documents survive upgrades with developer-owned
+  customisations intact.
+- `inject_shared_scaffold(dst, template_name, template_version)`
+  post-render hook: walks `agentforge.templates._shared`,
+  renders `.tmpl` files through Jinja, prepends marker headers,
+  extends the managed-files lock.
+- AGENTS.md (~115 lines) + CLAUDE.md + .cursorrules shipped in
+  every scaffold. AGENTS.md covers file ownership, architecture
+  invariants, runbook table, anti-patterns, pre-commit checks.
+- 16 runbooks under `_shared/docs/runbooks/` (01-set-up through
+  16-configuration-reference) + index README.
+- `agentforge docs` CLI: list / open by stem/number/alias /
+  `--check` drift / `--serve` local HTTP.
 
-Deviations recorded in the spec §10:
+Deviations recorded in spec §10:
 
-- `GuardrailPolicy` lives in `config.schema` (not `values/`) to
-  avoid an import cycle through `values.state`.
-- String-form `GuardrailEntry` normalisation deferred (loader
-  expects dicts today).
-- `modules.guardrails.defaults: true` auto-install of built-ins
-  deferred to a follow-up tied to `build_agent_from_config`.
-- Latency benchmarking deferred (waits on `eval --bench`).
-- TS port deferred.
-- Audit sampling / dedicated stream split deferred (events go to
-  stdlib `agentforge.audit` logger).
+- Shared injection is a post-Copier step (Copier lacks clean
+  cross-template `_extra_paths`).
+- Modules list in AGENTS.md is empty for now (auto-populating
+  from `pyproject.toml` + `modules.*` is follow-up).
+- `agentforge docs --serve` uses stdlib `SimpleHTTPRequestHandler`
+  (no markdown rendering).
+- CI link-check deferred.
+- TypeScript port deferred.
 
 ## Next pick candidates (canonical numbering)
 
-- **feat-019** — Developer experience (16 runbooks + AGENTS.md /
-  CLAUDE.md / .cursorrules shipped with every scaffold).
-  Depends on feat-011 (✓) + feat-017 (✓).
 - **feat-013** — MCP integration (consume MCP tool servers +
-  expose agent tools as MCP).
-- **feat-015** — Pipelines & deterministic tasks.
-- **feat-014** / **feat-020** — see specs.
-- Vendor observability sub-feats (langfuse/phoenix/evidently/statsd).
+  expose agent tools as MCP). v0.2-target.
+- **feat-015** — Pipelines & deterministic tasks (Pipeline +
+  Task ABC + parallel/sequential execution). v0.2-target.
+- **feat-014** — A2A (agent-to-agent) protocol support.
+  v0.4-target.
+- **feat-020** — Chat agents (`ChatSession` + history stores +
+  HTTP/WebSocket/SSE server). v0.2-target.
+- Vendor observability sub-feats (langfuse/phoenix/evidently/
+  statsd).
 
 User selects on session resume.
 
