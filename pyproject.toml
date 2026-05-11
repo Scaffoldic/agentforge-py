@@ -215,6 +215,8 @@ module = [
     "presidio_anonymizer.*",
     "nemoguardrails",
     "nemoguardrails.*",
+    "mcp",
+    "mcp.*",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"

@@ -14,5 +14,6 @@ Two surfaces:
 from __future__ import annotations
 
 from agentforge_mcp.adapter import MCPToolAdapter
+from agentforge_mcp.client import MCPServerClient
 
-__all__ = ["MCPToolAdapter"]
+__all__ = ["MCPServerClient", "MCPToolAdapter"]
