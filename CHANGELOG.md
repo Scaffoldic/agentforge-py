@@ -76,6 +76,22 @@ release tag bumps every workspace member to the same minor version.
   `budget_usd=` and `max_iterations=`, not a `budget=` kwarg. Same
   fix applied while authoring feat-001's runbook.
 
+  **Forward-reference hygiene:** every runbook eventually mentions
+  unshipped features (feat-006 evaluators, feat-011 scaffolding,
+  feat-012 config, feat-018 safety, feat-020 chat agents) and
+  backlog packages (anthropic / openai / ollama provider drivers,
+  serper / tavily tool packs). To keep those references from rotting:
+  - **AGENTS.md** gets a new workflow rule — every feature PR runs
+    `git grep -nE 'feat-NNN|<backlog-pkg-names>' docs/features/*.md`
+    for its own number and any backlog packages it ships, and
+    rewrites every match so the runbooks reflect the now-shipped
+    surface.
+  - **`.claude/checklists/pre-pr.md`** gains the same line as a
+    blocking checklist item.
+  - The boilerplate "Audience…When feat-011/019 ship…" preamble on
+    each runbook is rephrased to be tense-neutral so it doesn't
+    decay even if feat-011/019 slip.
+
 ### Added
 
 - **feat-007 — Production rails (`FallbackChain` only).** Closes

@@ -454,9 +454,9 @@ TypeScript port pending.
 ## Runbook
 
 Audience: agent developers using AgentForge to build production
-agents. Task-oriented. When feat-011 (Copier scaffolding) and
-feat-019 (runbook system) ship, this section is consumed by the
-templating engine and rendered into scaffolded agent projects.
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
 
 ### How do I create the smallest working agent?
 

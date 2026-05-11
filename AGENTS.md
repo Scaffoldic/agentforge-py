@@ -104,6 +104,14 @@ Don't reference anything outside this repo.
   sections and renders proper runbook files into scaffolded agent
   projects. Authoring inline avoids the bootstrap problem of
   retroactive runbook debt.
+- **Every feature PR sweeps forward references to its feat-NNN
+  out of existing runbooks.** Before opening the PR, run
+  `git grep -nE 'feat-NNN|backlog|will ship|will land|will gate|not yet shipped' docs/features/*.md`
+  against the feature's own number (and any backlog package
+  names it ships, e.g. `agentforge-anthropic`). Update or delete
+  every match so the runbooks reflect the now-shipped surface
+  rather than the past-tense "when this lands…" caveat. Same
+  applies when a backlog package ships under a feature.
 - **Every feature PR updates `.claude/state/current.md` and appends
   to `.claude/state/log.md`** at every milestone (analysis,
   design-approved, chunk-complete, PR-raised, shipped). The state
