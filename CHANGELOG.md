@@ -19,6 +19,70 @@ release tag bumps every workspace member to the same minor version.
 > mapping and deviations are documented in the canonical spec's
 > Implementation section. See `docs/roadmap.md` for the policy.
 
+### Added
+
+- **feat-008 — Findings & output shapes.** Ships the four
+  built-in `Finding` variants and their renderers, plus a
+  registry for dispatch. The `Finding` Protocol itself shipped
+  earlier under feat-001.
+
+  *New in `agentforge` (runtime):*
+  - **`SimpleFinding`** — severity / category / message /
+    recommendation / file / line / rule_id / metadata. The
+    default variant for issue-list outputs (code review, audits,
+    lints).
+  - **`PatchFinding`** — wraps a structured `Patch` with
+    rationale + `confidence` (validated to `[0, 1]`). For
+    refactor bots, codemod agents, auto-fix suggestions.
+  - **`NarrativeFinding`** — markdown `body` + `references` list.
+    For docs Q&A, research summaries, explanatory output.
+  - **`MultiSpanFinding`** — one logical issue across `>=1`
+    `Span`s (file + line range + excerpt). For cross-file
+    findings like "hard-coded secret in 3 files".
+  - **`Patch`** (file + diff + hunk_count), **`Span`** (file +
+    start/end line + excerpt) — helper value types two variants
+    embed. `Span` enforces `end_line >= start_line` at
+    construction.
+  - All six are **frozen Pydantic v2 models** (deviation from
+    spec §4.2's `@dataclass`; ADR-0014 supersedes — see the
+    Implementation section in the spec for the rationale). Each
+    has `to_dict()` (delegates to `model_dump(mode="json")`) and
+    a `classmethod from_dict(d)` for typed round-trip.
+  - **`RendererRegistry`** — maps `Finding` (sub)types to
+    `FindingRenderer`s via isinstance-based **most-specific-wins**
+    dispatch. `register(type, renderer)` (replaces in-place on
+    re-registration, preserving order); `get(finding)` (raises
+    `MissingRendererError` on no match); `registered_types()`
+    diagnostic.
+  - **`RendererRegistry.default()`** — factory pre-populated with
+    the four built-in renderers. The common case for agent code.
+  - Four built-in renderers, one per variant: **`ScorecardRenderer`**
+    (text: severity-tagged line; markdown: GFM table row),
+    **`PatchApplierRenderer`** (text: header + unified diff;
+    markdown: same wrapped in a fenced ` ```diff ` block — does
+    not apply the patch), **`MarkdownRenderer`** (text: prose with
+    "References:" footer; markdown: heading + body + `###
+    References`), **`SpanTableRenderer`** (text: per-span block;
+    markdown: pipe-escaped GFM table + Recommendation footer).
+  - All renderers support `"text"` and `"markdown"` formats;
+    unknown formats raise `ValueError`. Each overrides
+    `supports(finding_type)` so a custom variant subclassing a
+    built-in routes through the same renderer.
+
+  *New in `agentforge-core` (Tier-1 contract):*
+  - **`FindingRenderer`** ABC — single abstract method
+    `render(finding, format="text") -> str` plus a default
+    `supports(finding_type) -> bool` (returns False; subclasses
+    pin to specific variants). Adding methods to the ABC requires
+    a major bump under ADR-0007.
+
+  Top-level re-exports from `agentforge`: `SimpleFinding`,
+  `PatchFinding`, `NarrativeFinding`, `MultiSpanFinding`, `Patch`,
+  `Span`, `RendererRegistry`, `ScorecardRenderer`,
+  `PatchApplierRenderer`, `MarkdownRenderer`, `SpanTableRenderer`,
+  `MissingRendererError`. `FindingRenderer` is re-exported from
+  `agentforge_core` top-level.
+
 ### Changed
 
 - **Project structure made self-contained for AI assistants.** Moved
