@@ -1,0 +1,52 @@
+# Copier template: minimal AgentForge agent (feat-011).
+#
+# Simplest working starter: one Agent, one tool, one test. No
+# persistence, no evaluators, no observability. Good for proofs of
+# concept and for learning what a working agent looks like.
+
+_min_copier_version: "9.4.0"
+
+# Render the answer file so `agentforge upgrade` knows what to ask.
+_answers_file: ".agentforge-state/answers.yml"
+
+# Render every file's content as a Jinja template (Cookiecutter-
+# style). Default (templates_suffix=".jinja") would force every
+# file to be named `foo.py.jinja`, which is ugly.
+_templates_suffix: ""
+
+# No `_subdirectory` — template files live at the root and render
+# directly into the destination directory. The CLI passes
+# `dst_path = ./<project_slug>` so the rendered output has a clean
+# project root.
+
+project_name:
+  type: str
+  help: "Human-readable project name (e.g. 'My PR Reviewer')."
+  default: "My Agent"
+
+project_slug:
+  type: str
+  help: "Python package + directory name (kebab-case-ok, becomes snake_case in Python imports)."
+  default: "my-agent"
+  validator: >-
+    {% if not (project_slug | regex_search('^[a-z][a-z0-9-]*$')) %}
+    Must be lowercase alphanumeric + dashes, starting with a letter.
+    {% endif %}
+
+llm_provider:
+  type: str
+  help: "Which LLM provider to use?"
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  help: "One-line description of the agent."
+  default: "An AgentForge agent."
+
+# Template metadata pulled into the lock-file marker header by the
+# `agentforge new` CLI after Copier finishes rendering.
+_template_name: "minimal"

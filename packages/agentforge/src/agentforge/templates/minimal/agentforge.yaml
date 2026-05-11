@@ -1,0 +1,10 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  budget:
+    usd: 2.0
+  max_iterations: 25
+
+logging:
+  level: "INFO"
+  format: "text"

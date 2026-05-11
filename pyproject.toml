@@ -70,7 +70,7 @@ dev = [
 [tool.ruff]
 target-version = "py313"
 line-length = 100
-extend-exclude = ["docs", ".venv"]
+extend-exclude = ["docs", ".venv", "packages/agentforge/src/agentforge/templates"]
 
 [tool.ruff.lint]
 # Enable a broad rule set; quiet the few that conflict with our idioms.
@@ -132,6 +132,10 @@ plugins = ["pydantic.mypy"]
 mypy_path = ["packages/agentforge-core/src", "packages/agentforge/src"]
 namespace_packages = true
 explicit_package_bases = true
+# feat-011: Copier templates contain `{{project_slug}}` directories
+# and `*.jinja`-templated Python files that aren't valid Python
+# packages. Exclude them from mypy scanning.
+exclude = ["packages/agentforge/src/agentforge/templates/"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
