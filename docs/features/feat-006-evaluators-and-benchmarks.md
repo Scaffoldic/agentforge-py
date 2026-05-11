@@ -338,10 +338,14 @@ G-Eval module Python first; TS at 0.4.
 - **`agentforge eval` CLI** + fixture-runner — feat-017.
 - **Configuration loading** of evaluators from `agentforge.yaml`
   (`agent.evaluators: ["faithfulness", ...]`) — feat-012.
-- **String-name resolution** through the resolver (`Agent(evaluators=
-  ["coverage"])` constructing the grader by name) — needs feat-010
-  (Module discovery). Today, agents pass constructed grader
-  instances.
+- **String-name resolution at the Agent constructor**: today,
+  agents pass constructed grader instances
+  (`Agent(evaluators=[Coverage(reference={...})])`). feat-010 has
+  shipped the resolver's entry-point discovery, so the named
+  graders are findable via `Resolver.resolve("evaluators",
+  "coverage")` — wiring `Agent(evaluators=["coverage", ...])` to
+  go through the resolver is a small Agent-level follow-up; the
+  resolver work itself is done.
 - **`agentforge-eval-ragas`**, **`agentforge-eval-deepeval`**,
   **`agentforge-eval-toxicity`**, **`agentforge-eval-codeexec`**
   adapter packages.

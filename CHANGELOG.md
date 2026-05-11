@@ -21,6 +21,65 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-010 — Module discovery & resolution (runtime + read-only CLI).**
+  The resolver shipped under feat-001 with an in-process registry
+  only. This feature wires it to Python entry points so `pip install
+  agentforge-X` makes a module discoverable without an explicit
+  import, plus ships the first `agentforge` CLI command. Destructive
+  commands (`add` / `swap` / `remove`) depend on feat-012
+  (Configuration system) for manifest application + config-schema
+  validation and are deferred to a follow-up sub-feat.
+
+  *New in `agentforge-core`:*
+  - **`ModuleInfo`** frozen Pydantic value type
+    (`agentforge_core.values.module`) — `category`, `name`,
+    `package` (distribution name), `version`, `cls_qualname`.
+  - **`agentforge_core.resolver.discover`** — entry-point scanner:
+    - `discover_entry_points(resolver, force=False)` walks all
+      `agentforge.*` groups via `importlib.metadata.entry_points()`,
+      registers each as `(category=group_suffix, name=ep.name,
+      cls=ep.load())`, and caches `ModuleInfo` per entry.
+    - `ensure_discovered(resolver)` — lazy hook the resolver's own
+      methods call, so discovery runs once per process without an
+      explicit bootstrap.
+    - `reset_discovery()` — for tests that install fake entry
+      points or want a fresh scan.
+    - Conflict handling: first-wins, WARN logged via
+      `agentforge.resolver`. Load failures and non-class targets
+      are skipped with WARN, not fatal.
+  - **`Resolver.list_installed(category=None) -> list[ModuleInfo]`**
+    returns every registered module with provenance metadata.
+  - **`Resolver.clear()`** semantics adjusted — empties the
+    registry only; call `reset_discovery()` separately for a fresh
+    entry-point scan. The old behaviour would have broken tests
+    that rely on import-time `@register` decorators.
+  - Top-level re-exports from `agentforge_core`: `ModuleInfo`,
+    `discover_entry_points`, `reset_discovery`.
+
+  *New in `agentforge`:*
+  - **`agentforge.cli`** subpackage — argparse-based CLI
+    dispatcher. No third-party CLI dep.
+  - **`agentforge list modules [--category <cat>] [--json]`**
+    command — triggers the resolver's discovery and prints a
+    grouped-by-category text table (or JSON list of `ModuleInfo`).
+    Entry-point sources are annotated with their package + version;
+    `@register`-only classes show as `(in-process)`. Empty
+    registry prints a remediation hint.
+  - **`[project.scripts]` entry point**:
+    `agentforge = "agentforge.cli.main:main"`. Uses uv's existing
+    console-script machinery — no extra deps.
+
+  *Knock-on docs updates (forward-ref sweep per AGENTS.md rule):*
+  - `feat-003` (LLM providers) — custom-provider runbook entry
+    rewritten: feat-010 has now shipped the auto-load mentioned as
+    the deferred dependency.
+  - `feat-004` (Tools) — "Entry-point auto-loading of third-party
+    tool packages" moved out of "What's not yet implemented" with
+    a note pointing to `agentforge list modules`.
+  - `feat-006` (Evaluators) — "String-name resolution... needs
+    feat-010" reworded to note the resolver work is now done; only
+    the Agent-level wiring for `evaluators=[...]` strings remains.
+
 - **feat-009 — Observability (OTel only).** Ships the framework-
   side observability wiring + the `agentforge-otel` package. Vendor-
   specific backends (Langfuse, Phoenix, Evidently, StatsD) are

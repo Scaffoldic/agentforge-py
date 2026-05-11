@@ -345,8 +345,6 @@ gate destructive tool use.
 
 ### What's *not* yet implemented
 
-- Entry-point auto-loading of third-party tool packages — that's
-  feat-010 (Module discovery).
 - MCP bridging (`@tool` ↔ MCP server endpoints) — feat-013.
 - Tool-level rate limiting — feat-018 (Safety).
 - TypeScript port of the entire feat-004 surface.
@@ -355,6 +353,11 @@ feat-009 shipped per-tool cost attribution via the OTel hook —
 `OpenTelemetryHook` emits `agent.tool_call` span events tagging
 `agentforge.tool.name` + redacted args. Install `agentforge-otel`
 and the costs flow to whatever OTel collector you point at.
+
+feat-010 shipped entry-point auto-loading — tool packages that
+register classes under `agentforge.tools` show up in
+`agentforge list modules` and are picked up by the resolver
+without any explicit imports.
 
 ---
 
