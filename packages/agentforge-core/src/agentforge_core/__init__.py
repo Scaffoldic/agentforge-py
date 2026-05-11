@@ -45,6 +45,12 @@ from agentforge_core.production import (
     reset_run,
     uninstall_run_id_filter,
 )
+
+# Imported from the submodule directly (not via production/__init__)
+# to avoid a circular import — see the comment in production/__init__.py
+# for the chain. This import runs *after* production finishes, so
+# LLMClient is already available.
+from agentforge_core.production.fallback import FallbackChain
 from agentforge_core.resolver import (
     Resolver,
     parse_model_string,
@@ -92,6 +98,7 @@ __all__ = [
     "EmbeddingResponse",
     "EvalResult",
     "Evaluator",
+    "FallbackChain",
     "Finding",
     "FinishReason",
     "GraphEdge",
