@@ -11,5 +11,6 @@ the runtime is asked to look up a grader by string.
 from __future__ import annotations
 
 from agentforge.eval.coverage import Coverage
+from agentforge.eval.format_compliance import FormatCompliance
 
-__all__ = ["Coverage"]
+__all__ = ["Coverage", "FormatCompliance"]
