@@ -35,11 +35,22 @@ from __future__ import annotations
 
 from agentforge._testing.fake_llm import FakeLLMClient, echo_response
 from agentforge._testing.fake_tool import FakeTool
-from agentforge.testing.llm import MockLLMClient
+from agentforge.testing.conformance import (
+    run_memory_conformance,
+    run_strategy_conformance,
+    run_vector_conformance,
+)
+from agentforge.testing.factory import agent_factory
+from agentforge.testing.llm import MockLLMClient, ScriptedResponse
 
 __all__ = [
     "FakeLLMClient",
     "FakeTool",
     "MockLLMClient",
+    "ScriptedResponse",
+    "agent_factory",
     "echo_response",
+    "run_memory_conformance",
+    "run_strategy_conformance",
+    "run_vector_conformance",
 ]
