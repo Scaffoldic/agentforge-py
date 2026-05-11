@@ -13,6 +13,7 @@ members = [
     "agentforge-bedrock",
     "agentforge-core",
     "agentforge-eval-geval",
+    "agentforge-guard-llamaguard",
     "agentforge-guard-llmguard",
     "agentforge-guard-nemo",
     "agentforge-guard-presidio",
@@ -94,6 +95,17 @@ requires-dist = [
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+
+[[package]]
+name = "agentforge-guard-llamaguard"
+version = "0.0.0"
+source = { editable = "packages/agentforge-guard-llamaguard" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
 
 [[package]]
 name = "agentforge-guard-llmguard"
@@ -231,6 +243,7 @@ dependencies = [
     { name = "agentforge-bedrock" },
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
+    { name = "agentforge-guard-llamaguard" },
     { name = "agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo" },
     { name = "agentforge-guard-presidio" },
@@ -262,6 +275,7 @@ requires-dist = [
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-guard-llamaguard", editable = "packages/agentforge-guard-llamaguard" },
     { name = "agentforge-guard-llmguard", editable = "packages/agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo", editable = "packages/agentforge-guard-nemo" },
     { name = "agentforge-guard-presidio", editable = "packages/agentforge-guard-presidio" },
