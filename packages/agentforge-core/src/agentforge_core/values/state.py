@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from agentforge_core.contracts.evaluator import EvalResult
 from agentforge_core.values.messages import ToolCall
 
 StepKind = Literal[
@@ -99,3 +100,11 @@ class RunResult(BaseModel):
     duration_ms: int = Field(ge=0)
     finish_reason: FinishReason = "completed"
     metadata: dict[str, Any] = Field(default_factory=dict)
+    eval_scores: tuple[EvalResult, ...] = ()
+    """Per-evaluator `EvalResult` from the post-run evaluator pass.
+
+    Ordered by the order evaluators were configured on the Agent.
+    Empty when no evaluators ran (no `evaluators=` passed) or when
+    every evaluator was budget-skipped. See feat-006 §4.3 for the
+    cost-gating rule.
+    """
