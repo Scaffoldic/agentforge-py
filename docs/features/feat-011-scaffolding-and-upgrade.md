@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-011 |
 | **Title** | Scaffolding & upgrade — `agentforge new`, `agentforge upgrade`, `agentforge fork`, six starter templates |
-| **Status** | proposed |
+| **Status** | shipped (Python — `new` + 6 templates + `upgrade` + `fork`/`unfork`/`status`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 (`new`), 0.3 (`upgrade`, `fork`) |
@@ -216,7 +216,122 @@ failure.
 - Auto-detection of "missing optimisation" (e.g. "this agent could benefit
   from caching"). Out of scope; future linter-style tool.
 
-## 10. References
+## 10. Implementation status (Python)
+
+Shipped in PR #19 against the `agentforge` package — CLI commands
+`new`, `upgrade`, `fork`, `unfork`, `status` plus six starter
+templates rendered via Copier.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `d07714e` | Copier dep + `agentforge new` + `minimal` template + 6 unit tests |
+| 2 | `1207568` | 5 more templates (`code-reviewer`, `patch-bot`, `docs-qa`, `triage`, `research`) + parametrised template smoke tests |
+| 3–5 | `9ce6a5c` | `.agentforge-state/managed-files.lock` + marker headers + `upgrade` (Copier three-way merge) + `fork`/`unfork`/`status` + 23 unit tests |
+| 6 | (this PR) | Spec status + Runbook + roadmap + CHANGELOG + state files |
+
+### Deviations from the design
+
+- **Templates ship inside the `agentforge` wheel**, not from a
+  separate `agentforge-templates` repo. The spec's §4.4 design
+  anticipated cloning a git repo; instead Copier renders from
+  `importlib.resources.files("agentforge.templates")`. This keeps
+  v0.x installs self-contained — no network for `agentforge new`,
+  no version-skew between framework and templates. The git-repo
+  story stays available for v1.x if independent template versioning
+  becomes valuable.
+- **`agentforge upgrade` does not pin a specific framework version.**
+  `--to` is plumbed through to Copier's `vcs_ref`, but with
+  in-wheel templates there is no separate template version to pin
+  yet. When templates move out-of-tree this knob becomes load-
+  bearing; today it is forward-compatible.
+- **`unfork` is partially restorative.** It re-prepends the marker
+  and updates the lock but does not re-render template content; the
+  user runs `agentforge upgrade` afterwards to pull template
+  content. The spec's "(lossy)" caveat applies — this implementation
+  defers the lossy overwrite to upgrade rather than doing it
+  in-place.
+- **No `--run-tests` flag on `upgrade` yet.** Surfaced as an open
+  question in §8; deferred until the test-runner integration
+  (post-feat-019) lands.
+
+### Not implemented (deferred)
+
+- **TypeScript engine (ADR-0021).** Out-of-scope for this PR; the
+  Python implementation defines the on-disk contract (lock file
+  shape + marker header format) the TS engine will mirror.
+- **`agentforge add module` reusing the same machinery (§3).**
+  Wired up against feat-012's module registry in a follow-up.
+- **CI upgrade matrix (§7).** No prior versions to upgrade *from*
+  yet; the matrix gets meaningful once v0.1 ships.
+
+## 11. Runbook
+
+### Create a new agent
+
+```bash
+agentforge new my-pr-reviewer --template code-reviewer
+cd my-pr-reviewer
+uv sync
+uv run python -m my_pr_reviewer "review this PR"
+```
+
+Available templates: `minimal`, `code-reviewer`, `patch-bot`,
+`docs-qa`, `triage`, `research`.
+
+### Check what's managed by the framework
+
+```bash
+agentforge status
+```
+
+Prints files grouped by `MANAGED` (template-owned, in sync),
+`FORKED` (you claimed it, upgrades skip it), `DRIFTED` (template-
+owned but you edited it — next upgrade will three-way merge), and
+`MISSING` (template-owned, deleted locally).
+
+### Pull framework updates into an existing agent
+
+```bash
+agentforge upgrade --dry-run        # preview
+agentforge upgrade                   # apply
+agentforge upgrade --to <vcs_ref>   # pin a specific template ref
+```
+
+Copier handles the three-way merge against the answer file's
+recorded template version. Files in `FORKED` state are left
+untouched. The managed-files lock is refreshed afterwards.
+
+### Claim a managed file (skip future upgrades)
+
+```bash
+agentforge fork src/myagent/agent_runtime.py
+```
+
+Strips the `AGENTFORGE-MANAGED:` marker, sets `forked=true` in the
+lock. Future `agentforge upgrade` runs skip this path.
+
+### Release a fork (re-accept framework ownership)
+
+```bash
+agentforge unfork src/myagent/agent_runtime.py
+agentforge upgrade        # re-renders the template content
+```
+
+`unfork` flips the lock flag and re-prepends the marker; `upgrade`
+pulls the current template content (overwriting local edits).
+
+### Troubleshooting
+
+- **`No .agentforge-state/answers.yml`** — the directory wasn't
+  created by `agentforge new`. There is nothing to upgrade.
+- **A managed file shows as `DRIFTED` after a formatter run** — the
+  marker hash no longer matches. Either revert the formatting on
+  that file or `fork` it to claim ownership.
+- **`copier update failed`** — surfaces the underlying Copier
+  exception. Most often a merge conflict in a managed file; resolve
+  by hand or `fork` the file and re-run.
+
+## 12. References
 
 - [`scaffolding-and-upgrade.md`](../design/scaffolding-and-upgrade.md) — full design
 - [`module-system.md`](../design/module-system.md) — manifest format

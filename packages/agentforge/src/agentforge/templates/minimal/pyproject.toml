@@ -1,0 +1,18 @@
+[project]
+name = "{{ project_slug }}"
+version = "0.0.0"
+description = "{{ description }}"
+requires-python = ">=3.13"
+dependencies = [
+    "agentforge",
+{%- if llm_provider == 'bedrock' %}
+    "agentforge-bedrock",
+{%- endif %}
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ project_slug | replace('-', '_') }}"]

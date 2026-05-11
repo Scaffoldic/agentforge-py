@@ -1,0 +1,15 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  system_prompt: |
+    You generate patches. For each fix, emit a `PatchFinding` with
+    a unified-diff `patch`, a one-line `rationale`, and a
+    `confidence` in [0, 1]. Only return patches you can defend with
+    evidence from the source.
+  budget:
+    usd: 5.0
+  max_iterations: 40
+
+logging:
+  level: "INFO"
+  format: "text"

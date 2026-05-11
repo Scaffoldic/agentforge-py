@@ -6,6 +6,13 @@
 
 minimum_pre_commit_version: "3.5.0"
 
+# feat-011 ships Copier templates under
+# `packages/agentforge/src/agentforge/templates/<name>/`. The files
+# inside contain Jinja2 syntax (`{{ ... }}`, `{% ... %}`) and aren't
+# valid Python / YAML / TOML on their own — they're only valid
+# after Copier renders them. Skip every hook against them.
+exclude: '^packages/agentforge/src/agentforge/templates/'
+
 repos:
   # ----------------------------------------------------------------------
   # Generic file hygiene

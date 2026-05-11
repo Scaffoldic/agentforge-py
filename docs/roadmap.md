@@ -38,6 +38,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-009](./features/feat-009-observability.md) | Observability — `on_step` wiring + hook fan-out + error isolation + JSON log format + `agentforge-otel` package (`OpenTelemetryHook`, framework root span) | [#15](https://github.com/Scaffoldic/agentforge-py/pull/15) |
 | [feat-010](./features/feat-010-module-discovery-and-cli.md) | Module discovery + full CLI — entry-point scan, `ModuleInfo`, `Resolver.list_installed`, `agentforge list/add/remove/swap module` commands, manifest-driven module wiring | [#16](https://github.com/Scaffoldic/agentforge-py/pull/16) (read-only) + (this PR — destructive CLI) |
 | [feat-012](./features/feat-012-configuration-system.md) | Configuration system — widened root schema (`agent` + `modules` + `providers` + `output`), `BudgetConfig` (replaces flat `budget_usd`), layered env files, dotted-path overrides, `AGENTFORGE_CONFIG` / `AGENTFORGE_LOG_LEVEL` shortcuts, module-side schema integration, `agentforge config {validate,show,schema}` CLI | [#17](https://github.com/Scaffoldic/agentforge-py/pull/17) |
+| [feat-011](./features/feat-011-scaffolding-and-upgrade.md) | Scaffolding & upgrade — `agentforge new` + 6 starter templates (minimal, code-reviewer, patch-bot, docs-qa, triage, research) rendered via Copier, `.agentforge-state/managed-files.lock` + `AGENTFORGE-MANAGED:` marker headers, `agentforge upgrade` (Copier three-way merge), `agentforge fork`/`unfork`/`status` | [#19](https://github.com/Scaffoldic/agentforge-py/pull/19) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -51,7 +52,7 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **feat-011 through feat-020** — see specs under
+- **feat-013 through feat-020** — see specs under
   [`docs/features/`](./features/).
 
 ### feat-009 vendor-package sub-feats (deferred)
