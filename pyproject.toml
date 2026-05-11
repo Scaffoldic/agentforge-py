@@ -31,6 +31,7 @@ dependencies = [
     "agentforge-eval-geval",
     "agentforge-otel",
     "agentforge-testing",
+    "agentforge-guard-llmguard",
 ]
 
 [tool.uv.workspace]
@@ -47,6 +48,7 @@ agentforge-memory-postgres = { workspace = true }
 agentforge-eval-geval = { workspace = true }
 agentforge-otel = { workspace = true }
 agentforge-testing = { workspace = true }
+agentforge-guard-llmguard = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -191,6 +193,26 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_memory_postgres.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-018: llm-guard / presidio / nemoguardrails / Llama Guard SDKs
+# either ship without py.typed or aren't installed by default
+# (vendor modules import them lazily). Skip strict typechecks for
+# their `*.input_scanners.*`, `*.evaluate`, etc. trees.
+[[tool.mypy.overrides]]
+module = [
+    "llm_guard",
+    "llm_guard.*",
+    "presidio_analyzer",
+    "presidio_analyzer.*",
+    "presidio_anonymizer",
+    "presidio_anonymizer.*",
+    "nemoguardrails",
+    "nemoguardrails.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+
 # The opentelemetry-exporter-otlp-proto-grpc shipped package doesn't
 # carry py.typed. opentelemetry-api/sdk do ship typed stubs, so this
 # override is scoped narrowly to the exporter.
@@ -222,6 +244,7 @@ testpaths = [
     "packages/agentforge-eval-geval/tests",
     "packages/agentforge-otel/tests",
     "packages/agentforge-testing/tests",
+    "packages/agentforge-guard-llmguard/tests",
     "tests",
 ]
 markers = [
@@ -261,6 +284,7 @@ source = [
     "packages/agentforge-eval-geval/src",
     "packages/agentforge-otel/src",
     "packages/agentforge-testing/src",
+    "packages/agentforge-guard-llmguard/src",
 ]
 branch = true
 parallel = true

@@ -13,6 +13,7 @@ members = [
     "agentforge-bedrock",
     "agentforge-core",
     "agentforge-eval-geval",
+    "agentforge-guard-llmguard",
     "agentforge-memory-neo4j",
     "agentforge-memory-postgres",
     "agentforge-memory-sqlite",
@@ -91,6 +92,17 @@ requires-dist = [
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
+
+[[package]]
+name = "agentforge-guard-llmguard"
+version = "0.0.0"
+source = { editable = "packages/agentforge-guard-llmguard" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
 
 [[package]]
 name = "agentforge-memory-neo4j"
@@ -195,6 +207,7 @@ dependencies = [
     { name = "agentforge-bedrock" },
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
+    { name = "agentforge-guard-llmguard" },
     { name = "agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite" },
@@ -223,6 +236,7 @@ requires-dist = [
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-guard-llmguard", editable = "packages/agentforge-guard-llmguard" },
     { name = "agentforge-memory-neo4j", editable = "packages/agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres", editable = "packages/agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite", editable = "packages/agentforge-memory-sqlite" },
