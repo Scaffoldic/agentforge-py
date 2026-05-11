@@ -21,6 +21,80 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-013 — MCP integration (full spec).** New Tier-3 sister
+  package `agentforge-mcp`. Two halves: consume upstream MCP
+  tool servers (stdio + HTTP + SSE) and (optionally) expose
+  this agent's tools as an MCP server.
+
+  *Foundations in `agentforge_mcp._runner`:*
+  - `MCPClientRunner` Protocol (slice of `mcp.ClientSession`):
+    `list_tools`, `call_tool`, `close`.
+  - `MCPServerRunner` Protocol (slice of `mcp.server.Server`):
+    `register_tool`, `serve`, `stop`.
+  - `MCPToolDescriptor` frozen dataclass (name + description +
+    JSON-Schema dict).
+
+  *Consumer (`agentforge_mcp.client`):*
+  - `MCPServerClient(name, runner, tool_filter)` is the bare
+    constructor (tests).
+  - `from_stdio` / `from_http` / `from_sse` factories lazy-
+    import the upstream `mcp` SDK; missing-SDK surfaces
+    `ModuleError` with pip remediation.
+  - `discover_tools()` returns `MCPToolAdapter` instances —
+    each is a synthesised `Tool` subclass whose name is
+    prefixed with the server name (`fs.read_file` /
+    `s3.read_file` — no collisions across servers) and whose
+    `input_schema` is a permissive Pydantic v2 model built
+    from the MCP descriptor.
+  - `tool_filter` restricts the imported subset; empty = all.
+
+  *Exposer (`agentforge_mcp.server`):*
+  - `MCPServer(tools, runner, allowed)` plus
+    `from_stdio` / `from_http` factories. `register_tools()`
+    publishes each whitelisted tool with its description +
+    `model_json_schema()`; an allowlist of `None`/`()` exposes
+    everything, a non-empty tuple is strict-allowlist.
+  - Each registered handler closes over the local `Tool` so
+    inbound MCP requests round-trip back through
+    `tool.run(**args)`.
+
+  *Orchestrator (`agentforge_mcp.bridge`):*
+  - `MCPBridge(clients, server)` ties the two halves together.
+  - `from_config(config)` parses the `modules.protocols.mcp`
+    block; `start()` opens every client + discovers tools +
+    schedules the optional server's `serve()` as an asyncio
+    task; `close()` cancels the task cleanly + closes every
+    client.
+  - Tools land in `bridge.tools` ready to pass to
+    `Agent(tools=...)`.
+
+  *Manifest:* `manifest.yaml` ships so `agentforge add module
+  mcp` registers the protocol entry under
+  `modules.protocols`.
+
+  *Workspace + CI:* new `packages/agentforge-mcp/` member; root
+  `pyproject.toml`, `.pre-commit-config.yaml`, and CI args
+  extended. mypy override added for `mcp.*` (the SDK ships
+  without `py.typed`).
+
+  Production transport runners (`_SDKClientRunner` /
+  `_SDKServerRunner`) are scaffolded but scoped to
+  `# pragma: no cover` and raise `ModuleError("Production MCP
+  runner not implemented yet")` — the framework's first live
+  integration test will wire them; the contract surface is
+  complete via the runner protocols and the
+  fake-runner-driven unit tests.
+
+  Tests: 21 unit cases across `test_adapter`, `test_client`,
+  `test_server`, `test_bridge` — schema synthesis, name
+  prefixing, tool-filter subsets, lazy-import error paths,
+  allowlist semantics, handler round-trips, bridge tool
+  aggregation, lifecycle cancellation.
+
+  *Spec*:
+  `docs/features/feat-013-mcp-integration.md` — Implementation
+  Status §10 + Runbook §11.
+
 - **feat-019 — Developer experience + AI rules.** Every
   `agentforge new` scaffold now ships with 16 task-oriented
   runbooks plus AI-assistant rules (`AGENTS.md`, `CLAUDE.md`,
