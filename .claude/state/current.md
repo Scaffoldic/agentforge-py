@@ -1,9 +1,9 @@
 ---
 feature: feat-010-module-discovery
-state: implementing
+state: pre-pr
 branch: feat/010-module-discovery
 started_at: 2026-05-11T18:30
-last_milestone_at: 2026-05-11T18:30
+last_milestone_at: 2026-05-11T19:30
 last_shipped: feat-009 (Observability — OTel only) shipped via PR #15 @ cd6ec09
 blocker: null
 flags_for_user: []
@@ -13,82 +13,64 @@ flags_for_user: []
 
 [`feat-010 — Module discovery & resolution`](../../docs/features/feat-010-module-discovery-and-cli.md)
 
-Deps: feat-001 ✓. (Spec says feat-012 too, but only for the
-destructive CLI commands — see scope below.)
+All 3 chunks landed. Ready to push + raise PR.
 
-User decision (2026-05-11): single PR, **Option B** scope —
-runtime side + read-only `list` CLI only. The destructive CLI
-commands (`add` / `swap` / `remove`) have a hard dep on feat-012
-(Configuration system) for manifest application + config-schema
-validation, so they're deferred to a follow-up sub-feat that
-lands alongside / right after feat-012.
+## Chunks shipped
 
-## Scope (in / out)
+| Chunk | Commit | Scope |
+|---|---|---|
+| 1 | `ece4195` | Entry-point discovery + `ModuleInfo` + `Resolver.list_installed`. |
+| 2 | `409067e` | `agentforge` CLI scaffold + `list modules` (text + JSON). |
+| 3 | (this commit) | Implementation status + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
 
-In:
+## Scope decision recap
 
-| Piece | Where |
-|---|---|
-| **`importlib.metadata.entry_points()` discovery** | `agentforge-core/resolver/discover.py` (new) |
-| Scan `agentforge.*` groups on first use; cache | inside discover module |
-| Invalidate cache on `Resolver.clear()` | resolver |
-| **`ModuleInfo`** frozen value type | core values |
-| **`Resolver.list_installed(category=None)`** | resolver |
-| **CLI entry point `agentforge`** | `agentforge/__main__.py` or `agentforge/cli/` |
-| **`agentforge list modules`** command | CLI |
-| Console-scripts entry-point registration | `agentforge` pyproject.toml |
+Option B (single PR, runtime + read-only `list` CLI). Destructive
+CLI (`add`, `swap`, `remove`) depends on feat-012 — deferred to a
+follow-up sub-feat. `Resolver.list_available()` (PyPI query) also
+deferred. Documented in:
+- `docs/roadmap.md` new "feat-010 destructive-CLI sub-feat" section.
+- `docs/features/README.md` catalogue row.
+- `feat-010` spec's Implementation status + Runbook.
 
-Out (deferred):
+## Forward-reference sweep (per AGENTS.md rule)
 
-- `Resolver.list_available()` (queries PyPI — complex, low-value).
-- `agentforge add module X` (needs feat-012's manifest schema).
-- `agentforge swap`, `agentforge remove`.
-- Manifest format spec (lives alongside feat-012).
+- `docs/features/README.md` — feat-010 status updated.
+- `docs/features/feat-003-llm-provider-abstraction.md` — custom-
+  provider runbook rewritten: feat-010 has now shipped auto-load.
+- `docs/features/feat-004-tools-system.md` — "Entry-point auto-
+  loading of third-party tool packages — that's feat-010" moved
+  out of "What's not yet implemented".
+- `docs/features/feat-006-evaluators-and-benchmarks.md` —
+  "String-name resolution... needs feat-010" reworded.
 
-## Chunks (3 total)
+Unshipped specs (feat-011, feat-013, feat-017) reference feat-010
+in dependency declarations — those features' own ship-time PRs
+will refresh forward-tense language per the AGENTS.md rule.
 
-1. **Entry-point discovery + `ModuleInfo` + `list_installed`.**
-   - New `agentforge_core/values/module.py` with `ModuleInfo`.
-   - New `agentforge_core/resolver/discover.py` with
-     `discover_entry_points(force=False)` — scans all groups
-     starting with `agentforge.` and registers each
-     `category=group_suffix, name=ep.name, cls=ep.load()` on the
-     global resolver. Caches the scan; `force=True` re-scans.
-   - `Resolver.list_installed(category=None) -> list[ModuleInfo]`
-     — returns the registered modules with their source
-     package + version (from `importlib.metadata`).
-   - Auto-trigger discovery on first `Resolver.resolve()` call so
-     existing flows pick up entry-point-registered modules
-     transparently.
-   - Tests: discovery happy path (fake distribution registered
-     in-process), missing entry-point → no surprise (just absent),
-     conflict (two packages register same name) → clean error,
-     list_installed by category + globally.
+## Pre-commit gate
 
-2. **`agentforge` CLI scaffolding + `list modules` command.**
-   - New `agentforge/cli/__init__.py` + `cli/main.py` + `cli/list_modules.py`.
-   - Top-level entry point via `[project.scripts]` in `agentforge`'s
-     pyproject.toml: `agentforge = "agentforge.cli.main:main"`.
-   - argparse-based (no Click / Typer dep). Subcommand: `list
-     modules [--category <cat>]`.
-   - Output: column-formatted table grouped by category.
-   - Tests: CLI invocation via `subprocess` against the entry
-     point + direct call to `main(argv)` for parsing.
+Each chunk's commit passed the full gate (ruff format + check,
+mypy --strict, bandit, pytest unit + integration, coverage ≥ 90%).
 
-3. **Docs + PR.** Implementation status + Runbook + CHANGELOG +
-   roadmap + forward-ref sweep + PR. Document that
-   `add/swap/remove` are deferred and where they will land.
+## Next after this PR merges
 
-## TODO
+1. Sync `main`, delete `feat/010-module-discovery` local + remote.
+2. Next eligible per pipeline §1: lowest-numbered proposed with
+   deps shipped. After feat-010:
+   - **feat-011** (Scaffolding & upgrade) — deps feat-010 ✓.
+   - feat-012 (Configuration system) — deps feat-001 ✓.
 
-- [x] User approves scope (single PR, Option B).
-- [ ] Chunk 1.
-- [ ] Chunk 2.
-- [ ] Chunk 3.
+   feat-011 wins by lowest number, but it specifically needs the
+   destructive CLI / manifest format from feat-010 which is
+   deferred — so feat-012 is the realistic next pick to unblock
+   the rest. **Worth flagging to the user when they pick up.**
 
 ## Reading order on session resume
 
 1. `AGENTS.md`
 2. `.claude/CLAUDE.md`
 3. `.claude/state/current.md` (this file)
-4. `docs/features/feat-010-module-discovery-and-cli.md`
+4. After merge: `docs/features/feat-012-configuration-system.md`
+   (next realistic feature given the feat-011 dep on the deferred
+   CLI half of feat-010).
