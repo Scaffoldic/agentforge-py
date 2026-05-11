@@ -27,6 +27,7 @@ from agentforge_core.values.messages import (
     ToolCall,
     ToolSpec,
 )
+from agentforge_core.values.module import ModuleInfo
 from agentforge_core.values.state import (
     AgentState,
     FinishReason,
@@ -48,6 +49,7 @@ __all__ = [
     "LLMResponse",
     "Message",
     "MessageRole",
+    "ModuleInfo",
     "Path",
     "RunResult",
     "Step",
