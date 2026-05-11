@@ -18,13 +18,19 @@ Typical usage:
 from __future__ import annotations
 
 from agentforge_core.testing.conformance import (
+    run_input_validator_conformance,
     run_memory_conformance,
+    run_output_validator_conformance,
     run_strategy_conformance,
+    run_tool_gate_conformance,
     run_vector_conformance,
 )
 
 __all__ = [
+    "run_input_validator_conformance",
     "run_memory_conformance",
+    "run_output_validator_conformance",
     "run_strategy_conformance",
+    "run_tool_gate_conformance",
     "run_vector_conformance",
 ]
