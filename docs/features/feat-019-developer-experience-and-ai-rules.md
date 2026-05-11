@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-019 |
 | **Title** | Developer experience — runbook catalogue + `AGENTS.md` / `CLAUDE.md` rules in every scaffolded agent |
-| **Status** | proposed |
+| **Status** | shipped (Python — 16 runbooks + AGENTS.md/CLAUDE.md/.cursorrules + `agentforge docs` CLI + three-section format) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 (initial set), continuously expanded |
@@ -389,7 +389,135 @@ examples.
 - Voice / video tutorials.
 - Translation / i18n.
 
-## 10. References
+## 10. Implementation status (Python)
+
+Shipped in PR #23. The framework's six scaffolding templates
+(feat-011) now produce projects that include the runbooks +
+AGENTS.md + CLAUDE.md + .cursorrules out of the box, plus the
+`agentforge docs` CLI for opening / auditing them.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `85aaf70` | Three-section managed/custom file format (`split_three_section` / `merge_three_section`, `<!-- agentforge:end-managed -->` / `<!-- agentforge:custom -->` markers). |
+| 2 | `58663de` | `inject_shared_scaffold(dst, template_name, template_version)` post-render hook. Walks `agentforge.templates._shared`, renders `.tmpl` files through Jinja with the Copier answer file as context, prepends marker headers, extends the managed-files lock. |
+| 3 | `5302bc1` | AGENTS.md / CLAUDE.md / .cursorrules content (~150 lines AGENTS.md with project shape, ownership, invariants, runbook table, anti-patterns, pre-commit; thin pointer wrappers for CLAUDE.md + .cursorrules). |
+| 4 | `8cf6412` | Runbooks 01-05 (set up, add a tool, add a pipeline task, pick reasoning strategy, write prompts). |
+| 5 | `f5d4812` | Runbooks 06-10 (test, debug, add memory, add MCP, add evaluators). |
+| 6 | `7d03021` | Runbooks 11-16 + index README (safety guardrails, observability, multi-provider, deploy, upgrade, configuration reference; README.md.tmpl). |
+| 7 | `1cc3fa9` | `agentforge docs` CLI — list / open / `--check` (drift vs framework bundle) / `--serve` (local HTTP). |
+| 8 | (this PR) | Spec status + Implementation Status + Runbook + roadmap + CHANGELOG + state. |
+
+### Deviations from the design
+
+- **Shared injection is a post-Copier step, not Copier
+  primitives.** Copier doesn't have a clean `_extra_paths` for
+  cross-template shared content. We render after Copier
+  finishes, using the same answers file. End-effect for the
+  developer is identical.
+- **Modules list in `AGENTS.md`** ships as an empty list today
+  — populating it requires reading `pyproject.toml`
+  dependencies + the configured `modules.*` blocks, which is
+  follow-up work. The runbook tables and anti-patterns are the
+  load-bearing content.
+- **`agentforge docs serve` is a stdlib
+  `SimpleHTTPRequestHandler`** — fine for local browsing; no
+  fancy rendering. A markdown renderer is a v0.2 follow-up.
+- **No CI link-check yet.** Runbooks reference each other and
+  feature specs; broken links surface in `agentforge docs
+  --check` only when content hashes change. A dedicated
+  link-resolver test lands in a follow-up.
+- **TypeScript port deferred.** Runbook content is written
+  language-neutrally where possible; feat-019's TS counterpart
+  will swap code blocks once feat-011's TS scaffolding engine
+  (ADR-0021) ships.
+
+### Three-section file format (locked)
+
+Markdown documents managed by the framework end with:
+
+```
+... framework content ...
+
+<!-- agentforge:end-managed -->
+
+<!-- agentforge:custom -->
+<!-- developer-owned section; survives `agentforge upgrade` -->
+<!-- agentforge:end-custom -->
+```
+
+`split_three_section(content) -> (managed, custom)` and
+`merge_three_section(new_managed, existing_custom) -> str` are
+the contract; `agentforge upgrade` (feat-011) consumes them when
+re-rendering a managed file.
+
+### Shared payload location
+
+`packages/agentforge/src/agentforge/templates/_shared/`:
+
+- `AGENTS.md.tmpl` (Jinja: framework_version, template_name,
+  project_slug, llm_provider)
+- `CLAUDE.md`
+- `.cursorrules`
+- `docs/runbooks/README.md.tmpl`
+- `docs/runbooks/01-set-up-new-agent.md.tmpl` (Jinja:
+  project_slug)
+- `docs/runbooks/02-add-a-tool.md`
+- `docs/runbooks/03-add-a-pipeline-task.md`
+- … (through 16)
+
+## 11. Runbook
+
+### Open a runbook
+
+```bash
+agentforge docs                       # list every runbook
+agentforge docs 02                    # open by number
+agentforge docs add-tool              # open by alias
+agentforge docs 02-add-a-tool.md      # open by exact name
+```
+
+`$EDITOR` opens in your preferred editor when set; otherwise
+the runbook prints to stdout (handy with `| less`).
+
+### Check for drift against the framework bundle
+
+```bash
+agentforge docs --check
+```
+
+Hashes each local runbook with the marker line stripped, then
+compares to the bundled copy inside the installed `agentforge`
+wheel. Reports `~drift` for changed content and `+local` for
+runbooks that exist locally but not in the bundle. Exits 1 when
+drift is detected.
+
+### Customise a runbook
+
+Edit anything BELOW the `<!-- agentforge:end-managed -->` marker.
+Content there survives `agentforge upgrade`. Touching the
+managed section will surface as a `.rej` conflict on the next
+upgrade (intentional — the framework owns that part).
+
+To take over a runbook entirely:
+
+```bash
+agentforge fork docs/runbooks/02-add-a-tool.md
+```
+
+Future upgrades skip it. Reverse with `agentforge unfork
+<path>`.
+
+### Update AI rules
+
+`AGENTS.md` ships managed by the framework. Project-specific
+rules go in the custom section at the bottom — Claude Code,
+Cursor, and Aider all read the whole file, so your additions
+are visible immediately.
+
+When the framework adds a new architecture invariant, the
+managed section refreshes automatically on upgrade.
+
+## 12. References
 
 - [`scaffolding-and-upgrade.md`](../design/scaffolding-and-upgrade.md) — the
   Copier mechanism and marker-header file ownership
