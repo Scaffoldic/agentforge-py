@@ -40,7 +40,7 @@
 | **feat-006** | Evaluators (deterministic + LLM-judge: correctness, faithfulness, groundedness, hallucination, relevance, helpfulness, coverage, format compliance, regression, consistency) | shipped (Python) | 0.2 | both | `agentforge`, `agentforge-eval-geval`, optional `-ragas`, `-deepeval`, `-toxicity`, `-codeexec` |
 | **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | proposed | 0.1 | both | `agentforge-core`, `agentforge` |
 | **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-core` |
-| **feat-009** | Observability — structured logging + distributed tracing (OTel) + pluggable dashboards (Langfuse / Phoenix / Evidently / custom hooks); multiple backends concurrently | proposed | 0.2 | both | `agentforge`, `agentforge-otel`, `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, custom |
+| **feat-009** | Observability — structured logging (JSON) + distributed tracing (OTel) + hook fan-out; vendor backends (Langfuse / Phoenix / Evidently / StatsD) deferred to follow-up sub-feats | shipped (Python, OTel only) | 0.2 | both | `agentforge`, `agentforge-otel`, future `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd` |
 
 ### Safety & security
 
