@@ -10,8 +10,9 @@ the runtime is asked to look up a grader by string.
 
 from __future__ import annotations
 
+from agentforge.eval.consistency import Consistency
 from agentforge.eval.coverage import Coverage
 from agentforge.eval.format_compliance import FormatCompliance
 from agentforge.eval.regression import RegressionVsBaseline
 
-__all__ = ["Coverage", "FormatCompliance", "RegressionVsBaseline"]
+__all__ = ["Consistency", "Coverage", "FormatCompliance", "RegressionVsBaseline"]
