@@ -168,6 +168,36 @@ class Neo4jMemoryStore(MemoryStore):
 
         return _agen()
 
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        if run_id is None and older_than is None and category is None:
+            msg = "delete() requires at least one filter; refusing to wipe every claim."
+            raise ModuleError(msg)
+        where: list[str] = []
+        params: dict[str, Any] = {}
+        if run_id is not None:
+            where.append("c.run_id = $run_id")
+            params["run_id"] = run_id
+        if category is not None:
+            where.append("c.category = $category")
+            params["category"] = category
+        if older_than is not None:
+            where.append("c.created_at < $older_than")
+            params["older_than"] = older_than.isoformat()
+        cypher = (
+            f"MATCH (c:{_CLAIM_LABEL}) WHERE "
+            + " AND ".join(where)
+            + " WITH count(c) AS n, collect(c) AS cs "
+            "FOREACH (x IN cs | DETACH DELETE x) RETURN n"
+        )
+        rows = await self._r.execute_write(cypher, params)
+        return int(rows[0]["n"]) if rows else 0
+
     def capabilities(self) -> set[str]:
         return {"transactions", "graph"}
 

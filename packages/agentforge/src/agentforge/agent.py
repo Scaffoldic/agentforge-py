@@ -105,6 +105,7 @@ class Agent:
         on_finish: FinishHooks | None = None,
         config_path: str | Path | None = None,
         install_log_filter: bool = True,
+        record_runs: MemoryStore | None = None,
     ) -> None:
         self._config: AgentForgeConfig = load_config(config_path)
 
@@ -141,6 +142,24 @@ class Agent:
 
         self._on_step: list[StepHook] = _normalise_hooks(on_step)
         self._on_finish: list[FinishHook] = _normalise_hooks(on_finish)
+
+        # feat-017: optional run recording. When `record_runs` is set,
+        # install hooks that persist every step + the final result as
+        # claims so `agentforge run --replay` and `agentforge debug`
+        # can reconstruct the run. Recording errors fall under the
+        # same isolation as other hooks (logged at WARN, never break
+        # the run — feat-009 §4.3).
+        if record_runs is not None:
+            from agentforge.recording import RecordRunHook  # noqa: PLC0415
+
+            recorder = RecordRunHook(
+                memory=record_runs,
+                project="default",
+                agent_name=self._config.agent.name or "agent",
+            )
+            self._on_step.append(recorder.on_step)
+            self._on_finish.append(recorder.on_finish)
+
         self._closed = False
 
         if install_log_filter and self._config.logging.run_id_filter:

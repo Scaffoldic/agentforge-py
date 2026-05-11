@@ -194,6 +194,36 @@ class PostgresMemoryStore(MemoryStore):
 
         return _agen()
 
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        if run_id is None and older_than is None and category is None:
+            msg = "delete() requires at least one filter; refusing to wipe every claim."
+            raise ModuleError(msg)
+        where: list[str] = []
+        params: list[Any] = []
+        next_idx = 1
+        if run_id is not None:
+            where.append(f"run_id = ${next_idx}")
+            params.append(run_id)
+            next_idx += 1
+        if category is not None:
+            where.append(f"category = ${next_idx}")
+            params.append(category)
+            next_idx += 1
+        if older_than is not None:
+            where.append(f"created_at < ${next_idx}")
+            params.append(older_than)
+            next_idx += 1
+        sql = f"DELETE FROM {_CLAIMS_TABLE} WHERE " + " AND ".join(  # noqa: S608  # nosec B608
+            where,
+        )
+        return await self._r.execute_returning_count(sql, *params)
+
     def capabilities(self) -> set[str]:
         return {"transactions"}
 

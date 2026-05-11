@@ -147,6 +147,16 @@ class SurrealFakeRunner:
             return [_claim_record(cl)] if cl else []
         if "SELECT * FROM af_claim" in s:
             return await self._dispatch_claim_select(s, v)
+        if s.startswith("DELETE FROM af_claim WHERE") and "RETURN BEFORE" in s:
+            older_than = v.get("older_than")
+            removed = await self.memory_backing.delete(
+                run_id=v.get("run_id"),
+                category=v.get("category"),
+                older_than=datetime.fromisoformat(older_than) if older_than else None,
+            )
+            # Driver counts via len(_flatten(rows)); return that many sentinel
+            # records so the count matches.
+            return [{"af_id": f"removed-{i}"} for i in range(removed)]
 
         msg = f"SurrealFakeRunner: unrecognised SurrealQL: {surrealql!r}"
         raise AssertionError(msg)
