@@ -586,8 +586,10 @@ class MyCorpClient(LLMClient):
 
 Now `Agent(model="mycorp:foo-bar")` resolves to your class. For
 distribution, expose the import via a `agentforge.providers.mycorp`
-entry-point in `pyproject.toml` — feat-010 (Module discovery)
-auto-loads it.
+entry-point in `pyproject.toml`; feat-010's resolver auto-loads
+every `agentforge.*` entry point on first `Resolver.resolve()` /
+`Agent.run()`, so a `pip install` is enough — no explicit import
+needed.
 
 ### When should I NOT use Bedrock?
 
