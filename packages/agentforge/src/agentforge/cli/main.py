@@ -14,6 +14,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from agentforge.cli.config_cmd import register_config_cmd
 from agentforge.cli.list_modules import register_list_modules
+from agentforge.cli.module_cmd import register_module_cmd
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -29,6 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     register_list_modules(sub)
     register_config_cmd(sub)
+    register_module_cmd(sub)
     return parser
 
 

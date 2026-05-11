@@ -15,6 +15,14 @@ from agentforge_core.values.graph import (
     GraphSegment,
     Path,
 )
+from agentforge_core.values.manifest import (
+    AppliedEnvVar,
+    AppliedManifest,
+    AppliedTemplate,
+    EnvVarEntry,
+    Manifest,
+    TemplateFile,
+)
 from agentforge_core.values.messages import (
     EmbeddingResponse,
     LLMResponse,
@@ -39,14 +47,19 @@ from agentforge_core.values.vector import VectorItem, VectorMatch
 
 __all__ = [
     "AgentState",
+    "AppliedEnvVar",
+    "AppliedManifest",
+    "AppliedTemplate",
     "Claim",
     "EmbeddingResponse",
+    "EnvVarEntry",
     "FinishReason",
     "GraphEdge",
     "GraphNode",
     "GraphPattern",
     "GraphSegment",
     "LLMResponse",
+    "Manifest",
     "Message",
     "MessageRole",
     "ModuleInfo",
@@ -57,6 +70,7 @@ __all__ = [
     "StopReason",
     "StreamChunk",
     "StreamChunkKind",
+    "TemplateFile",
     "TokenUsage",
     "ToolCall",
     "ToolSpec",

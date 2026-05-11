@@ -804,3 +804,60 @@ full scope (target version 0.1, foundational). Branched
   feat-006 forward-tense feat-012 references rewritten.
 
 Ready to push.
+
+## 2026-05-11T22:00 — feat-012 merged @ #17; picking up feat-010 destructive CLI
+User chose Option A — destructive CLI before feat-011. feat-011
+will consume the same manifest-apply machinery; shipping that
+here means feat-011 stays scoped to scaffolding without
+re-inventing the manifest format. Branched
+`feat/010b-destructive-cli` and drafted 4-chunk plan.
+
+## 2026-05-11T22:15 — feat-010b chunk 1 done
+`dadc6c4` — pure-data applier layer:
+- `Manifest` / `EnvVarEntry` / `TemplateFile` / `AppliedManifest`
+  value types in `agentforge-core/values/manifest.py`.
+- Idempotent `apply_manifest(...)`, `reverse_manifest(...)`,
+  `read_applied(...)` in `agentforge.cli.manifest_apply`.
+- 20 unit tests covering env-var append (idempotent), template
+  copy with marker (per-extension comment style), refuse-overwrite
+  for unmarked files (and the `overwrite=True` escape), config-
+  block deep-merge into agentforge.yaml + reject list-top-level,
+  state file write + round-trip, reverse env vars / templates /
+  config block / state + tolerates already-deleted artifacts.
+
+## 2026-05-11T22:30 — feat-010b chunks 2-3 done
+`f2c323c` — `agentforge add/remove/swap module` commands:
+- `agentforge add module <dist>` — pip install + manifest
+  discovery (importlib.resources) + applier + next_steps print.
+  Idempotent: re-run prints "already applied".
+- `agentforge remove module <dist>` — reverse applier + pip
+  uninstall. Tolerates the package being already-uninstalled
+  (skips config-block reverse only).
+- `agentforge swap <category> <from> <to>` — composes
+  remove + add. NOT transactional; documented.
+- Pip subprocess injected via `PipRunner` callable so tests don't
+  hit the network. Production: `python -m pip`.
+- 10 unit cases covering happy path, pip failure aborts before
+  apply, missing manifest, idempotent re-add, remove happy path,
+  no-state error, package-already-uninstalled, swap with separate
+  package roots, swap helper composition, swap aborts on
+  remove-failure.
+
+## 2026-05-11T22:45 — feat-010b chunk 4 done, PR pending
+- `docs/features/feat-010-module-discovery-and-cli.md`: status
+  updated to "full surface"; Implementation section's chunk
+  table extended; deviations list updated (drop the "single PR
+  read-only only" line — no longer true); What's-not-yet-
+  implemented list slimmed (only `list_available` PyPI query,
+  `uv add` detection, EP cache invalidation, transactional
+  swap, TS port remain).
+- Runbook gains 6 new entries: add module in one command, write
+  a module manifest, swap drivers, remove a module, idempotency
+  / atomicity, where state lives + whether to commit.
+- `CHANGELOG.md`: full feat-010-destructive entry.
+- `docs/roadmap.md`: feat-010 row updated to mention both PRs;
+  "feat-010 destructive-CLI sub-feat (deferred)" section
+  removed (no longer deferred).
+- `docs/features/README.md`: feat-010 catalogue row updated.
+
+Ready to push.
