@@ -54,7 +54,7 @@
 |---|---|---|---|---|---|
 | **feat-010** | Module discovery & resolution — entry-point auto-load + `Resolver.list_installed` + `agentforge list modules` CLI; destructive `add/swap/remove` deferred alongside feat-012 | shipped (Python, read-only) | 0.2 | both | `agentforge` (CLI), `agentforge-core` (resolver) |
 | **feat-011** | Scaffolding & upgrade (`agentforge new`, `agentforge upgrade`, `agentforge fork`, six starter templates, marker-header file ownership) | proposed | 0.1 (new), 0.3 (upgrade) | both | `agentforge` (CLI), `agentforge-templates` (template repo) |
-| **feat-012** | Configuration system (`agentforge.yaml` schema, env var interpolation, validation, dotted-path overrides) | proposed | 0.1 | both | `agentforge-core`, `agentforge` |
+| **feat-012** | Configuration system (`agentforge.yaml` schema, env var interpolation, validation, dotted-path overrides, layered env files, module-side schema integration, `agentforge config` CLI) | shipped (Python) | 0.1 | both | `agentforge-core`, `agentforge` |
 
 ### Protocols & interop
 

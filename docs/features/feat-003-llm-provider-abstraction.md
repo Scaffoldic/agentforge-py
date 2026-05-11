@@ -520,10 +520,12 @@ region-pinned variant.
 
 ### How do I enable prompt caching?
 
-Caching is opt-in via the `use_caching` option on a per-call basis
-(strategies will surface this via `llm_options` once feat-012
-lands). Today, instantiate `BedrockClient` directly and call
-`call_with_cache(...)` — it emits `cachePoint` blocks at the
+Caching is opt-in via the `use_caching` option on a per-call basis.
+feat-012's config schema now ships `agent.llm_options: dict` for
+per-call options; wiring strategies to honour
+`llm_options={"use_caching": "auto"}` from config is a small Agent-
+level follow-up. Today, instantiate `BedrockClient` directly and
+call `call_with_cache(...)` — it emits `cachePoint` blocks at the
 system prompt and last tool result. Requires Anthropic models on
 Bedrock; `chain.supports("caching")` advertises availability.
 
