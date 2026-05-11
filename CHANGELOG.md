@@ -46,6 +46,36 @@ release tag bumps every workspace member to the same minor version.
   conventions, install instructions, and the contributor workflow now
   live entirely inside `agentforge-py`.
 
+### Docs
+
+- **Runbook sections backfilled for shipped features.** The
+  runbook policy was locked mid-feat-007 (each feature PR adds a
+  task-oriented `## Runbook` section to its canonical spec for
+  agent developers building on AgentForge). This chore retroactively
+  authors runbooks for the five already-shipped features:
+  - feat-001 (Core contracts & `Agent`) — minimum agent, budget
+    caps, step trace, hooks, config, sync shim, when-not-to-use.
+  - feat-002 (Reasoning strategies) — picking a strategy, tuning
+    ReAct / Plan-Execute / ToT (judge scorer) / MultiAgent
+    Supervisor, reading per-step output, when not to use.
+  - feat-003 (LLM provider abstraction — Bedrock) — basic config,
+    cross-region inference profiles, prompt caching, extended
+    thinking, embeddings, cost accounting, custom-provider
+    registration, when not to use Bedrock.
+  - feat-004 (Tools system) — attaching tools, `@tool` decorator,
+    locking down `shell` / `file_read`, unit-testing with
+    `FakeTool`, timeouts, step inspection, when not to use a
+    default tool.
+  - feat-005 (Persistence) — backend picker matrix, sqlite /
+    postgres / neo4j / surrealdb setup, RAG via `Retriever`,
+    `(project, agent)` namespacing, `init_schema()` opt-in,
+    live integration tests, when not to use each backend.
+
+  Also fixed a stale example in feat-007's existing runbook
+  (`Agent(budget=BudgetPolicy(...))`) — the Agent constructor takes
+  `budget_usd=` and `max_iterations=`, not a `budget=` kwarg. Same
+  fix applied while authoring feat-001's runbook.
+
 ### Added
 
 - **feat-007 — Production rails (`FallbackChain` only).** Closes

@@ -466,3 +466,138 @@ Not yet shipped (backlog):
   the spec describes it as part of feat-007 (Production rails) work.
 
 TypeScript port pending.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented. When feat-011 (Copier scaffolding) and
+feat-019 (runbook system) ship, this section is consumed by the
+templating engine and rendered into scaffolded agent projects.
+
+### How do I point an agent at Bedrock?
+
+```python
+from agentforge import Agent
+
+agent = Agent(model="bedrock:us.anthropic.claude-sonnet-4-5-20250929")
+```
+
+`agentforge-bedrock` registers under the `bedrock:` prefix at
+import. AWS credentials follow the standard boto3 chain —
+`AWS_PROFILE`, `AWS_REGION`, instance roles, etc. Override
+explicitly when needed:
+
+```python
+from agentforge_bedrock import BedrockClient
+
+client = BedrockClient(
+    model_id="us.anthropic.claude-sonnet-4-5-20250929",
+    region="eu-west-1",
+    aws_profile="prod",
+    max_retries=5,
+    timeout_seconds=120.0,
+)
+agent = Agent(model=client)
+```
+
+### How do I use cross-region inference profiles?
+
+Use the geo-prefixed model id — Bedrock routes for you:
+
+| Prefix | Destination |
+|---|---|
+| `us.anthropic.claude-...` | US regions |
+| `eu.anthropic.claude-...` | EU regions |
+| `apac.anthropic.claude-...` | APAC regions |
+| `global.anthropic.claude-...` | Global pool |
+
+Source region (`region=` or `AWS_REGION`) only controls where the
+request enters Bedrock; pricing strips the geo prefix when looking
+up the cost table, so a `us.…` profile is priced the same as the
+region-pinned variant.
+
+### How do I enable prompt caching?
+
+Caching is opt-in via the `use_caching` option on a per-call basis
+(strategies will surface this via `llm_options` once feat-012
+lands). Today, instantiate `BedrockClient` directly and call
+`call_with_cache(...)` — it emits `cachePoint` blocks at the
+system prompt and last tool result. Requires Anthropic models on
+Bedrock; `chain.supports("caching")` advertises availability.
+
+### How do I enable extended thinking?
+
+Same shape — call `call_with_thinking(...)` on a `BedrockClient`.
+This adds `additionalModelRequestFields.thinking` to the Converse
+request. Reasoning tokens count toward `tokens_out` and are
+charged at the standard rate.
+
+### How do I use embeddings?
+
+`agentforge-bedrock` ships `BedrockEmbeddingClient` for Titan and
+Cohere:
+
+```python
+from agentforge_bedrock import BedrockEmbeddingClient
+
+embedder = BedrockEmbeddingClient(model_id="amazon.titan-embed-text-v2:0")
+vec = await embedder.embed("a sentence to encode")
+print(vec.dimensions, len(vec.embedding))
+```
+
+Combine with a `VectorStore` + `Retriever` (feat-005 Runbook) for
+RAG.
+
+### How do I read the cost of a call?
+
+`LLMResponse.cost_usd` is computed from the published price table
+shipped with each provider package:
+
+```python
+result = await agent.run("…")
+print(result.cost_usd)  # sum across every LLM call in the run
+```
+
+Per-step costs live on each `Step.cost_usd`. Cross-region
+inference profiles are priced via the stripped (region-pinned)
+model id; if your cost looks off, check that the pricing
+entry-point recognises the prefix you're using.
+
+### How do I add a custom provider?
+
+Subclass `LLMClient` and register at import:
+
+```python
+from agentforge_core.contracts.llm import LLMClient
+from agentforge_core.resolver import register_provider
+
+@register_provider("mycorp")
+class MyCorpClient(LLMClient):
+    def __init__(self, *, model_id: str) -> None:
+        self._model_id = model_id
+
+    async def call(self, system, messages, tools=None): ...
+    async def close(self) -> None: ...
+    def capabilities(self) -> set[str]:
+        return {"tools"}
+```
+
+Now `Agent(model="mycorp:foo-bar")` resolves to your class. For
+distribution, expose the import via a `agentforge.providers.mycorp`
+entry-point in `pyproject.toml` — feat-010 (Module discovery)
+auto-loads it.
+
+### When should I NOT use Bedrock?
+
+- **Streaming-first agents on Anthropic-direct.** If you need the
+  absolute lowest streaming latency to Anthropic models, the
+  first-party `agentforge-anthropic` provider (backlog) will land
+  with native SSE; Bedrock streams through Converse with slightly
+  higher overhead.
+- **Models not in your region.** Bedrock's model catalogue varies
+  by region; use cross-region inference profiles (above) or pick a
+  different provider.
+- **Local / on-prem models.** Use `agentforge-ollama` or
+  `agentforge-vllm` (backlog) — no AWS dependency.

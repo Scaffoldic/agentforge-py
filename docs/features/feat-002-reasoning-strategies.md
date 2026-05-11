@@ -422,3 +422,164 @@ returns the same `AgentState`, monotonic `step.iteration`, valid
 the resolver from feat-001; e.g. `Agent(strategy="multi-agent")`.
 
 TypeScript port pending.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented. When feat-011 (Copier scaffolding) and
+feat-019 (runbook system) ship, this section is consumed by the
+templating engine and rendered into scaffolded agent projects.
+
+### How do I pick a strategy?
+
+| If your task is… | Use |
+|---|---|
+| Tool-driven, iterative (search → read → answer) | `react` (default) |
+| Decomposable up front (write 5 sections of a report) | `plan-execute` |
+| Open-ended, "explore several paths" (hard math, planning) | `tot` |
+| A team of specialists collaborating | `multi-agent` |
+
+Strings resolve via the resolver — no import needed:
+
+```python
+agent = Agent(model="bedrock:...", strategy="plan-execute")
+```
+
+Pass a constructed strategy when you need to tune its kwargs:
+
+```python
+from agentforge.strategies import PlanExecuteLoop
+
+agent = Agent(
+    model="bedrock:...",
+    strategy=PlanExecuteLoop(max_parallel_steps=8, max_replans=2),
+)
+```
+
+### How do I tune ReAct?
+
+ReAct has one knob — iteration cap, which the strategy reads from
+`Agent.max_iterations` unless you override it on the strategy:
+
+```python
+from agentforge.strategies import ReActLoop
+
+agent = Agent(
+    model="bedrock:...",
+    strategy=ReActLoop(max_iterations=10),  # tight cap for cheap loops
+    tools=[web_search, calculator],
+)
+```
+
+Leave `max_iterations=None` to honour the `Agent` budget's cap (the
+common case). The strategy `_check_guardrails` runs before every
+LLM call — `BudgetExceeded` short-circuits the loop cleanly.
+
+### How do I use Plan-Execute with replanning?
+
+`PlanExecuteLoop` plans once, executes in parallel batches, then
+optionally replans on tool failure:
+
+```python
+from agentforge.strategies import PlanExecuteLoop
+
+agent = Agent(
+    model="bedrock:...",
+    strategy=PlanExecuteLoop(
+        max_parallel_steps=4,    # batch size for independent steps
+        replan_on_failure=True,
+        max_replans=1,           # one replan, then give up
+    ),
+)
+```
+
+After a tool raises, the supervisor LLM is asked to revise the
+plan with the failed step's error in context. After `max_replans`
+exhausted, the strategy returns whatever it has — the run does
+NOT raise on tool failure.
+
+### How do I use Tree-of-Thoughts with a cheaper judge?
+
+Default `scorer="self"` makes the same model rate its own thoughts
+— biased toward agreement. For high-stakes deliberation, pass
+`scorer="judge"` and switch to a cheaper judge model:
+
+```python
+from agentforge.strategies import TreeOfThoughts
+
+agent = Agent(
+    model="bedrock:us.anthropic.claude-sonnet-4-5-20250929",
+    strategy=TreeOfThoughts(
+        branch_factor=3,
+        depth=2,
+        scorer="judge",     # uses a separate judge LLM
+        score_threshold=0.7,
+    ),
+)
+```
+
+**Note:** until feat-006 (Evaluators) lands the full eval
+framework, `scorer="judge"` falls back to using `Agent.model` as
+the judge — same model, separate calls. The dedicated judge
+provider config arrives with feat-006.
+
+### How do I delegate to specialist workers?
+
+`MultiAgentSupervisor` partitions a task across named workers,
+each with its own strategy:
+
+```python
+from agentforge.strategies import MultiAgentSupervisor, ReActLoop, PlanExecuteLoop
+
+agent = Agent(
+    model="bedrock:...",
+    strategy=MultiAgentSupervisor(
+        workers={
+            "researcher": ReActLoop(max_iterations=15),
+            "writer": PlanExecuteLoop(max_parallel_steps=2),
+        },
+        worker_descriptions={
+            "researcher": "Web search + reading; gathers facts.",
+            "writer": "Drafts long-form output from collected notes.",
+        },
+        max_parallel_workers=2,
+        max_rounds=1,
+    ),
+)
+```
+
+**Budget split:** each worker gets a slice of *remaining*
+supervisor budget (proportional to `1 / n_workers`). If you set
+`budget_usd=$5.00` and run 2 workers, each starts with ~$2.50; the
+supervisor enforces the cap centrally.
+
+### How do I read what each step did?
+
+Every strategy emits the same `Step` shape — read `result.steps`:
+
+```python
+result = await agent.run("…")
+for step in result.steps:
+    print(step.iteration, step.kind, step.content[:80])
+```
+
+`step.kind` is one of `"think" | "act" | "observe" | "finish"` for
+ReAct/Plan-Execute; ToT adds `"branch"` and `"score"`;
+MultiAgentSupervisor nests sub-agent steps via
+`step.metadata["worker"]`.
+
+### When should I NOT use these strategies?
+
+- **Custom DAG orchestration.** If your shape is a fixed pipeline
+  (not LLM-driven), use feat-015 (Pipeline & tasks) underneath an
+  `Agent`, not a strategy.
+- **Streaming-during-step responses.** Strategies return when the
+  step is done. Mid-step streaming is a provider capability
+  (feat-003), surfaced through a separate `agent.stream(...)`
+  method (not yet shipped).
+- **Reflexion / self-improvement loops.** Not a shipped strategy.
+  Approximate it via an `Evaluator` + `PlanExecuteLoop` replanning
+  if needed; promote to a fifth strategy once a real agent
+  demands it.

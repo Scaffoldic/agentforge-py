@@ -465,3 +465,30 @@ just gains the Runbook authoring sub-task.
   from backlog to shipped.
 
 PR #11 to be raised next.
+
+## 2026-05-11T10:00 — feat-007 shipped, opening chore/backfill-runbooks
+PR #11 (feat-007 FallbackChain) merged to main @ `f61ad44`. Synced
+main, deleted `feat/007-production-rails` local + remote. Branched
+`chore/backfill-runbooks` for the retroactive Runbook policy
+application (task #76).
+
+## 2026-05-11T10:30 — chore/backfill-runbooks ready for PR
+Authored `## Runbook` sections on five shipped specs:
+- feat-001 — minimum agent / budget caps / step trace / hooks /
+  config / provider switching / sync shim
+- feat-002 — strategy picker / tuning ReAct / Plan-Execute
+  replanning / ToT judge scorer / MultiAgentSupervisor
+- feat-003 — Bedrock setup / cross-region profiles / caching /
+  thinking / embeddings / cost / custom provider registration
+- feat-004 — `@tool` decorator / locking down shell + file_read /
+  `FakeTool` / timeouts / step inspection
+- feat-005 — backend picker / sqlite / postgres / neo4j / surrealdb /
+  RAG via Retriever / namespacing / init_schema / live tests
+
+Also fixed a stale `Agent(budget=BudgetPolicy(...))` example in
+feat-007's existing runbook — the constructor takes `budget_usd=`
++ `max_iterations=`, not `budget=`. Same form used in feat-001
+runbook from the start.
+
+Pre-commit gate green (doc-only diff). CHANGELOG entry added under
+`[Unreleased] / Docs`. PR to be raised next.
