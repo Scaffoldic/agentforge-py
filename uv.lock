@@ -11,6 +11,7 @@ members = [
     "agentforge",
     "agentforge-bedrock",
     "agentforge-core",
+    "agentforge-eval-geval",
     "agentforge-memory-neo4j",
     "agentforge-memory-postgres",
     "agentforge-memory-sqlite",
@@ -67,6 +68,21 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.10" },
     { name = "python-ulid", specifier = ">=3.0" },
+]
+
+[[package]]
+name = "agentforge-eval-geval"
+version = "0.0.0"
+source = { editable = "packages/agentforge-eval-geval" }
+dependencies = [
+    { name = "agentforge-core" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "pyyaml", specifier = ">=6.0" },
 ]
 
 [[package]]
@@ -139,6 +155,7 @@ dependencies = [
     { name = "agentforge" },
     { name = "agentforge-bedrock" },
     { name = "agentforge-core" },
+    { name = "agentforge-eval-geval" },
     { name = "agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite" },
@@ -164,6 +181,7 @@ requires-dist = [
     { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
     { name = "agentforge-memory-neo4j", editable = "packages/agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres", editable = "packages/agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite", editable = "packages/agentforge-memory-sqlite" },

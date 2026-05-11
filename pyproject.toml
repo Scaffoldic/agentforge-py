@@ -28,6 +28,7 @@ dependencies = [
     "agentforge-memory-neo4j",
     "agentforge-memory-surrealdb",
     "agentforge-memory-postgres",
+    "agentforge-eval-geval",
 ]
 
 [tool.uv.workspace]
@@ -41,6 +42,7 @@ agentforge-memory-sqlite = { workspace = true }
 agentforge-memory-neo4j = { workspace = true }
 agentforge-memory-surrealdb = { workspace = true }
 agentforge-memory-postgres = { workspace = true }
+agentforge-eval-geval = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -196,6 +198,7 @@ testpaths = [
     "packages/agentforge-memory-neo4j/tests",
     "packages/agentforge-memory-surrealdb/tests",
     "packages/agentforge-memory-postgres/tests",
+    "packages/agentforge-eval-geval/tests",
     "tests",
 ]
 markers = [
@@ -221,6 +224,7 @@ source = [
     "packages/agentforge-memory-neo4j/src",
     "packages/agentforge-memory-surrealdb/src",
     "packages/agentforge-memory-postgres/src",
+    "packages/agentforge-eval-geval/src",
 ]
 branch = true
 parallel = true

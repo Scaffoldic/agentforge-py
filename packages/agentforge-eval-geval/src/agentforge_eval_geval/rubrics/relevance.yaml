@@ -1,0 +1,14 @@
+# Relevance rubric — "does the output address the task?"
+
+version: 1
+criteria: |
+  Assess whether the output directly addresses the task. Relevant
+  outputs answer the question asked, focus on the specific request,
+  and avoid drifting into unrelated tangents. An output may be
+  factually correct yet irrelevant if it answers a different
+  question than the one asked.
+scoring: |
+  1.0 — output fully addresses every part of the task.
+  0.7 — output addresses the task but includes some tangential content.
+  0.3 — output partially addresses the task or drifts off-topic.
+  0.0 — output ignores the task or answers a different question.
