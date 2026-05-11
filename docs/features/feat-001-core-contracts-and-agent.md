@@ -448,3 +448,145 @@ under ADR-0007. Two have shipped since: `retriever=` and
 `graph_store=` — both added during feat-005 work.
 
 TypeScript port pending.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented. When feat-011 (Copier scaffolding) and
+feat-019 (runbook system) ship, this section is consumed by the
+templating engine and rendered into scaffolded agent projects.
+
+### How do I create the smallest working agent?
+
+```python
+from agentforge import Agent
+
+async with Agent(model="bedrock:us.anthropic.claude-sonnet-4-5-20250929") as agent:
+    result = await agent.run("Say hello in three words.")
+    print(result.output)
+```
+
+`async with` is the recommended form — `__aexit__` calls
+`agent.close()` for you, which flushes hooks and closes provider
+connections. Calling `close()` twice is safe (idempotent).
+
+### How do I cap cost or iterations?
+
+`Agent` exposes two budget kwargs:
+
+```python
+agent = Agent(
+    model="bedrock:...",
+    budget_usd=2.0,
+    max_iterations=25,
+)
+```
+
+The `BudgetPolicy` is constructed internally from these (token cap
+and error-streak cap default to the policy's own defaults — drop
+to a typed `LLMClient` if you need them). Caps trip a
+`BudgetExceeded` from inside the strategy loop, terminating the
+run with `finish_reason="budget_exceeded"`. Token / cost / iteration
+counters are visible on `result.cost_usd`, `result.tokens_in/out`,
+and `len(result.steps)`.
+
+### How do I read the full step trace after a run?
+
+```python
+result = await agent.run("…")
+for step in result.steps:
+    print(step.iteration, step.kind, step.cost_usd, step.duration_ms)
+```
+
+`Step.kind` is one of `"think"`, `"act"`, `"observe"`, `"finish"`
+(see feat-002 for strategy-specific extensions).
+`result.cost_usd` is the sum of per-step costs; `result.run_id` is
+the ULID that ties this run to log lines (feat-007 Runbook covers
+`RunIdFilter`).
+
+### How do I hook into each step / final result?
+
+```python
+def log_step(step):
+    print(f"[{step.iteration}] {step.kind} — ${step.cost_usd:.4f}")
+
+def persist_result(result):
+    db.save_run(result.run_id, result.output, result.cost_usd)
+
+agent = Agent(
+    model="bedrock:...",
+    on_step=log_step,
+    on_finish=persist_result,
+)
+```
+
+`on_step` fires once per `Step` appended to `state.steps`,
+regardless of strategy. `on_finish` fires exactly once at the end
+of `run()`. Both hooks are synchronous — wrap heavy I/O in
+`asyncio.create_task(...)` if you need to fire-and-forget.
+
+### How do I read configuration from `agentforge.yaml`?
+
+The constructor reads `./agentforge.yaml` automatically if present:
+
+```yaml
+agent:
+  model: "bedrock:us.anthropic.claude-sonnet-4-5-20250929"
+  strategy: "react"
+  budget_usd: 5.0
+```
+
+```python
+agent = Agent()  # all settings come from agentforge.yaml
+```
+
+Constructor kwargs override file values; env vars are only
+expanded inside the YAML via `${VAR}` interpolation (full schema
+ships with feat-012).
+
+### How do I switch providers without changing code?
+
+Pass the model string — the resolver picks the registered driver:
+
+```python
+agent = Agent(model="bedrock:anthropic.claude-sonnet-4-5-20250929")
+# later: pip install agentforge-anthropic
+agent = Agent(model="anthropic:claude-sonnet-4-5")
+```
+
+Or pass a constructed `LLMClient` instance for full control:
+
+```python
+from agentforge_bedrock import BedrockClient
+
+client = BedrockClient(model="us.anthropic.claude-sonnet-4-5-20250929",
+                      region="us-east-1")
+agent = Agent(model=client)
+```
+
+### How do I run the agent synchronously (notebook / script)?
+
+```python
+agent = Agent(model="bedrock:...")
+result = agent.run_sync("hello")
+```
+
+`run_sync()` is a thin `asyncio.run()` shim. Not part of the locked
+surface — designed for notebooks and one-shot scripts. In any
+async context, use `await agent.run(...)`.
+
+### When should I NOT instantiate `Agent` directly?
+
+- **Multi-turn chat sessions.** `Agent.run()` is one-shot. Build
+  conversational agents on top of `Agent` via `ChatSession`
+  (feat-020 — not yet shipped) which owns turn history and
+  streaming.
+- **Multi-agent orchestration.** Wrap `Agent` instances inside
+  `MultiAgentSupervisor` (feat-002), not in a hand-rolled outer
+  agent class.
+- **Server-resident persistent agent.** `Agent` is per-process.
+  For Letta-style residency, persist `Claim`s via `memory=` and
+  reconstruct state on the next process; framework support comes
+  with feat-020.

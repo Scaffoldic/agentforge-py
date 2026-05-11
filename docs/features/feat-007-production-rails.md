@@ -412,14 +412,16 @@ chain = FallbackChain(
 
 ### How do I set a budget cap on top of fallback?
 
-`BudgetPolicy` and `FallbackChain` are independent. Combine:
+`BudgetPolicy` and `FallbackChain` are independent. Combine using
+the `Agent` constructor's budget kwargs:
 
 ```python
-from agentforge import Agent, BudgetPolicy, FallbackChain
+from agentforge import Agent, FallbackChain
 
 agent = Agent(
     model=FallbackChain([...]),
-    budget=BudgetPolicy(usd=5.0, max_tokens=200_000, max_iterations=50),
+    budget_usd=5.0,
+    max_iterations=50,
 )
 ```
 
