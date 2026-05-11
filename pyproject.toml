@@ -30,6 +30,7 @@ dependencies = [
     "agentforge-memory-postgres",
     "agentforge-eval-geval",
     "agentforge-otel",
+    "agentforge-testing",
 ]
 
 [tool.uv.workspace]
@@ -45,6 +46,7 @@ agentforge-memory-surrealdb = { workspace = true }
 agentforge-memory-postgres = { workspace = true }
 agentforge-eval-geval = { workspace = true }
 agentforge-otel = { workspace = true }
+agentforge-testing = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -219,6 +221,7 @@ testpaths = [
     "packages/agentforge-memory-postgres/tests",
     "packages/agentforge-eval-geval/tests",
     "packages/agentforge-otel/tests",
+    "packages/agentforge-testing/tests",
     "tests",
 ]
 markers = [
@@ -257,6 +260,7 @@ source = [
     "packages/agentforge-memory-postgres/src",
     "packages/agentforge-eval-geval/src",
     "packages/agentforge-otel/src",
+    "packages/agentforge-testing/src",
 ]
 branch = true
 parallel = true
