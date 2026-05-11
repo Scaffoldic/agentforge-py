@@ -12,5 +12,6 @@ from __future__ import annotations
 
 from agentforge.eval.coverage import Coverage
 from agentforge.eval.format_compliance import FormatCompliance
+from agentforge.eval.regression import RegressionVsBaseline
 
-__all__ = ["Coverage", "FormatCompliance"]
+__all__ = ["Coverage", "FormatCompliance", "RegressionVsBaseline"]
