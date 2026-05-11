@@ -44,6 +44,10 @@ from agentforge_core.production.log_filter import (
     install_run_id_filter,
     uninstall_run_id_filter,
 )
+from agentforge_core.production.log_format import (
+    install_json_formatter,
+    uninstall_json_formatter,
+)
 from agentforge_core.production.run_context import (
     RunContext,
     bind_run,
@@ -135,6 +139,8 @@ class Agent:
 
         if install_log_filter and self._config.logging.run_id_filter:
             install_run_id_filter()
+        if install_log_filter and self._config.logging.format == "json":
+            install_json_formatter()
 
     # ------------------------------------------------------------------
     # Resolution helpers (used at construction; raise at startup, P11).
@@ -332,6 +338,7 @@ class Agent:
         if self._graph_store is not None:
             await self._graph_store.close()
         uninstall_run_id_filter()
+        uninstall_json_formatter()
 
     async def __aenter__(self) -> Agent:
         return self
