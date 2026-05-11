@@ -29,6 +29,7 @@ dependencies = [
     "agentforge-memory-surrealdb",
     "agentforge-memory-postgres",
     "agentforge-eval-geval",
+    "agentforge-otel",
 ]
 
 [tool.uv.workspace]
@@ -43,6 +44,7 @@ agentforge-memory-neo4j = { workspace = true }
 agentforge-memory-surrealdb = { workspace = true }
 agentforge-memory-postgres = { workspace = true }
 agentforge-eval-geval = { workspace = true }
+agentforge-otel = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -183,6 +185,19 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_memory_postgres.*"
 disable_error_code = ["no-any-unimported"]
 
+# The opentelemetry-exporter-otlp-proto-grpc shipped package doesn't
+# carry py.typed. opentelemetry-api/sdk do ship typed stubs, so this
+# override is scoped narrowly to the exporter.
+[[tool.mypy.overrides]]
+module = ["opentelemetry.exporter.otlp.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_otel.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -199,6 +214,7 @@ testpaths = [
     "packages/agentforge-memory-surrealdb/tests",
     "packages/agentforge-memory-postgres/tests",
     "packages/agentforge-eval-geval/tests",
+    "packages/agentforge-otel/tests",
     "tests",
 ]
 markers = [
@@ -225,6 +241,7 @@ source = [
     "packages/agentforge-memory-surrealdb/src",
     "packages/agentforge-memory-postgres/src",
     "packages/agentforge-eval-geval/src",
+    "packages/agentforge-otel/src",
 ]
 branch = true
 parallel = true

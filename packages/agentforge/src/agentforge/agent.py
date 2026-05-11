@@ -25,6 +25,7 @@ import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from types import TracebackType
+from typing import Any
 
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.graph_store import GraphStore
@@ -32,6 +33,7 @@ from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.observability import get_tracer
 from agentforge_core.production.budget import BudgetPolicy
 from agentforge_core.production.exceptions import (
     AgentForgeError,
@@ -43,6 +45,10 @@ from agentforge_core.production.log_filter import (
     install_run_id_filter,
     uninstall_run_id_filter,
 )
+from agentforge_core.production.log_format import (
+    install_json_formatter,
+    uninstall_json_formatter,
+)
 from agentforge_core.production.run_context import (
     RunContext,
     bind_run,
@@ -50,7 +56,7 @@ from agentforge_core.production.run_context import (
     reset_run,
 )
 from agentforge_core.resolver import Resolver, parse_model_string
-from agentforge_core.values.state import AgentState, FinishReason, RunResult
+from agentforge_core.values.state import AgentState, FinishReason, RunResult, Step
 
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
@@ -58,6 +64,7 @@ from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 
 _evaluator_log = logging.getLogger("agentforge.evaluators")
+_observability_log = logging.getLogger("agentforge.observability")
 
 
 StepHook = Callable[..., Awaitable[None] | None]
@@ -65,6 +72,13 @@ StepHook = Callable[..., Awaitable[None] | None]
 
 FinishHook = Callable[..., Awaitable[None] | None]
 """Hook signature: takes a RunResult, returns awaitable-or-None."""
+
+StepHooks = StepHook | list[StepHook]
+"""Constructor accepts a single hook or a list. Internally normalised
+to a list — see `Agent.__init__`. feat-009 spec §4.4: multiple
+observability backends can run concurrently against the same run."""
+
+FinishHooks = FinishHook | list[FinishHook]
 
 
 class Agent:
@@ -87,8 +101,8 @@ class Agent:
         system_prompt: str | None = None,
         budget_usd: float | None = None,
         max_iterations: int | None = None,
-        on_step: StepHook | None = None,
-        on_finish: FinishHook | None = None,
+        on_step: StepHooks | None = None,
+        on_finish: FinishHooks | None = None,
         config_path: str | Path | None = None,
         install_log_filter: bool = True,
     ) -> None:
@@ -120,12 +134,14 @@ class Agent:
         )
         self._budget = BudgetPolicy(usd=cap_usd, max_iterations=max_iter)
 
-        self._on_step = on_step
-        self._on_finish = on_finish
+        self._on_step: list[StepHook] = _normalise_hooks(on_step)
+        self._on_finish: list[FinishHook] = _normalise_hooks(on_finish)
         self._closed = False
 
         if install_log_filter and self._config.logging.run_id_filter:
             install_run_id_filter()
+        if install_log_filter and self._config.logging.format == "json":
+            install_json_formatter()
 
     # ------------------------------------------------------------------
     # Resolution helpers (used at construction; raise at startup, P11).
@@ -207,63 +223,88 @@ class Agent:
         token = bind_run(ctx)
         started_ms = time.monotonic()
         finish_reason: FinishReason = "completed"
+        # Root span for the whole run. When no OTel SDK is installed
+        # this is a no-op `NonRecordingSpan` — near-zero cost. With
+        # `agentforge-otel` installed, this becomes the parent of
+        # every strategy.iteration / llm.call / tool.<name> span the
+        # framework emits.
+        tracer = get_tracer()
         try:
-            # Construct a fresh BudgetPolicy per run so per-run mutable
-            # state (spent_usd, iteration, error_streak) doesn't leak
-            # across runs of the same Agent instance.
-            run_budget = BudgetPolicy(
-                usd=self._budget.usd,
-                max_tokens=self._budget.max_tokens,
-                max_iterations=self._budget.max_iterations,
-                error_streak_limit=self._budget.error_streak_limit,
-            )
-            metadata: dict[str, object] = {}
-            if self._llm is not None:
-                metadata[RUNTIME_KEY] = RuntimeContext(
-                    llm=self._llm,
-                    tools=tuple(self._tools),
-                    memory=self._memory,
-                    budget=run_budget,
-                    system_prompt=self._system_prompt,
-                    retriever=self._retriever,
-                    graph_store=self._graph_store,
+            with tracer.start_as_current_span(
+                "agent.run",
+                attributes={
+                    "agentforge.run_id": ctx.run_id,
+                    "agentforge.task": task,
+                },
+            ) as run_span:
+                # Construct a fresh BudgetPolicy per run so per-run mutable
+                # state (spent_usd, iteration, error_streak) doesn't leak
+                # across runs of the same Agent instance.
+                run_budget = BudgetPolicy(
+                    usd=self._budget.usd,
+                    max_tokens=self._budget.max_tokens,
+                    max_iterations=self._budget.max_iterations,
+                    error_streak_limit=self._budget.error_streak_limit,
                 )
-            state = AgentState(
-                run_id=ctx.run_id,
-                task=task,
-                metadata=metadata,
-            )
-            try:
-                await self._strategy.run(state)
-            except BudgetExceeded:
-                finish_reason = "budget_exceeded"
-                raise
-            except GuardrailViolation:
-                finish_reason = "guardrail"
-                raise
-            except AgentForgeError:
-                finish_reason = "error"
-                raise
-            duration_ms = int((time.monotonic() - started_ms) * 1000)
-            output = self._extract_output(state)
-            tokens_in = sum(s.tokens_in for s in state.steps)
-            tokens_out = sum(s.tokens_out for s in state.steps)
-            interim = RunResult(
-                output=output,
-                steps=tuple(state.steps),
-                cost_usd=run_budget.spent_usd,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                run_id=ctx.run_id,
-                duration_ms=duration_ms,
-                finish_reason=finish_reason,
-            )
-            eval_scores = await self._run_evaluators(
-                interim, task=task, state=state, budget=run_budget
-            )
-            result = interim.model_copy(update={"eval_scores": eval_scores})
-            await self._fire_finish(result)
-            return result
+                metadata: dict[str, object] = {}
+                if self._llm is not None:
+                    metadata[RUNTIME_KEY] = RuntimeContext(
+                        llm=self._llm,
+                        tools=tuple(self._tools),
+                        memory=self._memory,
+                        budget=run_budget,
+                        system_prompt=self._system_prompt,
+                        retriever=self._retriever,
+                        graph_store=self._graph_store,
+                    )
+                state = AgentState(
+                    run_id=ctx.run_id,
+                    task=task,
+                    metadata=metadata,
+                )
+                try:
+                    await self._strategy.run(state)
+                except BudgetExceeded:
+                    finish_reason = "budget_exceeded"
+                    raise
+                except GuardrailViolation:
+                    finish_reason = "guardrail"
+                    raise
+                except AgentForgeError:
+                    finish_reason = "error"
+                    raise
+                finally:
+                    # Fire `on_step` for every step the strategy appended,
+                    # even on error paths — observability of the partial
+                    # trace is just as important as the happy path.
+                    await self._fire_steps(list(state.steps))
+                duration_ms = int((time.monotonic() - started_ms) * 1000)
+                output = self._extract_output(state)
+                tokens_in = sum(s.tokens_in for s in state.steps)
+                tokens_out = sum(s.tokens_out for s in state.steps)
+                interim = RunResult(
+                    output=output,
+                    steps=tuple(state.steps),
+                    cost_usd=run_budget.spent_usd,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    run_id=ctx.run_id,
+                    duration_ms=duration_ms,
+                    finish_reason=finish_reason,
+                )
+                eval_scores = await self._run_evaluators(
+                    interim, task=task, state=state, budget=run_budget
+                )
+                result = interim.model_copy(update={"eval_scores": eval_scores})
+                # Tag the root span with the run summary before it closes.
+                run_span.set_attribute("agentforge.finish_reason", finish_reason)
+                run_span.set_attribute("agentforge.cost_usd", result.cost_usd)
+                run_span.set_attribute("agentforge.tokens_in", result.tokens_in)
+                run_span.set_attribute("agentforge.tokens_out", result.tokens_out)
+                run_span.set_attribute("agentforge.duration_ms", result.duration_ms)
+                run_span.set_attribute("agentforge.n_steps", len(result.steps))
+                await self._fire_finish(result)
+                return result
         finally:
             reset_run(token)
 
@@ -318,6 +359,7 @@ class Agent:
         if self._graph_store is not None:
             await self._graph_store.close()
         uninstall_run_id_filter()
+        uninstall_json_formatter()
 
     async def __aenter__(self) -> Agent:
         return self
@@ -347,8 +389,56 @@ class Agent:
         return ""
 
     async def _fire_finish(self, result: RunResult) -> None:
-        if self._on_finish is None:
+        """Fire every finish hook in registration order. Each hook is
+        isolated — a raise gets logged at WARN via the
+        `agentforge.observability` logger and does NOT propagate.
+
+        Per feat-009 §4.3: "Observability must never break the run."
+        """
+        for hook in self._on_finish:
+            await _safe_call_hook(hook, result, kind="on_finish")
+
+    async def _fire_steps(self, new_steps: list[Step]) -> None:
+        """Fire every step hook for each newly-appended step.
+
+        Order: (step1, hook_a), (step1, hook_b), (step2, hook_a), ...
+        — finish each step's hook fan-out before moving to the next.
+        Errors are isolated per-hook same as `_fire_finish`.
+        """
+        if not self._on_step or not new_steps:
             return
-        outcome = self._on_finish(result)
+        for step in new_steps:
+            for hook in self._on_step:
+                await _safe_call_hook(hook, step, kind="on_step")
+
+
+def _normalise_hooks(hooks: Any) -> list[Any]:
+    """Accept `None | Callable | list[Callable]`; return a fresh list.
+
+    Centralised so the on_step / on_finish surfaces stay in sync.
+    """
+    if hooks is None:
+        return []
+    if isinstance(hooks, list):
+        return list(hooks)
+    return [hooks]
+
+
+async def _safe_call_hook(hook: Any, payload: Any, *, kind: str) -> None:
+    """Invoke a hook with `payload`; await if it returned an awaitable;
+    catch + log any exception so the run keeps going.
+
+    "Observability must never break the run" per feat-009 §4.3.
+    """
+    try:
+        outcome = hook(payload)
         if outcome is not None and hasattr(outcome, "__await__"):
             await outcome
+    except Exception as exc:
+        _observability_log.warning(
+            "hook %s raised %s: %s (hook=%r)",
+            kind,
+            type(exc).__name__,
+            exc,
+            getattr(hook, "__name__", hook),
+        )

@@ -32,6 +32,12 @@ classifiers = [
 dependencies = [
     "pydantic>=2.10",
     "python-ulid>=3.0",
+    # OpenTelemetry API only (no SDK / exporter) — small, stable,
+    # pure-Python. When no provider is configured, `tracer.start_*`
+    # calls degrade to the NonRecordingTracer (zero-cost no-ops).
+    # The SDK + OTLP exporter ship in `agentforge-otel`; consumers
+    # opt in by installing that package.
+    "opentelemetry-api>=1.27",
 ]
 
 [project.urls]

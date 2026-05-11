@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-009 |
 | **Title** | Observability — structured logging, distributed tracing (OpenTelemetry), and dashboard exporters |
-| **Status** | proposed |
+| **Status** | shipped (Python — OTel only; vendor backends deferred) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -295,3 +295,286 @@ hook implementations idiomatic per language.
 - [`architecture.md`](../design/architecture.md) §7
 - feat-001, feat-007 (`run_id`)
 - Archived: `docs/archive/cr/CR-010-run-id-context-propagation.md`
+
+---
+
+## Implementation status
+
+**Status: shipped (Python, OTel only).** Landed across 7 chunks on
+`feat/009-observability`. Vendor-specific dashboard packages
+(Langfuse, Phoenix, Evidently, StatsD) deferred to follow-up
+sub-feats — the spec's own thesis backs this: "OTel is the wire
+format; any vendor that ingests OTel works without a vendor-
+specific module."
+
+| Chunk | Scope |
+|---|---|
+| 1 | Hook fan-out: `Agent(on_step=...)` accepts `Hook \| list[Hook]` and `on_step` actually fires (was accepted but never invoked under feat-001). Error isolation — bad hook logs WARN via `agentforge.observability` and the run continues. Sync + async hooks both supported. Steps fire on error paths too. |
+| 2 | JSON log format — `JsonFormatter` + `install_json_formatter` in `agentforge-core/production/log_format.py`; `Agent.__init__` installs when `logging.format == "json"`. |
+| 3 | `agentforge-core` adds `opentelemetry-api>=1.27`; new `agentforge_core/observability/tracing.py` with `get_tracer()`. |
+| 4 | Framework span emission — `Agent.run` opens a root `agent.run` span with run_id / task / cost / token / duration / step-count attributes. |
+| 5 | `agentforge-otel` new workspace member — `OpenTelemetryHook(endpoint=, service_name=, sample_rate=, redact_fields=)` configures the SDK + OTLP gRPC exporter on construction (idempotent; respects existing user provider). |
+| 6 | `OpenTelemetryHook` satisfies both step + finish hook contracts via `__call__` dispatch; per-step events with token / cost / duration attributes; tool-call events with key-based arg redaction. End-to-end test via OTel's `InMemorySpanExporter` asserts the root span lands with the expected attribute + event tree. |
+| 7 | This Implementation section + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
+
+### Deviations from this spec
+
+- **Single PR scope is OTel only.** The four vendor packages
+  (`agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`,
+  `agentforge-statsd`) are deferred to follow-up sub-feats. Spec
+  §4.4 lists them; the user opted to ship OTel first since it
+  covers every collector that ingests OTLP (Datadog, Honeycomb,
+  Jaeger, Grafana Tempo, SigNoz, New Relic, etc.).
+- **Built-in spans landed only at the run boundary, not all the
+  way down.** Spec §4.3 shows a full tree:
+  ```
+  agent.run → strategy.iteration → llm.call / tool.<name> / evaluator.<name>
+  ```
+  We ship `agent.run` as the root. The hook fans out step + tool-call
+  events onto the active span, which gives a flattened version of
+  the tree. Wiring `strategy.iteration` + `llm.call` +
+  `evaluator.<name>` spans as proper children of `agent.run` is a
+  follow-up — requires touching strategy / dispatch internals
+  beyond this PR's scope. The current shape is still useful: every
+  `agent.run` span carries finish_reason, cost, tokens, duration,
+  and per-step / per-tool-call events.
+- **Redaction is key-based, not field-content-based.** The hook
+  matches the lower-cased argument key against a list of
+  substrings (`api_key`, `password`, etc.); the value gets
+  replaced wholesale. Content-based redaction (regex over the
+  value text) is a follow-up.
+- **Service-name default falls back to `"agentforge"`.** Spec
+  hinted at deriving it from project name; we required the caller
+  to specify it explicitly (sensible default, but explicit is
+  better than guessing).
+
+### What's *not* yet implemented
+
+- **Vendor packages**: `agentforge-langfuse`, `agentforge-phoenix`,
+  `agentforge-evidently`, `agentforge-statsd`. Each is a small
+  follow-up that wraps its respective SDK in the same hook
+  contract; OTel coverage covers the major bases until then.
+- **`strategy.iteration` / `llm.call` / `tool.<name>` /
+  `evaluator.<name>` child spans** as proper OTel spans (not just
+  events). Requires instrumenting strategy internals + tool
+  dispatch + the evaluator loop.
+- **A2A trace propagation** across peer-agent calls (feat-014
+  dependency).
+- **Content-based PII redaction** (regex over arg values).
+- **TypeScript port** of the whole feat-009 surface.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
+
+### How do I add observability to an agent?
+
+For development — just `RunIdFilter` (auto-installed by `Agent`):
+
+```python
+import logging
+from agentforge import Agent
+
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s [run_id=%(run_id)s] %(levelname)s %(name)s: %(message)s")
+async with Agent(model="bedrock:...") as agent:
+    result = await agent.run("...")
+# stdout: 2026-05-11 16:42:01 [run_id=01HX...] INFO agentforge: ...
+```
+
+For production — install OTel:
+
+```bash
+uv add agentforge-otel
+```
+
+```python
+from agentforge import Agent
+from agentforge_otel import OpenTelemetryHook
+
+otel = OpenTelemetryHook(
+    endpoint="http://otel-collector:4317",
+    service_name="my-agent",
+    sample_rate=1.0,
+)
+
+agent = Agent(
+    model="bedrock:...",
+    tools=[...],
+    on_step=otel,
+    on_finish=otel,
+)
+```
+
+### How do I emit JSON logs?
+
+Set `logging.format: "json"` in `agentforge.yaml`:
+
+```yaml
+logging:
+  level: "INFO"
+  run_id_filter: true
+  format: "json"
+```
+
+Or call `install_json_formatter()` explicitly:
+
+```python
+from agentforge_core import install_json_formatter
+install_json_formatter()
+```
+
+Each log line becomes one JSON object: `{"ts": "...", "level":
+"INFO", "logger": "agentforge.agent", "msg": "...", "run_id":
+"01HX..."}`. Extra fields passed via
+`logger.info(..., extra={"tool": "web_search"})` pass through.
+
+### How do I fan out to multiple observability backends?
+
+Pass a list of hooks. Each fires in registration order; one
+hook's exception doesn't affect siblings.
+
+```python
+agent = Agent(
+    model="...",
+    on_step=[otel, my_custom_metrics_hook],
+    on_finish=[otel, persist_run_summary],
+)
+```
+
+A raising hook logs WARN via `agentforge.observability` and the
+run continues. The framework's invariant per spec §4.3:
+**observability must never break the run**.
+
+### How do I write a custom hook?
+
+The simplest shape — a callable that takes a `Step` (or
+`RunResult` for `on_finish`):
+
+```python
+def metrics_hook(step):
+    statsd.increment(f"agent.step.{step.kind}")
+    if step.tool_call:
+        statsd.increment(f"agent.tool.{step.tool_call.name}")
+
+agent = Agent(model="...", on_step=metrics_hook)
+```
+
+Async is also supported — return a coroutine and it gets awaited:
+
+```python
+async def upload_step(step):
+    await dashboard.post_step(step.model_dump())
+
+agent = Agent(model="...", on_step=upload_step)
+```
+
+For a class-based observer that handles both step and finish,
+make it callable with type dispatch (mirrors `OpenTelemetryHook`):
+
+```python
+class MyObserver:
+    def __call__(self, payload):
+        if isinstance(payload, Step):
+            self._on_step(payload)
+        else:
+            self._on_finish(payload)
+
+obs = MyObserver()
+agent = Agent(model="...", on_step=obs, on_finish=obs)
+```
+
+### How do I redact secrets from traces?
+
+`OpenTelemetryHook` redacts tool-call argument values whose keys
+contain any of `api_key`, `password`, `secret`, `token`,
+`authorization` (case-insensitive). Override the list:
+
+```python
+otel = OpenTelemetryHook(
+    endpoint="http://otel-collector:4317",
+    service_name="payments-agent",
+    redact_fields=("api_key", "ssn", "card_number", "cvv"),
+)
+```
+
+Match is substring-on-key — `"ssn"` redacts `"customer_ssn"`,
+`"ssn_last4"`, etc. Values are replaced wholesale with
+`<redacted>`.
+
+For redaction of secrets that appear in step *content* (the LLM
+output text, not the tool args), wrap your `on_step` hook with a
+regex scrubber before passing it. Content-based redaction in the
+hook itself is a follow-up.
+
+### How do I keep observability cost low?
+
+Three knobs:
+
+```python
+otel = OpenTelemetryHook(
+    endpoint="...",
+    service_name="...",
+    sample_rate=0.1,         # only 10% of traces sampled
+)
+```
+
+`sample_rate` uses OTel's `TraceIdRatioBased` sampler — every
+span in a given trace inherits the trace-level decision, so a
+sampled run keeps the full per-step / per-tool tree, while
+unsampled runs emit nothing.
+
+Sync vs async: heavy hook work blocks the agent loop. Push to
+a queue / `asyncio.create_task` for fire-and-forget:
+
+```python
+async def upload(step):
+    asyncio.create_task(dashboard.post_step(step.model_dump()))
+```
+
+### How do I see what's in `agent.run`'s span?
+
+The root span attributes after the run completes:
+
+- `agentforge.run_id`
+- `agentforge.task`
+- `agentforge.finish_reason` (completed / budget_exceeded / guardrail / error)
+- `agentforge.cost_usd`
+- `agentforge.tokens_in`, `agentforge.tokens_out`
+- `agentforge.duration_ms`
+- `agentforge.n_steps`
+
+Each step the strategy emitted lands as an `agent.step` event on
+the root span with `agentforge.step.iteration`, `kind`,
+`cost_usd`, `tokens_in`, `tokens_out`, `duration_ms`. Tool calls
+add an `agent.tool_call` event with the tool name and redacted
+args.
+
+### Which vendor can ingest these traces?
+
+Anything that speaks OTLP — Datadog, Honeycomb, Jaeger, Grafana
+Tempo, SigNoz, New Relic, AWS X-Ray (via the AWS OTel collector).
+Point `endpoint=` at your collector's gRPC port (4317 by
+default). No vendor-specific code needed.
+
+Future first-party packages (`agentforge-langfuse`,
+`agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd`)
+will add LLM-specific dashboards on top of the OTel baseline once
+shipped.
+
+### When should I NOT add an observability hook?
+
+- **In a tight loop where latency matters more than visibility.**
+  Synchronous hooks run inline; even cheap ones add up across
+  thousands of steps. Switch to async fire-and-forget.
+- **For per-token telemetry.** Hooks fire per `Step`, not per
+  token. Token-level streaming is a future capability (feat-003
+  has the streaming surface).
+- **As error-suppression.** Hooks catch their own exceptions so
+  the run continues — but they don't get a chance to fix a broken
+  agent. Don't move business logic into hooks.
