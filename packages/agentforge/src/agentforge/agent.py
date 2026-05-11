@@ -108,14 +108,19 @@ class Agent:
     ) -> None:
         self._config: AgentForgeConfig = load_config(config_path)
 
-        # Resolve model.
-        self._llm: LLMClient | None
-        resolved_model = model if model is not None else self._config.agent.model
-        self._llm = self._resolve_model(resolved_model)
+        # Resolve model. The widened config (feat-012) allows
+        # `model:` to be a dict for inline llm_options, but feat-001's
+        # constructor still only accepts `str | LLMClient` directly.
+        # When the YAML form is a dict, prefer the explicit kwarg or
+        # error at startup.
+        self._llm: LLMClient | None = self._resolve_model(
+            _pick_str_form(model, self._config.agent.model, field="model")
+        )
 
-        # Resolve strategy.
-        resolved_strategy = strategy if strategy is not None else self._config.agent.strategy
-        self._strategy: ReasoningStrategy = self._resolve_strategy(resolved_strategy)
+        # Resolve strategy. Same shape constraint as `model`.
+        self._strategy: ReasoningStrategy = self._resolve_strategy(
+            _pick_str_form(strategy, self._config.agent.strategy, field="strategy")
+        )
 
         # Defaults: in-memory store, no evaluators, no tools.
         self._memory: MemoryStore = memory if memory is not None else InMemoryStore()
@@ -128,7 +133,7 @@ class Agent:
         )
 
         # Budget — kwargs override config; config overrides Pydantic default.
-        cap_usd = budget_usd if budget_usd is not None else self._config.agent.budget_usd
+        cap_usd = budget_usd if budget_usd is not None else self._config.agent.budget.usd
         max_iter = (
             max_iterations if max_iterations is not None else self._config.agent.max_iterations
         )
@@ -410,6 +415,28 @@ class Agent:
         for step in new_steps:
             for hook in self._on_step:
                 await _safe_call_hook(hook, step, kind="on_step")
+
+
+def _pick_str_form(
+    kwarg_value: Any,
+    config_value: Any,
+    *,
+    field: str,
+) -> Any:
+    """Prefer `kwarg_value`; if absent, use `config_value` unless it's
+    a dict (inline-options form, feat-012 §4.5 — not yet supported at
+    Agent construction). Returns `str | object | None` typed as `Any`
+    so the per-field resolver narrows on its own.
+    """
+    if kwarg_value is not None:
+        return kwarg_value
+    if isinstance(config_value, dict):
+        raise ModuleError(
+            f"agent.{field} in agentforge.yaml is a dict (inline options form); "
+            f"not yet supported at Agent construction. Pass {field}= explicitly "
+            "or use the string form in YAML."
+        )
+    return config_value
 
 
 def _normalise_hooks(hooks: Any) -> list[Any]:

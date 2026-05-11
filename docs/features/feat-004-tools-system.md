@@ -338,10 +338,11 @@ gate destructive tool use.
   `allowed_commands=None` (any binary), but heavily documented as
   destructive — operators add their own whitelist for production.
 - **Config integration (`agentforge.yaml > agent.tools`)**:
-  feat-012's full configuration schema lands separately. The
-  default tools and `@tool`-decorated functions are usable
-  programmatically today; declarative wiring follows when feat-012
-  ships.
+  feat-012 shipped the schema (`agent.tools: list[str | dict]`)
+  and the `agentforge config validate` CLI. Wiring `Agent(tools=)`
+  to resolve string entries from `agent.tools` automatically is a
+  small Agent-level follow-up; the resolver work
+  (`Resolver.resolve("tools", ...)`) shipped under feat-010.
 
 ### What's *not* yet implemented
 

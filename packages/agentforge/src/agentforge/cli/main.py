@@ -12,6 +12,7 @@ import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 
+from agentforge.cli.config_cmd import register_config_cmd
 from agentforge.cli.list_modules import register_list_modules
 
 
@@ -27,6 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     register_list_modules(sub)
+    register_config_cmd(sub)
     return parser
 
 

@@ -21,6 +21,65 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-012 — Configuration system.** Widens the minimal
+  schema feat-001 shipped into the full `agentforge.yaml` surface
+  (target version 0.1, foundational), plus layered env files,
+  dotted-path overrides, env shortcuts, module-side schema
+  integration, and the `agentforge config` CLI commands.
+
+  *New in `agentforge-core` (schema + loader moved here from
+  `agentforge`):*
+  - **Widened root schema**: `AgentForgeConfig` now exposes
+    `agent` (with nested `BudgetConfig`, `system_prompt_file:
+    Path`, `tools`, `llm_options`), `modules` (`ModulesConfig`
+    with `memory` / `graph` / `retriever` / `evaluators` /
+    `observability` / `tools` / `protocols` sub-fields),
+    `providers` (named-registry dict of `ProviderConfig`),
+    `logging`, and `output` (`OutputConfig`).
+  - **`BudgetConfig`** (nested `usd` / `max_tokens` /
+    `error_streak_limit`) replaces the flat `agent.budget_usd:
+    float` — breaking YAML change. The schema rejects the old
+    field via `extra="forbid"`; `Agent(budget_usd=, max_iterations=)`
+    kwargs remain unchanged (locked under feat-001).
+  - **`agent.system_prompt_file: Path`** with string→Path coercer
+    for YAML strings.
+  - **Loader features**:
+    - Layered env files (`agentforge.<env>.yaml` overlay via
+      `AGENTFORGE_ENV` or explicit `env=` kwarg) — dict deep-merge,
+      list-replace.
+    - Dotted-path overrides — `parse_overrides([
+      "agent.budget.usd=10", ...])`; values YAML-parsed for native
+      types.
+    - `AGENTFORGE_CONFIG` env var to point at a custom config
+      file path.
+    - `AGENTFORGE_LOG_LEVEL` env var applied post-validation to
+      `cfg.logging.level`.
+  - **`validate_module_configs(cfg, resolver=None, strict=True)`**
+    walks `modules.*` blocks, looks each entry's class up in the
+    resolver, reads `cls.config_schema: ClassVar[type[BaseModel]
+    | None]`, and validates the `config:` dict against it.
+    Modules without a `config_schema` accept any dict (backwards
+    compatible with every shipped module).
+
+  *New in `agentforge` (CLI):*
+  - **`agentforge config validate [--path P] [--env E]
+    [--override K=V] [--strict-modules]`** — schema + module-
+    schema validation. Lenient by default; `--strict-modules`
+    fails when referenced modules aren't installed.
+  - **`agentforge config show [--path P] [--env E]
+    [--override K=V] [--resolved | --raw]`** — prints the loaded
+    config as YAML.
+  - **`agentforge config schema [--indent N]`** — emits the root
+    `AgentForgeConfig.model_json_schema()` for editor /
+    SchemaStore autocomplete.
+
+  *Knock-on docs:* `feat-001`, `feat-003`, `feat-004`, `feat-006`
+  forward-tense references to "feat-012 will ship..." rewritten to
+  acknowledge feat-012 has shipped the data side; the
+  Agent-level auto-wiring of `modules.*` blocks is now a small
+  follow-up tracked under each feature's "what's not yet
+  implemented" list (and the feat-010-deferred destructive CLI).
+
 - **feat-010 — Module discovery & resolution (runtime + read-only CLI).**
   The resolver shipped under feat-001 with an in-process registry
   only. This feature wires it to Python entry points so `pip install

@@ -1,18 +1,45 @@
-"""Configuration loader for `agentforge.yaml`.
+"""Configuration loader for `agentforge.yaml` — re-export from core.
 
-feat-001 ships only the partial schema that feat-001's surface needs.
-feat-012 ships the full schema with module / observability / providers
-sections. Both phases use the same loader; the schema grows additively.
+feat-012 moved the canonical schema + loader to `agentforge-core`
+so the resolver can compose module-side Pydantic schemas without
+importing the runtime package. This module stays as a re-export
+for the historical `from agentforge.config import ...` path.
 """
 
 from __future__ import annotations
 
-from agentforge.config.loader import load_config
-from agentforge.config.schema import AgentConfig, AgentForgeConfig, LoggingConfig
+from agentforge_core.config import (
+    AgentConfig,
+    AgentForgeConfig,
+    BudgetConfig,
+    EvaluatorEntry,
+    GraphModuleConfig,
+    LoggingConfig,
+    MemoryModuleConfig,
+    ModuleEntry,
+    ModulesConfig,
+    ObservabilityEntry,
+    OutputConfig,
+    ProviderConfig,
+    RetrieverModuleConfig,
+    load_config,
+    parse_overrides,
+)
 
 __all__ = [
     "AgentConfig",
     "AgentForgeConfig",
+    "BudgetConfig",
+    "EvaluatorEntry",
+    "GraphModuleConfig",
     "LoggingConfig",
+    "MemoryModuleConfig",
+    "ModuleEntry",
+    "ModulesConfig",
+    "ObservabilityEntry",
+    "OutputConfig",
+    "ProviderConfig",
+    "RetrieverModuleConfig",
     "load_config",
+    "parse_overrides",
 ]

@@ -744,3 +744,63 @@ validation; deferred to follow-up sub-feat. Branched
   state.
 
 Ready to push.
+
+## 2026-05-11T20:00 — feat-010 merged @ #16; picking up feat-012
+Flagged the feat-011-vs-feat-012 question (feat-011 declares
+feat-010 as its dep but the half of feat-010 it actually consumes
+was deferred; feat-012 is the realistic next pick to unblock
+everything). User confirmed picking feat-012, then chose Option A —
+full scope (target version 0.1, foundational). Branched
+`feat/012-configuration-system` and drafted 11-chunk plan.
+
+## 2026-05-11T20:45 — feat-012 chunks 1-6 done
+`6a847b8` — schema + loader rework bundled:
+- Moved schema + loader from `agentforge.config` to
+  `agentforge_core.config` (runtime package re-exports for
+  backward compat).
+- Widened root: `BudgetConfig` (replaces flat `budget_usd`),
+  `ModulesConfig`, `ProvidersConfig`, `OutputConfig`,
+  `system_prompt_file: Path`.
+- Loader features: layered env files (deep-merge dicts, list-
+  replace) via `AGENTFORGE_ENV`; dotted-path overrides;
+  `AGENTFORGE_CONFIG` + `AGENTFORGE_LOG_LEVEL` env shortcuts.
+- Breaking YAML change: `agent.budget_usd` → `agent.budget.usd`
+  (with `extra="forbid"` for a clean error). Locked
+  `Agent(budget_usd=)` kwarg surface preserved.
+
+## 2026-05-11T21:00 — feat-012 chunk 7 done
+`c0d177a` — module-side schema integration:
+- `cls.config_schema: ClassVar[type[BaseModel] | None]` convention.
+- `validate_module_configs(cfg, resolver=None, strict=True)`
+  walks `modules.*` blocks, resolves classes via the resolver,
+  validates each `config:` dict.
+- Lenient mode (`strict=False`) skips missing modules — for
+  `agentforge config validate` against configs that reference
+  packages installed elsewhere.
+
+## 2026-05-11T21:15 — feat-012 chunks 8-10 done
+`c088273` — `agentforge config` CLI:
+- `validate [--path P] [--env E] [--override K=V]
+  [--strict-modules]` — schema + module-schema validation;
+  Pydantic errors rendered with dotted YAML paths.
+- `show [--resolved | --raw]` — print loaded config as YAML.
+- `schema [--indent N]` — emit root JSON Schema for editor
+  autocomplete.
+
+## 2026-05-11T21:30 — feat-012 chunk 11 done, PR pending
+- `docs/features/feat-012-configuration-system.md`: status →
+  `shipped (Python)`; added Implementation status (11-chunk
+  table; deviations: breaking YAML budget change documented,
+  evaluator string-shorthand deferred, Agent auto-wiring of
+  modules.* deferred to feat-010 destructive-CLI follow-up);
+  added Runbook (10 task entries: minimal YAML, modules, env
+  vars, env overlays, CLI overrides, validate, show, IDE
+  autocomplete, custom module schemas, log level, when not to
+  use YAML).
+- `CHANGELOG.md`: full feat-012 entry + knock-on notes.
+- `docs/roadmap.md`: feat-012 row moved Backlog → Shipped.
+- `docs/features/README.md`: feat-012 status updated.
+- **Forward-reference sweep**: feat-001 / feat-003 / feat-004 /
+  feat-006 forward-tense feat-012 references rewritten.
+
+Ready to push.
