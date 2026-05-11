@@ -71,11 +71,16 @@ async def build_agent_from_config(
         await _maybe_init_schema(memory)
     evaluators = build_evaluators_from_config(config)
     llm = _resolve_llm(config)
+    strategy = config.agent.strategy if isinstance(config.agent.strategy, str) else None
 
     return Agent(
         model=llm,
         memory=memory if memory is not None else InMemoryStore(),
         evaluators=evaluators,
+        strategy=strategy,
+        system_prompt=config.agent.system_prompt,
+        budget_usd=config.agent.budget.usd,
+        max_iterations=config.agent.max_iterations,
         record_runs=memory if enable_recording and memory is not None else None,
     )
 
