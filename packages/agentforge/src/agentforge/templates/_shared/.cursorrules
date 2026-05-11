@@ -1,0 +1,12 @@
+See AGENTS.md for project conventions. AGENTS.md is the canonical
+source. This file exists so Cursor's native .cursorrules discovery
+keeps working.
+
+Cursor-specific rules can be added below this marker:
+
+<!-- agentforge:end-managed -->
+
+<!-- agentforge:custom -->
+<!-- Cursor-specific rules go here. This section survives
+     `agentforge upgrade`. -->
+<!-- agentforge:end-custom -->
