@@ -17,6 +17,7 @@ members = [
     "agentforge-guard-llmguard",
     "agentforge-guard-nemo",
     "agentforge-guard-presidio",
+    "agentforge-mcp",
     "agentforge-memory-neo4j",
     "agentforge-memory-postgres",
     "agentforge-memory-sqlite",
@@ -141,6 +142,17 @@ dependencies = [
 requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
 
 [[package]]
+name = "agentforge-mcp"
+version = "0.0.0"
+source = { editable = "packages/agentforge-mcp" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
+
+[[package]]
 name = "agentforge-memory-neo4j"
 version = "0.0.0"
 source = { editable = "packages/agentforge-memory-neo4j" }
@@ -247,6 +259,7 @@ dependencies = [
     { name = "agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo" },
     { name = "agentforge-guard-presidio" },
+    { name = "agentforge-mcp" },
     { name = "agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite" },
@@ -279,6 +292,7 @@ requires-dist = [
     { name = "agentforge-guard-llmguard", editable = "packages/agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo", editable = "packages/agentforge-guard-nemo" },
     { name = "agentforge-guard-presidio", editable = "packages/agentforge-guard-presidio" },
+    { name = "agentforge-mcp", editable = "packages/agentforge-mcp" },
     { name = "agentforge-memory-neo4j", editable = "packages/agentforge-memory-neo4j" },
     { name = "agentforge-memory-postgres", editable = "packages/agentforge-memory-postgres" },
     { name = "agentforge-memory-sqlite", editable = "packages/agentforge-memory-sqlite" },
