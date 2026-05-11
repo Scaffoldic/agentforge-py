@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-016 |
 | **Title** | Testing — `MockLLMClient`, fake tools, fixtures, conformance helpers |
-| **Status** | proposed |
+| **Status** | shipped (Python — `agentforge.testing` namespace + `agentforge-testing` package) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 |
@@ -211,7 +211,152 @@ helpers")
   `MockLLMClient` for cost/speed.
 - A web UI for managing recordings. Out of scope.
 
-## 10. References
+## 10. Implementation status (Python)
+
+Shipped in PR #21 across the `agentforge` runtime package (the
+v0.1 public test-helper surface at `agentforge.testing`) and a
+new Tier-3 sister package `agentforge-testing` (richer helpers).
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `6c69bbe` | `agentforge.testing` namespace + `MockLLMClient` (`from_script`, `deterministic`, `call_count`, `tool_calls_observed`) + re-exports of `FakeTool`, `FakeLLMClient`, `echo_response` |
+| 2 | `72c4de5` | `agent_factory` (safe defaults) + pytest fixtures `mock_llm` / `temp_memory_store` + conformance re-exports (`run_memory_conformance`, `run_strategy_conformance`, `run_vector_conformance`) |
+| 3 | `327e525` | `record_llm(real, path, redactions)` + `MockLLMClient.from_recording(path)` + `load_recording` + versioned JSONL header + default redactions (`api_key` / `authorization` / `bearer`) |
+| 4 | `f007d1e` | New `agentforge-testing` package: `GoldenSetRunner` (exact / contains / regex / any_of), `assert_snapshot` (UPDATE_SNAPSHOTS env), `analyze_recording` → `RecordingStats` |
+| 5 | (this PR) | Spec status + Implementation section + Runbook + roadmap + CHANGELOG + state |
+
+### Deviations from the design
+
+- **`agentforge._testing` (private) is retained as a compat shim.**
+  feat-002 and other early-feature tests import
+  `FakeLLMClient` / `FakeTool` / `echo_response` from
+  `agentforge._testing`; the public namespace at
+  `agentforge.testing` re-exports them so both import paths work
+  in v0.x. New code uses the public namespace; the private one
+  is documented in its docstring as legacy.
+- **MockLLMClient does not yet pass `run_llm_conformance(self)`
+  (spec §7).** There is no `LLMClient` conformance suite shipped
+  in `agentforge-core` yet; adding one is a follow-up sub-feat.
+  `MockLLMClient` satisfies the locked `LLMClient` ABC and is
+  exercised by the existing tests directly.
+- **`record_llm` matches by sequence, not request hash, on
+  replay.** Each `request_hash` is persisted, but
+  `MockLLMClient.from_recording` returns responses in on-disk
+  order. The hash is exposed for callers that want hash-keyed
+  replay; a follow-up can layer it on once a real consumer
+  surfaces.
+- **VCR-style cassettes** (spec §8). Basic redaction is in
+  (api_key / authorization / bearer); a full configurable
+  redaction pipeline is deferred.
+- **TypeScript port** (spec §6). The Python implementation
+  defines the recording format the TS port will mirror; TS
+  delivery deferred.
+
+### Module split
+
+- `agentforge.testing` — public namespace inside the runtime
+  package. `MockLLMClient`, `FakeTool`, `FakeLLMClient`,
+  `echo_response`, `agent_factory`, fixtures, conformance
+  re-exports, `record_llm` + `load_recording`.
+- `agentforge-testing` — pip-installable Tier-3 package.
+  `GoldenSetRunner`, `assert_snapshot`, `analyze_recording`.
+  Workspace member; CI extended to run its tests + mypy + bandit.
+
+## 11. Runbook
+
+### Mock an LLM
+
+```python
+from agentforge.testing import MockLLMClient, agent_factory, FakeTool
+
+llm = MockLLMClient.from_script([
+    {"text": "thinking", "tool_calls": [{"name": "search",
+                                          "args": {"q": "Spain"}}]},
+    {"text": "47.5M", "stop_reason": "end_turn"},
+])
+agent = agent_factory(
+    model=llm,
+    tools=[FakeTool.fake("search", lambda **kw: "47.5M people")],
+)
+result = await agent.run("How many people live in Spain?")
+assert "47.5M" in result.output
+assert llm.tool_calls_observed == [("search", {"q": "Spain"})]
+```
+
+### Record + replay a real provider
+
+```python
+from agentforge.testing import record_llm, MockLLMClient
+from agentforge_anthropic import AnthropicClient  # example provider
+
+# 1. Record (run once with real credentials)
+real = AnthropicClient(model_id="claude-sonnet-4-7")
+wrapped = record_llm(real, "tests/cassettes/spain.jsonl")
+# ... use `wrapped` in your test; cassette gets written
+
+# 2. Replay (subsequent runs — no API calls)
+mock = MockLLMClient.from_recording("tests/cassettes/spain.jsonl")
+```
+
+Cassettes are JSON Lines: header line carries `format_version`
+and `redactions`, followed by one line per call with
+`{request_hash, request, response}`. `api_key`, `authorization`,
+and `bearer` keys are redacted by default. Pass
+`redactions=("custom-key", ...)` to extend.
+
+### Conformance-test your own driver
+
+```python
+from agentforge.testing import run_memory_conformance
+from my_package import MyMemoryStore
+
+async def test_my_driver_conforms() -> None:
+    async with MyMemoryStore.from_url(...) as store:
+        await run_memory_conformance(store)
+```
+
+### Golden-set regression
+
+```python
+from agentforge_testing import GoldenSetRunner
+
+async def test_known_questions() -> None:
+    runner = GoldenSetRunner.from_jsonl("tests/golden.jsonl")
+    results = await runner.run(my_agent_factory)
+    failures = [r for r in results if not r.passed]
+    assert not failures, [r.detail for r in failures]
+```
+
+Fixture format:
+
+```jsonl
+{"task": "Capital of France?", "expected": "Paris"}
+{"task": "Population of Spain?", "expected": {"contains": "47"}}
+{"task": "Translate hello.", "expected": {"any_of": ["bonjour", "hola"]}}
+```
+
+### Snapshot a deterministic render
+
+```python
+from agentforge_testing import assert_snapshot
+
+def test_scorecard_render() -> None:
+    text = scorecard_renderer.render(finding)
+    assert_snapshot(text, "tests/__snapshots__/scorecard.txt")
+```
+
+Re-record with `UPDATE_SNAPSHOTS=1 pytest`.
+
+### Analyze a cassette
+
+```python
+from agentforge_testing import analyze_recording
+
+stats = analyze_recording("tests/cassettes/spain.jsonl")
+print(stats.call_count, stats.tokens_in, stats.tool_call_names)
+```
+
+## 12. References
 
 - feat-001, feat-003, feat-004, feat-005, feat-008
 - Prior art: pytest-recording, VCR.py
