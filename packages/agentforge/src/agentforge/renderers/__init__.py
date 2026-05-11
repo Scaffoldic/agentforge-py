@@ -12,9 +12,17 @@ their own variants.
 
 from __future__ import annotations
 
+from agentforge.renderers.markdown import MarkdownRenderer
+from agentforge.renderers.patch_applier import PatchApplierRenderer
 from agentforge.renderers.registry import MissingRendererError, RendererRegistry
+from agentforge.renderers.scorecard import ScorecardRenderer
+from agentforge.renderers.span_table import SpanTableRenderer
 
 __all__ = [
+    "MarkdownRenderer",
     "MissingRendererError",
+    "PatchApplierRenderer",
     "RendererRegistry",
+    "ScorecardRenderer",
+    "SpanTableRenderer",
 ]

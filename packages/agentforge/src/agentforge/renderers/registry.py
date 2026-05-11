@@ -15,6 +15,8 @@ from __future__ import annotations
 from agentforge_core.contracts.finding import Finding
 from agentforge_core.contracts.renderer import FindingRenderer
 
+from agentforge.renderers._defaults import populate_defaults
+
 
 class MissingRendererError(LookupError):
     """Raised by `RendererRegistry.get` when no renderer matches."""
@@ -77,6 +79,19 @@ class RendererRegistry:
     def registered_types(self) -> tuple[type, ...]:
         """Diagnostic: types currently registered, in registration order."""
         return tuple(t for t, _ in self._registrations)
+
+    @classmethod
+    def default(cls) -> RendererRegistry:
+        """Return a registry pre-populated with the four built-in renderers.
+
+        Maps `SimpleFinding` → `ScorecardRenderer`, `PatchFinding` →
+        `PatchApplierRenderer`, `NarrativeFinding` → `MarkdownRenderer`,
+        `MultiSpanFinding` → `SpanTableRenderer`. Agents can register
+        more variants on top, or replace any of these in place.
+        """
+        registry = cls()
+        populate_defaults(registry)
+        return registry
 
 
 def _is_more_specific(candidate: type, current_best: type, target: type) -> bool:
