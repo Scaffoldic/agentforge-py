@@ -301,3 +301,162 @@ caused one CI failure during feat-005 work — see PR #7 commit
   for now).
 - Cross-backend tooling (`agentforge swap` for in-place backend
   changes).
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
+
+### How do I pick a backend?
+
+| Constraint | Backend |
+|---|---|
+| Single host, no extra deps, durable across restarts | `agentforge-memory-sqlite` |
+| Production scale, multi-writer, managed (RDS/Neon/Supabase) | `agentforge-memory-postgres` |
+| Graph relationships first-class, mature ecosystem | `agentforge-memory-neo4j` |
+| Tri-modal (claims + vectors + graph) in a single store | `agentforge-memory-surrealdb` |
+| Ephemeral / unit tests | `InMemoryStore` (built into `agentforge`) — the default when `memory=` is omitted |
+
+Install the package, then construct via the driver's async factory.
+
+### How do I add SQLite persistence to a single-host agent?
+
+```python
+from agentforge import Agent
+from agentforge_memory_sqlite import SqliteMemoryStore
+
+memory = await SqliteMemoryStore.from_path("./agent.db")
+await memory.init_schema()
+
+async with Agent(model="bedrock:...", memory=memory) as agent:
+    result = await agent.run("…")
+```
+
+`init_schema()` is idempotent — safe to call on every startup. The
+schema is `CREATE TABLE IF NOT EXISTS …` plus indices.
+
+### How do I add Postgres for production scale?
+
+```python
+from agentforge_memory_postgres import PostgresMemoryStore, PostgresVectorStore
+
+memory = await PostgresMemoryStore.from_dsn(
+    "postgresql://postgres:postgres@localhost:5432/agentforge",
+    min_size=2,
+    max_size=10,
+)
+await memory.init_schema()
+
+# Optional: vectors alongside on the same DB
+vectors = await PostgresVectorStore.from_dsn(POSTGRES_URL, dimensions=1024)
+await vectors.init_schema()   # provisions pgvector + HNSW index
+```
+
+The pool is sized at construction; defaults
+(`min_size=1, max_size=10`) suit most production workloads. Each
+method acquires a connection per call and wraps mutations in
+`async with conn.transaction()`. Capability `{"transactions"}` is
+declared.
+
+### How do I add RAG (vector search) to an agent?
+
+```python
+from agentforge import Agent, Retriever
+from agentforge_bedrock import BedrockEmbeddingClient
+from agentforge_memory_postgres import PostgresVectorStore
+
+embedder = BedrockEmbeddingClient(model_id="amazon.titan-embed-text-v2:0")
+vectors = await PostgresVectorStore.from_dsn(POSTGRES_URL, dimensions=1024)
+await vectors.init_schema()
+
+retriever = Retriever(store=vectors, embedder=embedder, top_k=5)
+
+agent = Agent(model="bedrock:...", retriever=retriever)
+```
+
+The `Retriever` adapter wires `VectorStore.search` to the strategy
+context — strategies that consume RAG (ReAct, Plan-Execute) pull
+relevant context per step automatically. Cosine similarities are
+returned clamped to `[0, 1]` regardless of backend.
+
+### How do I add a graph store?
+
+```python
+from agentforge import Agent
+from agentforge_memory_neo4j import Neo4jGraphStore, Neo4jMemoryStore
+
+memory = await Neo4jMemoryStore.from_url(
+    "bolt://localhost:7687",
+    auth=("neo4j", os.environ["NEO4J_PASSWORD"]),
+)
+graph = await Neo4jGraphStore.from_url(
+    "bolt://localhost:7687",
+    auth=("neo4j", os.environ["NEO4J_PASSWORD"]),
+)
+
+agent = Agent(model="bedrock:...", memory=memory, graph_store=graph)
+```
+
+SurrealDB is tri-modal — one connection serves `MemoryStore`,
+`VectorStore`, and `GraphStore` (declared capabilities reflect
+that intersection). Neo4j ships `MemoryStore` + `GraphStore`
+today; vector indexing in Neo4j 5.x is a follow-up.
+
+### How do I namespace claims across projects / agents?
+
+`Claim` carries `project` and `agent` fields; the store filters
+all queries to the calling `(project, agent)` by default. Pass
+overrides explicitly when you need cross-namespace queries:
+
+```python
+claims = await memory.query(project="other-project", agent="other-agent")
+```
+
+`Claim.id` is a ULID — monotonic per process, globally unique. Use
+`memory.supersede(old_id, new_claim)` to evolve a claim without
+losing the audit trail (the old row stays; the new one links via
+`supersedes`).
+
+### How do I run integration tests against a real DB?
+
+Each driver ships a `docker-compose.dev.yml` and an env-gated test
+file:
+
+```bash
+docker compose -f packages/agentforge-memory-postgres/docker-compose.dev.yml up -d
+RUN_LIVE_POSTGRES=1 \
+  POSTGRES_URL=postgresql://postgres:postgres@localhost:5432/agentforge \
+  uv run pytest packages/agentforge-memory-postgres/tests/integration -v
+```
+
+Same pattern for Neo4j (`RUN_LIVE_NEO4J=1`) and SurrealDB
+(`RUN_LIVE_SURREAL=1`). CI does **not** run live tests; the unit
+tests cover every driver via in-process fakes that route SQL /
+Cypher / SurrealQL to in-memory backings.
+
+### How do I provision schemas without a real migration framework?
+
+Every driver exposes `await store.init_schema()` — idempotent
+`CREATE … IF NOT EXISTS`. Call it once at app startup. A versioned
+migration framework + `agentforge db migrate` CLI lands alongside
+the first v0.1.0 → v0.2.0 schema delta; the v0.1 backlog tracks
+this.
+
+### When should I NOT use a particular backend?
+
+- **SQLite for concurrent writers.** Single-writer; under
+  contention you'll see `database is locked` errors. Switch to
+  Postgres for any multi-process deployment.
+- **Neo4j when you don't need graphs.** Operational overhead is
+  high for a key-value claim log. Use Postgres unless graph queries
+  are central.
+- **SurrealDB for primary persistence on critical data today.**
+  The project is young; we ship a driver because it's genuinely
+  tri-modal and convenient for prototypes, but Postgres is the
+  recommended production default.
+- **`InMemoryStore` past a single process.** Lost on restart. Fine
+  for unit tests; for a real agent always pass a durable `memory=`.

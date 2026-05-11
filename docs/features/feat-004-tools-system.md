@@ -351,3 +351,157 @@ gate destructive tool use.
 - Cost attribution per tool — feat-009 (Observability).
 - Tool-level rate limiting — feat-018 (Safety).
 - TypeScript port of the entire feat-004 surface.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
+
+### How do I attach tools to an agent?
+
+```python
+from agentforge import Agent
+from agentforge.tools import web_search, calculator
+
+agent = Agent(
+    model="bedrock:...",
+    tools=[web_search, calculator],
+)
+```
+
+Pre-built tools, `@tool`-decorated functions, and `Tool`
+subclasses all work interchangeably in `tools=[...]`.
+
+### How do I write a custom tool?
+
+Decorate a function — type hints + Google docstring drive the
+schema:
+
+```python
+from agentforge import tool
+
+@tool
+async def fetch_invoice(invoice_id: str, format: str = "pdf") -> dict:
+    """Look up an invoice by id.
+
+    Args:
+        invoice_id: The internal invoice identifier (e.g. INV-42).
+        format: One of 'pdf' or 'json'. Defaults to 'pdf'.
+
+    Returns:
+        Dict with keys 'url' and 'amount_cents'.
+    """
+    return await invoice_service.get(invoice_id, format=format)
+
+agent = Agent(model="...", tools=[fetch_invoice])
+```
+
+Sync functions are wrapped in `asyncio.to_thread` automatically.
+The decorator validates at import time (fail-at-startup, P11) — a
+malformed signature or unsupported type hint raises during
+decoration, not during a run.
+
+### How do I lock down `shell` for production?
+
+`shell` declares `{"shell", "destructive"}` and is dangerous by
+default. Construct it explicitly with a whitelist:
+
+```python
+from agentforge.tools import ShellTool
+
+safe_shell = ShellTool(
+    allowed_commands=["ls", "cat", "rg", "git"],
+    timeout_s=10.0,
+    max_output_bytes=64_000,
+)
+agent = Agent(model="...", tools=[safe_shell])
+```
+
+Or omit `shell` entirely. Once feat-018 (Safety) ships, the
+`"destructive"` capability will gate inclusion at the framework
+level; today it's the developer's responsibility.
+
+### How do I sandbox `file_read`?
+
+Same pattern — construct `FileReadTool` with explicit roots:
+
+```python
+from agentforge.tools import FileReadTool
+
+reader = FileReadTool(
+    allowed_paths=["/var/app/data", "/var/app/configs"],
+    max_bytes=1_000_000,
+)
+```
+
+Default `file_read` restricts to the process `cwd`; tighten for
+anything multi-tenant.
+
+### How do I unit-test agent logic without hitting real tools?
+
+Use `FakeTool.fake(...)` — scripted-response Tool that bypasses
+real I/O:
+
+```python
+from agentforge._testing import FakeTool
+
+stub_search = FakeTool.fake(
+    "web_search",
+    response_or_fn=lambda **kw: [{"title": "Hit", "url": "https://x"}],
+)
+
+agent = Agent(model=fake_llm, tools=[stub_search])
+result = await agent.run("look it up")
+```
+
+Pair with `agentforge._testing.fake_llm.echo_response(...)` for a
+fully offline strategy test.
+
+### How do I tune tool timeouts?
+
+The strategy dispatch layer enforces a per-call timeout. Tools
+that subclass `Tool` accept `timeout_s` in their constructor (see
+`ShellTool` above). The framework-wide default is
+`DEFAULT_TOOL_TIMEOUT_S = 30.0` — patch it for tests, override
+per-tool for production:
+
+```python
+# Test setup
+from agentforge.strategies import _base
+_base.DEFAULT_TOOL_TIMEOUT_S = 5.0
+```
+
+A timeout raises a strategy-internal exception that becomes a
+`StepKind.observe` with `metadata={"error": "...timeout..."}` so
+the LLM can react and retry rather than crashing the run.
+
+### How do I see what arguments a tool received?
+
+Tool calls are recorded as `Step.kind == "act"` with
+`step.tool_name`, `step.tool_args` (JSON-serialisable dict), and
+`step.tool_result` (or error). Iterate `result.steps` after the
+run, or use `on_step` to stream live:
+
+```python
+def log_tool(step):
+    if step.kind == "act":
+        print(f"→ {step.tool_name}({step.tool_args})")
+
+agent = Agent(model="...", tools=[...], on_step=log_tool)
+```
+
+### When should I NOT use a default tool?
+
+- **`web_search` in production.** The shipped default scrapes
+  DuckDuckGo's HTML and is rate-limited / flaky. Switch to
+  `agentforge-tools-serper` / `-tavily` / `-brave` (backlog) or
+  pass your own `search_fn=` to `WebSearchTool` for production.
+- **`calculator` for symbolic math.** AST-based, so it handles
+  arithmetic only. For algebra / symbolic work, write a `@tool`
+  around sympy.
+- **`shell` without a whitelist in production.** See above —
+  default `allowed_commands=None` lets the model run any binary.
