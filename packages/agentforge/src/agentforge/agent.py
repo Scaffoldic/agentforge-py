@@ -27,8 +27,14 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any
 
+from agentforge_core.config.schema import GuardrailPolicy
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.graph_store import GraphStore
+from agentforge_core.contracts.guardrails import (
+    InputValidator,
+    OutputValidator,
+    ToolCallGate,
+)
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
@@ -106,6 +112,10 @@ class Agent:
         config_path: str | Path | None = None,
         install_log_filter: bool = True,
         record_runs: MemoryStore | None = None,
+        input_validators: list[InputValidator] | None = None,
+        output_validators: list[OutputValidator] | None = None,
+        tool_gates: list[ToolCallGate] | None = None,
+        guardrail_policy: GuardrailPolicy | None = None,
     ) -> None:
         self._config: AgentForgeConfig = load_config(config_path)
 
@@ -142,6 +152,19 @@ class Agent:
 
         self._on_step: list[StepHook] = _normalise_hooks(on_step)
         self._on_finish: list[FinishHook] = _normalise_hooks(on_finish)
+
+        # feat-018: build the GuardrailEngine. Built-ins on by default
+        # (modules.guardrails.defaults) and combined with any
+        # validators passed explicitly via the constructor kwargs.
+        from agentforge.guardrails.engine import GuardrailEngine  # noqa: PLC0415
+
+        policy = guardrail_policy if guardrail_policy is not None else self._config.guardrail_policy
+        self._guardrails = GuardrailEngine(
+            input_validators=list(input_validators or []),
+            output_validators=list(output_validators or []),
+            tool_gates=list(tool_gates or []),
+            policy=policy,
+        )
 
         # feat-017: optional run recording. When `record_runs` is set,
         # install hooks that persist every step + the final result as
@@ -235,6 +258,34 @@ class Agent:
     def budget(self) -> BudgetPolicy:
         return self._budget
 
+    def _build_runtime_metadata(
+        self,
+        run_budget: BudgetPolicy,
+        guard_ctx: dict[str, Any],
+    ) -> dict[str, object]:
+        """Build the `state.metadata` mapping that carries the
+        per-run `RuntimeContext`. Wraps the LLM + tools with the
+        guardrail engine so output validation and tool-call gating
+        happen inside the strategy loop transparently.
+        """
+        metadata: dict[str, object] = {}
+        if self._llm is None:
+            return metadata
+
+        def _ctx_factory() -> dict[str, object]:
+            return dict(guard_ctx)
+
+        metadata[RUNTIME_KEY] = RuntimeContext(
+            llm=self._guardrails.wrap_llm(self._llm, _ctx_factory),
+            tools=tuple(self._guardrails.wrap_tool(t, _ctx_factory) for t in self._tools),
+            memory=self._memory,
+            budget=run_budget,
+            system_prompt=self._system_prompt,
+            retriever=self._retriever,
+            graph_store=self._graph_store,
+        )
+        return metadata
+
     async def run(self, task: str) -> RunResult:
         """Execute the agent's reasoning loop on `task`.
 
@@ -270,23 +321,23 @@ class Agent:
                     max_iterations=self._budget.max_iterations,
                     error_streak_limit=self._budget.error_streak_limit,
                 )
-                metadata: dict[str, object] = {}
-                if self._llm is not None:
-                    metadata[RUNTIME_KEY] = RuntimeContext(
-                        llm=self._llm,
-                        tools=tuple(self._tools),
-                        memory=self._memory,
-                        budget=run_budget,
-                        system_prompt=self._system_prompt,
-                        retriever=self._retriever,
-                        graph_store=self._graph_store,
-                    )
-                state = AgentState(
-                    run_id=ctx.run_id,
-                    task=task,
-                    metadata=metadata,
-                )
+                guard_ctx: dict[str, Any] = {
+                    "run_id": ctx.run_id,
+                    "project": self._config.agent.name or "default",
+                }
+                metadata = self._build_runtime_metadata(run_budget, guard_ctx)
+                # Input validation runs once at the start of the run.
+                # Wrap so a GuardrailViolation at the input boundary
+                # still sets finish_reason = "guardrail" before
+                # propagating.
+                state: AgentState | None = None
                 try:
+                    validated_task = await self._guardrails.check_input(task, guard_ctx)
+                    state = AgentState(
+                        run_id=ctx.run_id,
+                        task=validated_task,
+                        metadata=metadata,
+                    )
                     await self._strategy.run(state)
                 except BudgetExceeded:
                     finish_reason = "budget_exceeded"
@@ -301,7 +352,8 @@ class Agent:
                     # Fire `on_step` for every step the strategy appended,
                     # even on error paths — observability of the partial
                     # trace is just as important as the happy path.
-                    await self._fire_steps(list(state.steps))
+                    if state is not None:
+                        await self._fire_steps(list(state.steps))
                 duration_ms = int((time.monotonic() - started_ms) * 1000)
                 output = self._extract_output(state)
                 tokens_in = sum(s.tokens_in for s in state.steps)
@@ -315,6 +367,7 @@ class Agent:
                     run_id=ctx.run_id,
                     duration_ms=duration_ms,
                     finish_reason=finish_reason,
+                    guardrail_events=tuple(self._guardrails.events),
                 )
                 eval_scores = await self._run_evaluators(
                     interim, task=task, state=state, budget=run_budget
