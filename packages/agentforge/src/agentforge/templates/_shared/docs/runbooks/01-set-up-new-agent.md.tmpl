@@ -1,0 +1,67 @@
+# 01 — Set up a new AgentForge agent
+
+> **Goal:** verify the freshly scaffolded `{{ project_slug }}`
+> agent runs end-to-end against your provider.
+> **Time:** ~10 minutes.
+> **Prereqs:** none (this is runbook 01).
+
+## TL;DR
+
+```bash
+cd {{ project_slug }}
+uv sync
+cp .env.example .env       # then fill in real credentials
+agentforge config validate
+agentforge run "hello"
+```
+
+## Step by step
+
+1. **Install dependencies** with `uv sync`. AgentForge uses uv
+   workspaces; the lock file pins every version.
+2. **Configure credentials** by copying `.env.example` to `.env`
+   and filling in the LLM provider's API key (`ANTHROPIC_API_KEY`,
+   `AWS_ACCESS_KEY_ID`, or `OPENAI_API_KEY` depending on what
+   you scaffolded). Never check `.env` into git.
+3. **Validate the config** with `agentforge config validate`.
+   That parses `agentforge.yaml`, expands `${ENV_VAR}` references,
+   and surfaces any unknown keys.
+4. **Run the agent** with `agentforge run "your first task"`.
+   The default output is rich-formatted; pass `--output-format
+   json` for structured output (handy in CI).
+5. **Check the trace** — every step the agent emitted is on the
+   returned `RunResult`. `agentforge run --record "..."` followed
+   by `agentforge debug --replay <run-id>` lets you step through.
+
+## Variations
+
+- **Different provider** — edit `agentforge.yaml > providers >
+  default` to point at the provider you prefer, then update
+  `.env` accordingly. See runbook 13 for multi-provider setups.
+- **No credentials yet** — `MockLLMClient.deterministic("ok")`
+  in your own tests lets you exercise the loop without hitting
+  a real API (see runbook 06).
+- **Batch / CI mode** — `agentforge run --no-prompts --task-file
+  ./task.txt --output-format json` is the script-friendly path.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `agentforge: command not found` | uv venv isn't activated | `uv sync` then prefix commands with `uv run` |
+| `config invalid` exit code 2 | unknown YAML key | check the diff between your `agentforge.yaml` and `agentforge config schema` output |
+| `No LLM provider registered` | provider package not installed | `agentforge add module <provider>` (e.g. `agentforge add module bedrock`) |
+| `BudgetExceeded` on first run | budget too low for the model | bump `agent.budget.usd` in `agentforge.yaml` |
+
+## Related
+
+- Runbook 02 — Add a tool
+- Runbook 06 — Test your agent
+- Runbook 13 — Configure multi-provider
+- Feature spec: `docs/features/feat-011-scaffolding-and-upgrade.md`
+
+<!-- agentforge:end-managed -->
+
+<!-- agentforge:custom -->
+<!-- Project-specific setup notes go here. Survives upgrades. -->
+<!-- agentforge:end-custom -->
