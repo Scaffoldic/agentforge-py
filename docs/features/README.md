@@ -81,7 +81,7 @@
 |---|---|---|---|---|---|
 | **feat-016** | Testing framework — `agentforge.testing` namespace (MockLLMClient + FakeTool + agent_factory + pytest fixtures + record_llm/replay + conformance re-exports) + `agentforge-testing` package (GoldenSetRunner + assert_snapshot + analyze_recording) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-testing` |
 | **feat-017** | CLI runtime — `agentforge run` (+ `--replay`), `agentforge eval`, `agentforge debug`, `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight) | shipped (Python) | 0.1 (run), 0.2 (rest) | both | `agentforge` (CLI), `agentforge-core` (`MemoryStore.delete` ABC addition) |
-| **feat-019** | Developer experience — 16 runbooks + `AGENTS.md` / `CLAUDE.md` / `.cursorrules` rules shipped with every scaffolded agent; `agentforge docs` CLI; managed via Copier so they upgrade with the framework | proposed | 0.1 (initial set) | both | `agentforge-templates`, `agentforge` |
+| **feat-019** | Developer experience — 16 runbooks + `AGENTS.md` / `CLAUDE.md` / `.cursorrules` rules shipped with every scaffolded agent; `agentforge docs` CLI (list / open / drift-check / serve); three-section managed/custom file format with upgrade-safe custom preservation | shipped (Python) | 0.1 (initial set) | both | `agentforge` (CLI + templates._shared) |
 
 ---
 

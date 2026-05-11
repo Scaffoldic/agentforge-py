@@ -1,0 +1,118 @@
+# AgentForge agent — AI assistant instructions
+
+This project is built on **AgentForge {{ framework_version }}**. Use
+these rules when suggesting changes. The file is read by Claude
+Code, Cursor, Aider, and any tool following the
+[AGENTS.md convention](https://agents.md).
+
+## Project shape (you must respect this)
+
+- Framework version: `{{ framework_version }}`
+- Template: `{{ template_name }}`
+- Project slug: `{{ project_slug }}`
+- LLM provider: `{{ llm_provider }}`
+
+## File ownership rules
+
+- Files starting with `AGENTFORGE-MANAGED:` are owned by the
+  framework. Do not edit. Suggest changes to YAML config or
+  developer-owned files instead.
+- Files starting with `AGENTFORGE-FORKED:` were customised by the
+  developer. Edit normally; do not restore the marker.
+- Files with no marker are developer-owned. Edit normally.
+- Markdown documents may carry a `<!-- agentforge:end-managed -->`
+  marker. Everything above belongs to the framework; everything
+  below is the developer's custom section and survives upgrades.
+
+## Architecture invariants
+
+- **Tools** — use the `@tool` decorator on a typed function, OR
+  subclass `Tool`. Type hints drive the input schema; do not
+  hand-write JSON schemas.
+- **Reasoning loop** — do not edit. Configure via
+  `agentforge.yaml > agent.strategy`.
+- **LLM clients** — do not import vendor SDKs directly. Use
+  `agent.providers["..."]` or pass `model="<provider>:<model_id>"`.
+- **Memory** — do not write SQL directly. Use `agent.memory.put`
+  / `.get` / `.query`.
+- **Costs** — do not bypass `BudgetPolicy`. Every LLM call is
+  checked. Bypassing it is a P3 (cost-safety) violation.
+- **Run id** — do not invent your own correlation id. Use
+  `current_run().run_id` from `agentforge_core.production.run_context`.
+- **Guardrails** — input / output / tool-gate validators live in
+  `agentforge.guardrails`. Custom validators implement the locked
+  ABCs in `agentforge_core.contracts.guardrails`.
+
+## How to add common things
+
+Open the runbook for the full step-by-step. Each runbook lives at
+`docs/runbooks/NN-<topic>.md` and is upgrade-safe (the framework
+maintains the managed section).
+
+| Task | Runbook |
+|---|---|
+| Set up a fresh agent | `docs/runbooks/01-set-up-new-agent.md` |
+| Add a tool | `docs/runbooks/02-add-a-tool.md` |
+| Add a pipeline task | `docs/runbooks/03-add-a-pipeline-task.md` |
+| Pick a reasoning strategy | `docs/runbooks/04-pick-reasoning-strategy.md` |
+| Write prompts | `docs/runbooks/05-write-prompts.md` |
+| Test your agent | `docs/runbooks/06-test-your-agent.md` |
+| Debug a run | `docs/runbooks/07-debug-a-run.md` |
+| Add memory / persistence | `docs/runbooks/08-add-memory.md` |
+| Add MCP servers | `docs/runbooks/09-add-mcp.md` |
+| Add evaluators | `docs/runbooks/10-add-evaluators.md` |
+| Add safety guardrails | `docs/runbooks/11-add-safety-guardrails.md` |
+| Add observability | `docs/runbooks/12-add-observability.md` |
+| Configure multi-provider | `docs/runbooks/13-configure-multi-provider.md` |
+| Deploy your agent | `docs/runbooks/14-deploy-your-agent.md` |
+| Upgrade your agent | `docs/runbooks/15-upgrade-your-agent.md` |
+| Configuration reference | `docs/runbooks/16-configuration-reference.md` |
+
+## Anti-patterns (do not suggest these)
+
+- **LangChain idioms** (`LCEL`, `Runnable`, `RunnablePassthrough`)
+  — wrong framework. Use AgentForge's `Agent` + `@tool` + strategy
+  composition instead.
+- **Hand-rolling JSON schemas for tools** — use type hints on a
+  `@tool`-decorated function and the schema is derived.
+- **Storing API keys in `agentforge.yaml` literals** — use
+  `${ENV_VAR}` interpolation; secrets live in `.env` (gitignored).
+- **Catching exceptions inside tool code to "make the agent more
+  robust"** — let them surface; the framework records them as
+  observations and the LLM recovers naturally.
+- **Adding a wrapper around `Agent.run()` to add logging** — the
+  framework already logs; install a custom hook (runbook 12).
+- **Writing SQL directly against the memory backend** — use
+  `agent.memory.put / .get / .query`; SQL bypasses the contract
+  and breaks driver swaps.
+- **Running expensive code outside `BudgetPolicy`** — every
+  external call (LLM, tool, retriever) should respect the run's
+  budget.
+
+## Pre-commit checks (run these before suggesting a commit)
+
+```bash
+agentforge config validate
+agentforge status              # no managed file should be drifted
+pytest -q
+ruff check
+```
+
+## Where to find the framework's truth
+
+- Locked ABCs: `agentforge_core/contracts/*.py`
+- Default config schema: `agentforge_core/config/schema.py`
+- Built-in evaluators / guardrails / tools: `agentforge/*/`
+- Spec for any feature: `docs/features/feat-NNN-*.md` in the
+  framework repo
+
+When in doubt, prefer the framework's locked types over inventing
+new shapes. Suggesting an `Agent` subclass or a new ABC is almost
+always wrong — the framework is composed from named modules.
+
+<!-- agentforge:end-managed -->
+
+<!-- agentforge:custom -->
+<!-- Project-specific AI assistant instructions go here. This
+     section survives `agentforge upgrade`. -->
+<!-- agentforge:end-custom -->
