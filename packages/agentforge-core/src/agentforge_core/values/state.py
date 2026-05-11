@@ -100,6 +100,12 @@ class RunResult(BaseModel):
     duration_ms: int = Field(ge=0)
     finish_reason: FinishReason = "completed"
     metadata: dict[str, Any] = Field(default_factory=dict)
+    guardrail_events: tuple[dict[str, Any], ...] = ()
+    """feat-018: one entry per guardrail decision (input / output /
+    tool-gate). Each event carries `validator`, `passed`, `violations`,
+    `action`, `stage` ("input" / "output" / "tool"), and a hash of the
+    content (full content is never persisted here)."""
+
     eval_scores: tuple[EvalResult, ...] = ()
     """Per-evaluator `EvalResult` from the post-run evaluator pass.
 

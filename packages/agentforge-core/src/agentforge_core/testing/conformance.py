@@ -25,8 +25,14 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.graph_store import GraphStore
+from agentforge_core.contracts.guardrails import (
+    InputValidator,
+    OutputValidator,
+    ToolCallGate,
+)
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.tool import Tool
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.claim import Claim
 from agentforge_core.values.graph import (
@@ -35,6 +41,7 @@ from agentforge_core.values.graph import (
     GraphPattern,
     GraphSegment,
 )
+from agentforge_core.values.guardrails import ValidationResult
 from agentforge_core.values.state import AgentState, StepKind
 from agentforge_core.values.vector import VectorItem
 
@@ -659,3 +666,86 @@ def _graph_capability_invariants(store: GraphStore) -> None:
     if caps:
         sample = next(iter(caps))
         assert store.supports(sample) is True
+
+
+# ======================================================================
+# Guardrail conformance — feat-018.
+# ======================================================================
+
+
+async def run_input_validator_conformance(
+    validator: InputValidator,
+    *,
+    benign: str = "What is the weather today?",
+    obvious_violation: str | None = None,
+) -> None:
+    """Validate that an InputValidator honours the locked contract.
+
+    - Concrete subclass declares `name` and `description`.
+    - `.validate(...)` returns a `ValidationResult`.
+    - Benign input produces `passed=True` and an empty `violations`
+      tuple.
+    - When `obvious_violation` is supplied, the validator flags it
+      (`passed=False`).
+    """
+    assert isinstance(getattr(validator, "name", None), str), "name must be a str ClassVar"
+    assert isinstance(
+        getattr(validator, "description", None),
+        str,
+    ), "description must be a str ClassVar"
+
+    result = await validator.validate(benign, {"run_id": "conformance"})
+    assert isinstance(result, ValidationResult), "validate() must return ValidationResult"
+    assert result.passed, f"benign input must pass; got violations {list(result.violations)!r}"
+
+    if obvious_violation is not None:
+        bad = await validator.validate(obvious_violation, {"run_id": "conformance"})
+        assert isinstance(bad, ValidationResult)
+        assert not bad.passed, (
+            f"obvious-violation input must fail; validator {validator.name!r} returned passed=True"
+        )
+
+
+async def run_output_validator_conformance(
+    validator: OutputValidator,
+    *,
+    benign: str = "The weather is nice today.",
+    obvious_violation: str | None = None,
+) -> None:
+    """Same contract as `run_input_validator_conformance` but for
+    output validators. If `obvious_violation` is supplied and the
+    validator can redact, asserts that `redacted_content` is set."""
+    assert isinstance(getattr(validator, "name", None), str)
+    assert isinstance(getattr(validator, "description", None), str)
+
+    result = await validator.validate(benign, {"run_id": "conformance"})
+    assert isinstance(result, ValidationResult)
+    assert result.passed, f"benign output must pass; got {list(result.violations)!r}"
+
+    if obvious_violation is not None:
+        bad = await validator.validate(obvious_violation, {"run_id": "conformance"})
+        assert isinstance(bad, ValidationResult)
+        assert not bad.passed, "obvious-violation output must fail"
+
+
+async def run_tool_gate_conformance(
+    gate: ToolCallGate,
+    *,
+    benign_tool: Tool,
+    benign_tool_name: str,
+    forbidden_tool: Tool | None = None,
+    forbidden_tool_name: str | None = None,
+) -> None:
+    """Validate that a ToolCallGate honours the locked contract."""
+    assert isinstance(getattr(gate, "name", None), str)
+    assert isinstance(getattr(gate, "description", None), str)
+
+    benign_result = await gate.authorize(benign_tool_name, benign_tool, {}, {})
+    assert isinstance(benign_result, ValidationResult)
+
+    if forbidden_tool is not None and forbidden_tool_name is not None:
+        denied = await gate.authorize(forbidden_tool_name, forbidden_tool, {}, {})
+        assert isinstance(denied, ValidationResult)
+        assert not denied.passed, (
+            f"gate {gate.name!r} must deny {forbidden_tool_name!r}; got passed=True"
+        )

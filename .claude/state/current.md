@@ -3,8 +3,8 @@ feature: none
 state: idle
 branch: main
 started_at: null
-last_milestone_at: 2026-05-12T01:30
-last_shipped: feat-016 shipped via PR #21 (awaiting merge)
+last_milestone_at: 2026-05-12T03:00
+last_shipped: feat-018 shipped via PR #22 (awaiting merge)
 blocker: null
 flags_for_user: []
 ---
@@ -15,42 +15,46 @@ flags_for_user: []
 
 ## Last shipped
 
-[`feat-016 — Testing framework`](../../docs/features/feat-016-testing-framework.md)
-shipped in PR #21 with full Python scope:
+[`feat-018 — Safety guardrails`](../../docs/features/feat-018-safety-and-security-guardrails.md)
+shipped in PR #22 with full Python scope:
 
-- `agentforge.testing` namespace inside the runtime package:
-  `MockLLMClient` (from_script / deterministic / from_recording),
-  `FakeTool`, `FakeLLMClient`, `agent_factory`, pytest fixtures
-  (`mock_llm`, `temp_memory_store`), conformance re-exports
-  (`run_memory_conformance`, `run_strategy_conformance`,
-  `run_vector_conformance`), `record_llm` + `load_recording`.
-- `agentforge-testing` sister package (new workspace member):
-  `GoldenSetRunner` (exact / contains / regex / any_of),
-  `assert_snapshot` (UPDATE_SNAPSHOTS env), `analyze_recording`
-  → `RecordingStats`.
-- 22 unit tests across both packages.
+- ABCs (`InputValidator` / `OutputValidator` / `ToolCallGate`) +
+  `ValidationResult` value + `GuardrailPolicy` schema model +
+  `GuardrailsConfig` + `GuardrailEntry`.
+- Built-in basics: `prompt_injection_basic`, `pii_redact_basic`,
+  `capability_check`, `allowlist`. Auto-registered with the
+  Resolver under `guardrails.{input,output,tool_gates}`.
+- `GuardrailEngine` wrapping LLM + tools transparently; audit
+  channel emits one log record per decision plus
+  `RunResult.guardrail_events`.
+- Conformance harnesses for all three ABCs.
+- Four sister packages: `agentforge-guard-llmguard`,
+  `agentforge-guard-presidio`, `agentforge-guard-nemo`,
+  `agentforge-guard-llamaguard`. Each wraps the upstream SDK
+  behind a `Runner` protocol so tests don't need the SDK.
 
-Deviations recorded in spec §10:
+Deviations recorded in the spec §10:
 
-- `_testing` private namespace retained as a compat shim.
-- `MockLLMClient` doesn't yet satisfy a `run_llm_conformance`
-  harness (none exists in core yet).
-- Replay matches by sequence today; request_hash persisted for
-  future hash-keyed replay.
-- VCR-style full redaction pipeline deferred; basic redaction
-  (api_key / authorization / bearer) ships.
-- TypeScript port deferred.
+- `GuardrailPolicy` lives in `config.schema` (not `values/`) to
+  avoid an import cycle through `values.state`.
+- String-form `GuardrailEntry` normalisation deferred (loader
+  expects dicts today).
+- `modules.guardrails.defaults: true` auto-install of built-ins
+  deferred to a follow-up tied to `build_agent_from_config`.
+- Latency benchmarking deferred (waits on `eval --bench`).
+- TS port deferred.
+- Audit sampling / dedicated stream split deferred (events go to
+  stdlib `agentforge.audit` logger).
 
 ## Next pick candidates (canonical numbering)
 
-- **feat-018** — Safety guardrails (InputValidator /
-  OutputValidator / ToolCallGate + prompt-injection + PII +
-  capability gates).
-- **feat-013** — MCP integration (consume MCP tool servers +
-  expose agent tools as MCP).
 - **feat-019** — Developer experience (16 runbooks + AGENTS.md /
   CLAUDE.md / .cursorrules shipped with every scaffold).
-- **feat-014** / **feat-015** / **feat-020** — see specs.
+  Depends on feat-011 (✓) + feat-017 (✓).
+- **feat-013** — MCP integration (consume MCP tool servers +
+  expose agent tools as MCP).
+- **feat-015** — Pipelines & deterministic tasks.
+- **feat-014** / **feat-020** — see specs.
 - Vendor observability sub-feats (langfuse/phoenix/evidently/statsd).
 
 User selects on session resume.
