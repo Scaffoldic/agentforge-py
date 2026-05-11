@@ -206,3 +206,45 @@ def _strip_marker_for_hash(content: str) -> str:
         return content
     parts = content.split("\n", 1)
     return parts[1] if len(parts) > 1 else ""
+
+
+# ----------------------------------------------------------------------
+# Three-section managed / custom format (feat-019)
+# ----------------------------------------------------------------------
+
+END_MANAGED_MARKER = "<!-- agentforge:end-managed -->"
+"""Closes the framework-managed section. Anything after this marker is
+developer-owned (the custom section) and survives upgrades."""
+
+CUSTOM_START_MARKER = "<!-- agentforge:custom -->"
+CUSTOM_END_MARKER = "<!-- agentforge:end-custom -->"
+
+
+def split_three_section(content: str) -> tuple[str, str]:
+    """Split markdown / text content into (managed, custom).
+
+    The managed section is everything up to and including the
+    `<!-- agentforge:end-managed -->` marker. The custom section is
+    everything after that. Returns (managed, custom). When the marker
+    is absent, the entire content is treated as managed.
+    """
+    if END_MANAGED_MARKER not in content:
+        return content, ""
+    head, _, tail = content.partition(END_MANAGED_MARKER)
+    managed = head + END_MANAGED_MARKER
+    custom = tail
+    return managed, custom
+
+
+def merge_three_section(new_managed: str, existing_custom: str) -> str:
+    """Stitch a freshly rendered managed section onto a preserved
+    custom section.
+
+    `new_managed` should already include the `END_MANAGED_MARKER`. If
+    it doesn't, the marker is appended so the on-disk file remains
+    parseable by future `split_three_section` calls.
+    """
+    managed = new_managed
+    if END_MANAGED_MARKER not in managed:
+        managed = managed.rstrip() + "\n\n" + END_MANAGED_MARKER + "\n"
+    return managed.rstrip() + "\n" + existing_custom.lstrip("\n")
