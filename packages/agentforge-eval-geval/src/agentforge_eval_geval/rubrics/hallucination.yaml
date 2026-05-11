@@ -1,0 +1,22 @@
+# Hallucination rubric — combined faithfulness + groundedness risk.
+#
+# Single score reflecting the overall risk that the output contains
+# content not derivable from the supplied inputs. Lower-cost
+# alternative to running faithfulness + groundedness separately when
+# you only need one number.
+
+version: 1
+criteria: |
+  Score the risk that the output contains hallucinated content —
+  claims that are neither stated in nor cleanly implied by the
+  retrieved sources, the task, or any other supplied context. Flag
+  fabricated entities, fabricated quotes, made-up citations,
+  unsupported numeric claims, and invented procedures.
+scoring: |
+  1.0 — no hallucination detected (output stays within supplied evidence).
+  0.7 — minor risk (one borderline claim that could be supported).
+  0.3 — clear hallucination (named entities or specific claims
+        without source backing).
+  0.0 — multiple obvious hallucinations or fabricated citations.
+inputs:
+  - retrieved_docs

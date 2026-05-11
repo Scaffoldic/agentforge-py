@@ -1,0 +1,20 @@
+# Groundedness rubric — "does the output stay inside the provided sources?"
+#
+# Stricter than faithfulness: groundedness penalises any content not
+# present in the retrieved sources, regardless of whether the content
+# happens to be factually correct in the wider world.
+
+version: 1
+criteria: |
+  Examine the output for any content (facts, claims, examples) not
+  derivable from the retrieved sources. Groundedness is violated when
+  the output introduces facts that aren't in the sources, even if
+  those facts are correct outside this context. The point is whether
+  the agent stayed inside the supplied evidence.
+scoring: |
+  1.0 — every sentence is traceable to the retrieved sources.
+  0.7 — minor off-source aside (e.g. one parenthetical fact).
+  0.3 — substantial content not derivable from the sources.
+  0.0 — most of the output is off-source.
+inputs:
+  - retrieved_docs
