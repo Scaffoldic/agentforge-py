@@ -18,6 +18,7 @@ members = [
     "agentforge-memory-sqlite",
     "agentforge-memory-surrealdb",
     "agentforge-otel",
+    "agentforge-testing",
     "agentforge-workspace",
 ]
 
@@ -171,6 +172,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "agentforge-testing"
+version = "0.0.0"
+source = { editable = "packages/agentforge-testing" }
+dependencies = [
+    { name = "agentforge" },
+    { name = "agentforge-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge", editable = "packages/agentforge" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+]
+
+[[package]]
 name = "agentforge-workspace"
 version = "0.0.0"
 source = { virtual = "." }
@@ -184,6 +200,7 @@ dependencies = [
     { name = "agentforge-memory-sqlite" },
     { name = "agentforge-memory-surrealdb" },
     { name = "agentforge-otel" },
+    { name = "agentforge-testing" },
 ]
 
 [package.dev-dependencies]
@@ -211,6 +228,7 @@ requires-dist = [
     { name = "agentforge-memory-sqlite", editable = "packages/agentforge-memory-sqlite" },
     { name = "agentforge-memory-surrealdb", editable = "packages/agentforge-memory-surrealdb" },
     { name = "agentforge-otel", editable = "packages/agentforge-otel" },
+    { name = "agentforge-testing", editable = "packages/agentforge-testing" },
 ]
 
 [package.metadata.requires-dev]
