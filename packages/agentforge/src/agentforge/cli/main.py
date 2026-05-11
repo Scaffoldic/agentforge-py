@@ -16,6 +16,7 @@ from agentforge.cli.config_cmd import register_config_cmd
 from agentforge.cli.list_modules import register_list_modules
 from agentforge.cli.module_cmd import register_module_cmd
 from agentforge.cli.new_cmd import register_new_cmd
+from agentforge.cli.upgrade_cmd import register_upgrade_cmds
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_config_cmd(sub)
     register_module_cmd(sub)
     register_new_cmd(sub)
+    register_upgrade_cmds(sub)
     return parser
 
 

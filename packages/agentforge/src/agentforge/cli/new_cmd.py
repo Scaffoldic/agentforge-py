@@ -19,6 +19,11 @@ from pathlib import Path
 
 from agentforge_core.production.exceptions import ModuleError
 
+from agentforge.cli._scaffold_state import (
+    prepend_markers,
+    write_managed_files_lock,
+)
+
 _TEMPLATES = ("minimal", "code-reviewer", "patch-bot", "docs-qa", "triage", "research")
 """Templates shipped with the framework — discoverable via
 `agentforge new --help`. Each lives at
@@ -82,8 +87,29 @@ def _run_new(args: argparse.Namespace) -> int:
         sys.stderr.write(f"scaffolding failed: {exc}\n")
         return 1
 
+    # feat-011 chunk 3: write the lock + prepend marker headers. Done
+    # post-render so the lock reflects exactly what landed on disk.
+    template_version = _template_version()
+    write_managed_files_lock(
+        dst,
+        template_name=args.template,
+        template_version=template_version,
+    )
+    prepend_markers(dst, template_name=args.template, template_version=template_version)
+
     sys.stdout.write(f"  → done. Next: cd {args.project_slug} && uv sync\n")
     return 0
+
+
+def _template_version() -> str:
+    """Resolve the installed `agentforge` version — used as the
+    template's `source_version` in the lock file."""
+    from importlib.metadata import PackageNotFoundError, version  # noqa: PLC0415
+
+    try:
+        return version("agentforge")
+    except PackageNotFoundError:  # pragma: no cover
+        return "0.0.0+unknown"
 
 
 def _template_root(name: str) -> Path | None:
