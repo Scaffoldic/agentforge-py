@@ -21,6 +21,102 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-018 — Safety & security guardrails (full surface).**
+  Adds the framework's input / output / tool-gate validation
+  pipeline plus four vendor sister packages.
+
+  *New ABCs in `agentforge-core`:*
+  - `InputValidator.validate(content, context) -> ValidationResult`
+  - `OutputValidator.validate(content, context) -> ValidationResult`
+    (with optional `redacted_content`)
+  - `ToolCallGate.authorize(tool_name, tool, args, context) ->
+    ValidationResult`
+  - `ValidationResult` frozen Pydantic value (passed, score in
+    [0,1], violations tuple, redacted_content, metadata) +
+    `.ok()` factory
+  - `GuardrailPolicy` (Pydantic config model, lives in
+    `agentforge_core.config.schema` to avoid an import cycle
+    through `values/state.py`): conservative defaults — block on
+    input violations, redact on output, block on tool gate
+    denial, fail-closed on validator exceptions
+  - `ModulesConfig.guardrails: GuardrailsConfig` field +
+    `GuardrailEntry` shape for declarative config
+
+  *New built-ins in `agentforge.guardrails`:*
+  - `PromptInjectionBasic` — regex pack catching the obvious
+    "ignore previous instructions" / DAN / jailbreak / system-
+    prompt-leak phrasings.
+  - `PIIRedactBasic` — regex detector for email / phone / SSN /
+    credit-card / IPv4; emits `<redacted:KIND>` placeholders in
+    `redacted_content`.
+  - `CapabilityCheck` — denies tools tagged `destructive` unless
+    explicitly allowlisted via `destructive_allow`.
+  - `Allowlist` — bare-name allowlist for tool dispatch.
+
+  Each registers with the global Resolver under
+  `guardrails.{input,output,tool_gates}` at import time so
+  external configs reference them by name.
+
+  *Agent integration:*
+  - `GuardrailEngine` (`agentforge/guardrails/engine.py`) runs
+    every validator in series, wraps the LLM client +
+    every tool with guardrail-aware proxies, emits one
+    `agentforge.audit` log record per decision, and isolates
+    validator exceptions (block under `fail_open=False`).
+  - `Agent.__init__` accepts `input_validators`,
+    `output_validators`, `tool_gates`, `guardrail_policy` kwargs.
+  - `Agent.run` enforces input validation at the start, wraps
+    LLM + tools transparently for the strategy loop, and
+    surfaces every decision on `RunResult.guardrail_events`.
+  - Configuration: top-level `guardrail_policy` plus
+    `modules.guardrails.{defaults,input,output,tool_gates}`
+    (autoinstall of built-in defaults via `defaults: true` is
+    a follow-up, currently a no-op marker).
+
+  *Conformance harnesses* re-exported from `agentforge.testing`:
+  `run_input_validator_conformance`,
+  `run_output_validator_conformance`,
+  `run_tool_gate_conformance`. Each asserts the locked-contract
+  invariants on a passed-in validator instance.
+
+  *Four new Tier-3 sister packages*:
+  - `agentforge-guard-llmguard` — `LLMGuardInput` adapter for
+    LLM Guard's scanner suite (jailbreak / prompt_injection /
+    ban_substrings / secrets). Inverts LLM Guard's risk score
+    into the framework's "1 = clean" semantics.
+  - `agentforge-guard-presidio` — `PresidioOutput` adapter with
+    `entities` / `score_threshold` / `action: redact|score-only`.
+    Returns `<ENTITY_TYPE>` placeholders in `redacted_content`.
+  - `agentforge-guard-nemo` — `NemoInput` + `NemoOutput` adapters
+    for NeMo Guardrails Colang rails. Constructor accepts either
+    a `config_path` directory or an injected `NemoRunner`.
+  - `agentforge-guard-llamaguard` — `LlamaGuardInput` +
+    `LlamaGuardOutput` for Meta Llama Guard 3. Parses
+    `safe` / `unsafe S1..S14` replies; carries raw response into
+    `metadata`.
+
+  Each vendor module:
+  - Registers via pyproject `[project.entry-points."agentforge.
+    guardrails.{input,output}"]`.
+  - Wraps a `Runner` protocol so unit tests inject a fake without
+    requiring the upstream SDK installed.
+  - Lazy-imports the upstream package; surfaces `ModuleError`
+    with pip remediation if missing.
+
+  *Workspace + CI*:
+  - Four new workspace members under `packages/agentforge-guard-*/`.
+  - Root `pyproject.toml`: workspace deps, sources, coverage,
+    testpaths.
+  - mypy overrides for `llm_guard.*`, `presidio_analyzer.*`,
+    `presidio_anonymizer.*`, `nemoguardrails.*` (all four ship
+    without `py.typed` or aren't installed by default).
+  - `.pre-commit-config.yaml` + `.github/workflows/ci.yml`:
+    mypy, bandit, pytest-unit args extended with each new src +
+    tests path.
+
+  *Spec*: `docs/features/feat-018-safety-and-security-guardrails.md`
+  — Implementation status §10 + Runbook §11.
+
 - **feat-016 — Testing framework (full surface).** Public test
   helpers in the `agentforge` runtime package plus a new sister
   package for richer use cases.
