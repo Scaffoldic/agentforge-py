@@ -1,0 +1,55 @@
+# agentforge-mcp — Model Context Protocol integration for AgentForge.
+#
+# Tier-3 module: consume MCP tool servers and (optionally) expose
+# this agent's tools as an MCP server. Wraps the official `mcp`
+# Python SDK behind a runner protocol so tests can fake the SDK.
+
+[project]
+name = "agentforge-mcp"
+version = "0.0.0"
+description = "Model Context Protocol integration for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "The AgentForge Authors"}]
+keywords = ["ai", "agent", "mcp", "model-context-protocol", "interop"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point under the `protocols` category — feat-010's resolver
+# discovers MCP by name when `modules.protocols` lists it.
+[project.entry-points."agentforge.protocols"]
+mcp = "agentforge_mcp.bridge:MCPBridge"
+
+[tool.uv.sources]
+agentforge-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/agentforge_mcp", "tests", "README.md", "LICENSE"]
