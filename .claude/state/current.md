@@ -1,68 +1,75 @@
 ---
-feature: chore/backfill-runbooks
-state: pr-pending
-branch: chore/backfill-runbooks
-started_at: 2026-05-11T10:00
-last_milestone_at: 2026-05-11T10:30
-last_shipped: feat-007 (Production rails — FallbackChain) shipped via PR #11 @ f61ad44
+feature: feat-008-findings-and-output-shapes
+state: pre-pr
+branch: feat/008-findings-and-output-shapes
+started_at: 2026-05-11T11:30
+last_milestone_at: 2026-05-11T13:00
+last_shipped: chore/backfill-runbooks shipped via PR #12 @ b173d31
 blocker: null
 flags_for_user: []
 ---
 
-## Active task
+## Active feature
 
-Retroactive backfill of the `## Runbook` policy locked in
-mid-feat-007. Adds task-oriented runbook sections to the five
-already-shipped feature specs (feat-001 / feat-002 / feat-003 /
-feat-004 / feat-005). Also fixes a stale `Agent(budget=...)`
-example in feat-007's runbook — the Agent constructor takes
-`budget_usd=` and `max_iterations=`, not a `budget=` kwarg.
+[`feat-008 — Findings & output shapes`](../../docs/features/feat-008-findings-and-output-shapes.md)
 
-## What changed
+All four chunks landed. Ready to push + raise PR.
 
-- `docs/features/feat-001-core-contracts-and-agent.md` — Runbook
-  section: minimum agent, budget caps, step trace, hooks, config,
-  provider switching, sync shim, when-not-to-use.
-- `docs/features/feat-002-reasoning-strategies.md` — Runbook
-  section: picking a strategy, tuning ReAct / Plan-Execute / ToT
-  (judge scorer) / MultiAgentSupervisor, step inspection.
-- `docs/features/feat-003-llm-provider-abstraction.md` — Runbook
-  section: pointing at Bedrock, cross-region inference profiles,
-  caching / thinking, embeddings, cost accounting, custom-provider
-  registration.
-- `docs/features/feat-004-tools-system.md` — Runbook section:
-  attaching tools, `@tool` decorator, locking down `shell` /
-  `file_read`, `FakeTool` for tests, timeouts, step inspection.
-- `docs/features/feat-005-persistence-and-memory.md` — Runbook
-  section: backend picker, sqlite / postgres / neo4j / surrealdb
-  setup, RAG via `Retriever`, namespacing, `init_schema()`, live
-  integration tests.
-- `docs/features/feat-007-production-rails.md` — fixed
-  `Agent(budget=BudgetPolicy(...))` example to use the real
-  kwargs `budget_usd=` + `max_iterations=`.
-- `CHANGELOG.md` — `[Unreleased] / Docs` entry summarising the
-  backfill + the feat-007 fix.
+## Chunks shipped
+
+| Chunk | Commit | Scope |
+|---|---|---|
+| 1 | `bfb8c33` | Variants (Simple/Patch/Narrative/MultiSpan) + helpers (Patch, Span) as frozen Pydantic v2 models in `agentforge.findings`. 19 unit tests covering Protocol conformance, frozen-ness, JSON round-trip, field validation. |
+| 2 | `4f5e95c` | `FindingRenderer` ABC in `agentforge-core/contracts/renderer.py` + `RendererRegistry` in `agentforge/renderers/registry.py` (most-specific-wins dispatch, `MissingRendererError`). 9 unit tests. |
+| 3 | `26b5da7` | Four built-in renderers (`ScorecardRenderer`, `PatchApplierRenderer`, `MarkdownRenderer`, `SpanTableRenderer`) + `RendererRegistry.default()` factory. 21 unit tests covering text + markdown output, format / variant rejection, `supports()` semantics, end-to-end dispatch, in-place override. |
+| 4 | (this commit) | Implementation status + Runbook + CHANGELOG entry + roadmap move (backlog → shipped) + feat-008 forward-reference sweep across runbooks + README catalogue status update. |
+
+## Forward-reference sweep (per AGENTS.md rule from PR #12)
+
+`git grep -nE 'feat-008|SimpleFinding|PatchFinding|...' docs/features/*.md`
+audited:
+
+- `docs/features/README.md` line 42: feat-008 status updated
+  `proposed` → `shipped (Python)`.
+- `docs/features/feat-005-persistence-and-memory.md` §4.1 line 77-91:
+  example imports `SimpleFinding` and uses `Claim.from_finding(...)`.
+  `SimpleFinding` is now real — example is no longer aspirational
+  for that line. `Claim.from_finding` is still not implemented;
+  that's a feat-005 follow-up, not feat-008's responsibility.
+- `docs/features/feat-005-persistence-and-memory.md` line 233, 254:
+  reference-section mentions of feat-008 — already correctly
+  describe the dependency direction. No changes.
+- `docs/features/feat-006/014/015/016`: dependency declarations on
+  feat-008. Those features are still unshipped; their existing
+  `Finding` / `SimpleFinding` example code now points to real types.
+  No textual updates needed — when those features ship, their own
+  PRs will fix any forward-tense language in their own Runbook
+  sections (per the policy in AGENTS.md).
 
 ## Pre-commit gate
 
-All hooks green at the time of commit (ruff format + check, mypy
-strict, bandit, pytest unit + integration, coverage ≥ 90%).
-Doc-only changes touched no code, so the gate was a confirmation
-rather than a real probe.
+All four chunks went through the local gate with all hooks green
+(ruff format + check, mypy --strict, bandit, pytest unit +
+integration, coverage ≥ 90%).
 
 ## Next after this PR merges
 
-1. Sync `main`, delete `chore/backfill-runbooks` local + remote.
-2. Move to **feat-008 (Findings & output shapes)** per pipeline §1
-   — lowest-numbered proposed feature with deps shipped
-   (feat-001 ✓). Spec is `docs/features/feat-008-findings-and-output-shapes.md`.
-3. Open `feat/008-findings-and-output-shapes` branch and follow
-   the standard pre-feature checklist (read spec end-to-end, draft
-   chunk plan in state, get user approval, implement).
+1. Sync `main`, delete `feat/008-findings-and-output-shapes` local
+   + remote.
+2. Next eligible per pipeline §1: lowest-numbered proposed feature
+   with deps shipped. After feat-008 ships, the eligible set is:
+   - **feat-006** (Evaluators) — deps feat-001 ✓ + feat-003 ✓ +
+     feat-008 ✓ now.
+   - **feat-009** (Observability) — deps feat-001 ✓ + feat-007 ✓.
+   - feat-010 (Module discovery & CLI) — deps feat-001 ✓.
+   - feat-011 (Scaffolding & upgrade) — deps feat-001 ✓.
+   - feat-012 (Configuration system) — deps feat-001 ✓.
+
+   feat-006 wins by lowest number.
 
 ## Reading order on session resume
 
 1. `AGENTS.md`
 2. `.claude/CLAUDE.md`
 3. `.claude/state/current.md` (this file)
-4. After this PR merges: `docs/features/feat-008-findings-and-output-shapes.md`
+4. After this PR merges: `docs/features/feat-006-evaluators-and-benchmarks.md`

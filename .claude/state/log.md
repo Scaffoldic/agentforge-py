@@ -517,3 +517,87 @@ guardrails to prevent rot:
    scaffolded agent projects."
 
 CHANGELOG addendum under the same `[Unreleased] / Docs` entry.
+
+## 2026-05-11T11:30 — PR #12 merged, picking up feat-008
+PR #12 (chore/backfill-runbooks + hygiene policy) merged to main @
+`b173d31`. Synced main, deleted `chore/backfill-runbooks` local +
+remote.
+
+Picked up **feat-008 (Findings & output shapes)** per pipeline §1.
+Deps: feat-001 ✓ (Finding Protocol already shipped). Branched
+`feat/008-findings-and-output-shapes`.
+
+Drafted design analysis + 4-chunk plan in `state/current.md`:
+1. Variants (Simple/Patch/Narrative/MultiSpan) + helper types
+   (Patch, Span) in `agentforge.findings` as frozen Pydantic v2
+   models (ADR-0014).
+2. `FindingRenderer` ABC in core + `RendererRegistry` in runtime
+   (most-specific-wins dispatch).
+3. Four built-in renderers (scorecard / patch-applier / markdown /
+   span-table) + `RendererRegistry.default()` factory.
+4. Implementation status + Runbook + CHANGELOG + roadmap + PR +
+   forward-reference sweep per the AGENTS.md rule added in PR #12.
+
+State: `design-analysis` / `awaiting-design-approval`. Awaiting
+user sign-off on the chunk plan before implementation begins.
+
+## 2026-05-11T11:45 — feat-008 design approved
+User approved Pydantic-v2-frozen-models choice over the spec's
+`@dataclass` sketch (per ADR-0014). Beginning implementation.
+
+## 2026-05-11T12:00 — feat-008 chunk 1 done
+`bfb8c33` — `Patch`, `Span`, `SimpleFinding`, `PatchFinding`,
+`NarrativeFinding`, `MultiSpanFinding` as frozen Pydantic v2 models
+in `agentforge.findings`. `_FindingBase` internal base provides
+`to_dict` / `from_dict` plumbing. 19 unit tests pass; Protocol
+`isinstance` check works for all variants including a third-party
+custom Pydantic model. Top-level re-exports added.
+
+## 2026-05-11T12:30 — feat-008 chunk 2 done
+`4f5e95c` — `FindingRenderer` ABC at
+`agentforge-core/contracts/renderer.py` (re-exported from
+`agentforge_core`); `RendererRegistry` at
+`agentforge/renderers/registry.py` with most-specific-wins
+dispatch by isinstance, ties broken by registration order;
+`MissingRendererError`. 9 unit tests cover exact-type match,
+missing-error, subclass-wins in both registration orders, tie-
+break via re-registration, registration order preservation,
+format passthrough, top-level re-export. `.default()` factory
+deferred to chunk 3.
+
+## 2026-05-11T12:45 — feat-008 chunk 3 done
+`26b5da7` — Four built-in renderers in `agentforge/renderers/`:
+`ScorecardRenderer` (SimpleFinding), `PatchApplierRenderer`
+(PatchFinding), `MarkdownRenderer` (NarrativeFinding),
+`SpanTableRenderer` (MultiSpanFinding). All support text +
+markdown formats; unknown format raises ValueError, wrong variant
+raises TypeError. `_defaults.populate_defaults(registry)` helper +
+`RendererRegistry.default()` factory pre-populates all four. 21
+unit tests including end-to-end dispatch through `.default()` and
+in-place built-in override. Top-level re-exports added.
+
+## 2026-05-11T13:00 — feat-008 chunk 4 done, PR pending
+- `docs/features/feat-008-findings-and-output-shapes.md`:
+  metadata status → `shipped (Python)`; added Implementation
+  status section (chunk table + deviations: Pydantic models not
+  `@dataclass`, `Patch.hunk_count` field added, Span line-order
+  invariant, internal `_FindingBase` plumbing; not-yet:
+  `Claim.from_finding`, polymorphic `Finding.from_dict`, HTML
+  renderers, streaming emission, TS port); added Runbook section
+  (8 task entries from "how do I emit" through "when not to use"
+  + "how do I render a list of findings").
+- `CHANGELOG.md`: `[Unreleased] / Added` entry with full surface
+  catalogue.
+- `docs/roadmap.md`: feat-008 row moved from "Backlog" to
+  "Shipped".
+- `docs/features/README.md` catalogue: feat-008 status updated
+  `proposed` → `shipped (Python)`.
+- **Forward-reference sweep**: feat-005's §4.1 example imports
+  `SimpleFinding` (now real) and `Claim.from_finding(...)` (still
+  not implemented — feat-005 follow-up, documented in feat-008
+  Implementation section). feat-006/014/015/016 reference
+  `Finding` / `SimpleFinding` in design sections — those features
+  are still unshipped; their own PRs will refresh forward-tense
+  language at ship time per the AGENTS.md rule.
+
+Ready to push and raise PR.

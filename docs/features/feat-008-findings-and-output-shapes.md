@@ -6,12 +6,12 @@
 |---|---|
 | **ID** | feat-008 |
 | **Title** | Findings — `Finding` Protocol + variants (Simple, Patch, Narrative, MultiSpan) + renderers |
-| **Status** | proposed |
+| **Status** | shipped (Python — `agentforge-py` PR pending merge; TypeScript pending) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 |
 | **Languages** | both |
-| **Module package(s)** | `agentforge` |
+| **Module package(s)** | `agentforge`, `agentforge-core` (`FindingRenderer` ABC) |
 | **Depends on** | feat-001 |
 | **Blocks** | feat-005 (Claim payload), feat-006 (Evaluator scores Findings) |
 
@@ -264,3 +264,247 @@ v0.1.
   feat-005 (Claim wraps Finding payload), feat-006 (Evaluator scores Finding),
   feat-015 (Pipeline emits Findings)
 - Archived: `docs/archive/cr/CR-005c-pluggable-output-shape.md`
+
+---
+
+## Implementation status
+
+**Status: shipped (Python).** Landed across 4 chunks on
+`feat/008-findings-and-output-shapes`.
+
+| Chunk | Scope |
+|---|---|
+| 1 | Variants (`SimpleFinding`, `PatchFinding`, `NarrativeFinding`, `MultiSpanFinding`) + helpers (`Patch`, `Span`) as **frozen Pydantic v2 models**. Protocol-conformance + JSON round-trip + frozen-ness + field-validation tests (19 cases). |
+| 2 | `FindingRenderer` ABC in `agentforge-core/contracts/renderer.py` + `RendererRegistry` in `agentforge/renderers/registry.py` with **most-specific-wins** dispatch + `MissingRendererError` (9 cases). |
+| 3 | Four built-in renderers (`ScorecardRenderer`, `PatchApplierRenderer`, `MarkdownRenderer`, `SpanTableRenderer`) + `RendererRegistry.default()` factory pre-populating all four (21 cases). Each renderer supports `"text"` and `"markdown"`. |
+| 4 | This Implementation section + Runbook + CHANGELOG + roadmap + forward-reference sweep + PR. |
+
+### Deviations from this spec
+
+- **Variants are frozen Pydantic v2 models, not `@dataclass`.** The
+  spec §4.2 sketches `@dataclass`; ADR-0014 calls for frozen
+  Pydantic models for value types and supersedes. Reasoning:
+  findings cross persistence (`Claim.payload`), transport
+  (A2A / MCP / pipeline), and LLM-output (structured-output)
+  boundaries — validation on construction matters, and Pydantic
+  gives JSON Schema + `model_dump` / `model_validate` round-trip
+  for free. External shape is identical to the dataclass sketch.
+- **`Patch` carries `hunk_count: int` field.** Not in the spec
+  sketch — added so renderers (and future patch appliers) can
+  produce summary stats without re-parsing the diff. Defaults to
+  `1`; non-breaking.
+- **`Span.end_line >= start_line` invariant enforced at
+  construction** (Pydantic `@field_validator`). Spec didn't
+  specify — we caught a class of impossible spans by validating.
+- **`_FindingBase` internal base class** provides `to_dict()` /
+  `from_dict()` plumbing. Each variant subclasses it and declares
+  the three Protocol-required attributes (`severity`, `category`,
+  `message`) explicitly so `isinstance(x, Finding)` resolves. Not
+  exported.
+- **`RendererRegistry.default()` lives on the class, not in a
+  module-level builder.** Convenience for the common case.
+
+### What's *not* yet implemented
+
+- **`Claim.from_finding(finding, agent=...)`** helper — referenced
+  in feat-005's spec §4.1 example. The helper would auto-populate
+  `Claim.payload` from `Finding.to_dict()`. Out of scope here;
+  tracked under feat-005 follow-up.
+- **`Finding.from_dict(d)` polymorphic factory** — caller must
+  know which variant they persisted today. The natural home is
+  `Claim.metadata["variant"]` (or similar) when feat-005 wires
+  it up.
+- **HTML / JSON-LD renderers.** Per spec §9 (markdown is enough
+  for v0.x); community modules can ship later.
+- **Streaming finding emission** (mid-run). Per spec §9 — tasks
+  emit findings; aggregation happens at end of run.
+- **TypeScript port** of the whole feat-008 surface.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
+
+### How do I emit a finding from a tool or strategy?
+
+Pick a variant and construct it; the agent's `RunResult` carries
+findings on `result.findings`:
+
+```python
+from agentforge import Agent, SimpleFinding, tool
+
+@tool
+async def lint_file(path: str) -> SimpleFinding:
+    """Lint a single file and return the worst issue (if any)."""
+    return SimpleFinding(
+        severity="warning",
+        category="style",
+        message="Variable 'x' is unclear",
+        file=path,
+        line=42,
+        recommendation="Rename to 'user_count'",
+    )
+```
+
+Strategies that aggregate findings (feat-015 Pipeline, future
+emit-each-step strategies) collect them into `result.findings`
+automatically. Until then, return findings from tools and
+aggregate in the caller.
+
+### How do I pick a variant?
+
+| Shape of output | Variant |
+|---|---|
+| One issue, one location, with an optional recommendation | `SimpleFinding` |
+| Auto-fix / refactor with a structured diff | `PatchFinding` |
+| Long-form prose answer with citations | `NarrativeFinding` |
+| One logical issue manifested across multiple files | `MultiSpanFinding` |
+
+If none fit — write your own. The `Finding` Protocol is
+`runtime_checkable` and structural: any class with
+`severity: str`, `category: str`, `message: str`, and a
+`to_dict() -> dict` method satisfies it. No inheritance needed.
+
+### How do I write a custom variant?
+
+Subclass `_FindingBase` (recommended — you inherit `to_dict` /
+`from_dict`) or a shipped variant (if extending), or write a
+bare Pydantic model with the four members:
+
+```python
+from pydantic import BaseModel, ConfigDict, Field
+
+class CoverageFinding(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    severity: str
+    category: str = "coverage"
+    message: str
+    file: str
+    coverage_pct: float = Field(ge=0.0, le=100.0)
+
+    def to_dict(self) -> dict:
+        return self.model_dump(mode="json")
+```
+
+This satisfies `isinstance(x, Finding)` and persists / renders via
+the same machinery as the built-ins — once you register a
+renderer for it.
+
+### How do I register a renderer for my custom variant?
+
+```python
+from agentforge import RendererRegistry, FindingRenderer
+
+class CoverageBarRenderer(FindingRenderer):
+    def render(self, finding, format="text"):
+        if format == "markdown":
+            return f"- **{finding.file}**: {finding.coverage_pct:.1f}%"
+        return f"  {finding.file}: {finding.coverage_pct:.1f}%"
+
+registry = RendererRegistry.default()
+registry.register(CoverageFinding, CoverageBarRenderer())
+```
+
+`RendererRegistry.default()` starts with the four built-ins
+already registered. Re-registering a built-in variant
+(`registry.register(SimpleFinding, MyCustomScorecard())`) replaces
+the built-in in place — the original registration slot is
+preserved.
+
+### How do I render a list of findings to a markdown report?
+
+```python
+from agentforge import RendererRegistry
+
+registry = RendererRegistry.default()
+
+def to_report(findings, format="markdown"):
+    return "\n\n".join(
+        registry.get(f).render(f, format=format)
+        for f in findings
+    )
+
+print(to_report(result.findings))
+```
+
+Heterogeneous lists (mix of variants) work — the registry
+dispatches per finding by isinstance with the most-specific-wins
+rule. Custom variants subclassing a built-in variant pick up the
+inherited renderer unless explicitly overridden.
+
+### How do I persist a finding to memory?
+
+`Finding.to_dict()` produces a JSON-compatible dict — drop it
+into `Claim.payload`:
+
+```python
+from agentforge_core import Claim
+
+claim = Claim(
+    run_id=current_run().run_id,
+    project="my-agent",
+    agent="lint",
+    category="finding",
+    payload=finding.to_dict(),
+)
+claim_id = await memory.put(claim)
+```
+
+Round-trip: on retrieval, reconstruct via
+`SimpleFinding.from_dict(claim.payload)` (or whichever variant
+you persisted — feat-005 will eventually carry the variant
+discriminator in `Claim.metadata` so dispatch is automatic).
+
+### How do I debug "no renderer matched"?
+
+`RendererRegistry.get(...)` raises `MissingRendererError` with a
+remediation hint when nothing matches. Add a renderer (custom or
+built-in) for the finding's type, or use
+`RendererRegistry.default()` instead of an empty `RendererRegistry()`
+if you forgot to populate the built-ins:
+
+```python
+# What you probably wrote:
+reg = RendererRegistry()        # empty — nothing registered
+
+# What you wanted:
+reg = RendererRegistry.default() # four built-ins ready to go
+```
+
+For diagnostic introspection: `reg.registered_types()` returns
+the registered types in registration order.
+
+### How do I render different formats from the same finding?
+
+Renderers accept a `format` argument — text and markdown are
+required of every shipped renderer; custom renderers may
+implement more.
+
+```python
+text  = registry.get(f).render(f, format="text")
+md    = registry.get(f).render(f, format="markdown")
+```
+
+Unknown formats raise `ValueError` — fail-at-call-time, not
+silently rendering as text.
+
+### When should I NOT use a built-in variant?
+
+- **`SimpleFinding` is too narrow** for a finding that needs
+  multiple locations (use `MultiSpanFinding`) or carries a
+  structured diff (use `PatchFinding`).
+- **`PatchFinding` for "the LLM described a fix in prose"** —
+  use `SimpleFinding` with the prose in `recommendation`. Reserve
+  `PatchFinding` for actual unified diffs the consumer can apply.
+- **`NarrativeFinding` for "anything that's just text"** — if
+  there's a single issue / location pattern,
+  `SimpleFinding(message=…)` is more discoverable than a
+  body-heavy `NarrativeFinding`.
+- **`MultiSpanFinding` with one span** — collapse to
+  `SimpleFinding` (the renderer's per-span block is overkill for
+  one location).

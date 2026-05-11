@@ -24,7 +24,23 @@ from agentforge_core import FallbackChain
 from agentforge._tools import tool
 from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
+from agentforge.findings import (
+    MultiSpanFinding,
+    NarrativeFinding,
+    Patch,
+    PatchFinding,
+    SimpleFinding,
+    Span,
+)
 from agentforge.memory import InMemoryGraphStore, InMemoryStore, InMemoryVectorStore
+from agentforge.renderers import (
+    MarkdownRenderer,
+    MissingRendererError,
+    PatchApplierRenderer,
+    RendererRegistry,
+    ScorecardRenderer,
+    SpanTableRenderer,
+)
 from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 from agentforge.strategies import (
@@ -48,13 +64,25 @@ __all__ = [
     "InMemoryGraphStore",
     "InMemoryStore",
     "InMemoryVectorStore",
+    "MarkdownRenderer",
+    "MissingRendererError",
     "MultiAgentSupervisor",
+    "MultiSpanFinding",
+    "NarrativeFinding",
+    "Patch",
+    "PatchApplierRenderer",
+    "PatchFinding",
     "Plan",
     "PlanExecuteLoop",
     "PlanStep",
     "ReActLoop",
+    "RendererRegistry",
     "Retriever",
     "RuntimeContext",
+    "ScorecardRenderer",
+    "SimpleFinding",
+    "Span",
+    "SpanTableRenderer",
     "StrategyBase",
     "TreeOfThoughts",
     "__version__",

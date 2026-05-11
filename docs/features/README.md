@@ -39,7 +39,7 @@
 | **feat-005** | Persistence — `MemoryStore` ABC + drivers (sqlite, postgres, surrealdb, neo4j) | proposed | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) | both | `agentforge-memory-*` |
 | **feat-006** | Evaluators (deterministic + LLM-judge: correctness, faithfulness, groundedness, hallucination, relevance, helpfulness, coverage, format compliance, regression, consistency) | proposed | 0.2 | both | `agentforge`, `agentforge-eval-geval`, optional `-ragas`, `-deepeval`, `-toxicity`, `-codeexec` |
 | **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | proposed | 0.1 | both | `agentforge-core`, `agentforge` |
-| **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | proposed | 0.1 | both | `agentforge` |
+| **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-core` |
 | **feat-009** | Observability — structured logging + distributed tracing (OTel) + pluggable dashboards (Langfuse / Phoenix / Evidently / custom hooks); multiple backends concurrently | proposed | 0.2 | both | `agentforge`, `agentforge-otel`, `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, custom |
 
 ### Safety & security
