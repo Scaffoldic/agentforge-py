@@ -1,10 +1,10 @@
 ---
 feature: feat-012-configuration-system
-state: implementing
+state: pre-pr
 branch: feat/012-configuration-system
 started_at: 2026-05-11T20:00
-last_milestone_at: 2026-05-11T20:00
-last_shipped: feat-010 (Module discovery, read-only) shipped via PR #16 @ bbba56c
+last_milestone_at: 2026-05-11T21:30
+last_shipped: feat-010 (Module discovery, read-only CLI) shipped via PR #16 @ bbba56c
 blocker: null
 flags_for_user: []
 ---
@@ -13,68 +13,80 @@ flags_for_user: []
 
 [`feat-012 — Configuration system`](../../docs/features/feat-012-configuration-system.md)
 
-Deps: feat-001 ✓. User chose **Option A — full scope**: widened
-schema + module-side schema integration + layered files + dotted
-overrides + env shortcuts + `config validate/show/schema` CLI.
+All 11 chunks landed. Ready to push + raise PR.
 
-## Already shipped (feat-001 partial)
+## Chunks shipped
 
-| Piece | Status |
-|---|---|
-| `AgentForgeConfig` (minimal: agent + logging) | ✓ |
-| `AgentConfig` (flat `budget_usd`) | ✓ |
-| `LoggingConfig` (level + run_id_filter + format) | ✓ |
-| `load_config(path)` + env-var interpolation (`${VAR}`, `${VAR:default}`, `${VAR:?error}`, `$$`) | ✓ |
+| Chunk | Commit | Scope |
+|---|---|---|
+| 1-6 | `6a847b8` | Schema moved to `agentforge-core.config`; widened root schema (`BudgetConfig` replaces flat `budget_usd`, `ModulesConfig`, `ProvidersConfig`, `OutputConfig`); `system_prompt_file`; layered env files; dotted-path overrides; `AGENTFORGE_CONFIG` / `AGENTFORGE_LOG_LEVEL` env shortcuts. |
+| 7 | `c0d177a` | Module-side schema integration — `cls.config_schema` convention + `validate_module_configs(cfg, strict=)`. |
+| 8-10 | `c088273` | `agentforge config validate/show/schema` CLI. |
+| 11 | (this commit) | Implementation status + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
 
-## In scope for this PR
+## Scope decision recap
 
-| Piece | Where |
-|---|---|
-| **Widened schema** — `BudgetConfig` (replaces flat `budget_usd`), `ModulesConfig`, `ProvidersConfig`, `OutputConfig`, evaluators / observability sub-shapes | `agentforge_core/config/` (move from `agentforge.config` per spec §4.2) |
-| Move config schema + loader from `agentforge` → `agentforge-core` | so the resolver/discovery layer can compose schemas |
-| **`system_prompt_file: Path`** support | schema + loader |
-| **Module-side schema integration** — modules declare `config_schema: ClassVar[type[BaseModel] \| None]`; loader validates each `modules.<cat>.config` block against the resolved class's schema | resolver + loader |
-| **Layered env files** — `agentforge.<env>.yaml` overlays on `agentforge.yaml` (deep merge) via `AGENTFORGE_ENV` | loader |
-| **Dotted-path overrides** — `--override agent.budget.usd=10` (CLI) + `overrides=[...]` (loader API) | loader + CLI |
-| **`AGENTFORGE_CONFIG`** + **`AGENTFORGE_LOG_LEVEL`** env shortcuts | loader |
-| **CLI `agentforge config validate`** | cli |
-| **CLI `agentforge config show [--resolved]`** | cli |
-| **CLI `agentforge config schema`** (JSON Schema export) | cli |
+User chose **Option A — full scope** for feat-012 (target version
+0.1, foundational). Everything from spec §4 lands except:
+- Evaluator string-shorthand normalisation (`- faithfulness` →
+  `EvaluatorEntry(name=...)`) — small loader follow-up.
+- Auto-wiring `modules.*` blocks into `Agent.__init__` — small
+  Agent-level follow-up; will ship alongside the destructive CLI
+  half of feat-010 (`agentforge add module`).
 
-## Design decisions
+## Forward-reference sweep (per AGENTS.md rule)
 
-- **Schema lives in `agentforge-core`** (moved from `agentforge`). The spec §4.2 calls for it; this lets the resolver compose module schemas without depending on the runtime package. `agentforge.config` re-exports for back-compat.
-- **`BudgetConfig`** replaces flat `budget_usd` in the YAML. The `Agent(budget_usd=, max_iterations=)` kwargs remain (locked surface per feat-001) — they continue to drive the runtime `BudgetPolicy`; the YAML simply has a richer shape.
-- **Module schema convention**: `class.config_schema: ClassVar[type[BaseModel] | None] = None`. Validator reads it via `getattr`. Optional — modules without one accept any dict.
-- **Deep merge for layered files**: dict-of-dicts deep merge; lists replace wholesale (no append). Documented.
-- **Dotted-path overrides**: parsed via `path.split(".")`; integer-string segments stay strings (no list indexing for now — keep it simple).
-- **CLI `config schema`**: emits Pydantic v2's `model_json_schema()` for the root model. Useful for IDE YAML completion via SchemaStore-style configs.
+- `docs/features/README.md`: feat-012 row `proposed` → `shipped
+  (Python)`.
+- `docs/features/feat-001-core-contracts-and-agent.md`: §4.5 "Full
+  schema specified in feat-012" rewritten; Runbook "full schema
+  ships with feat-012" replaced with what's now live.
+- `docs/features/feat-003-llm-provider-abstraction.md`: caching
+  Runbook entry rewritten — `llm_options` is in the schema now,
+  Agent-level wiring is a small follow-up.
+- `docs/features/feat-004-tools-system.md`: "Config integration
+  (`agentforge.yaml > agent.tools`): feat-012 lands separately"
+  rewritten — schema + resolver are done.
+- `docs/features/feat-006-evaluators-and-benchmarks.md`:
+  "Configuration loading of evaluators from agentforge.yaml —
+  feat-012" rewritten; folded into the auto-wiring follow-up
+  note.
 
-## Proposed chunks (10 total)
+Unshipped specs (feat-011, feat-016, feat-017) reference feat-012
+in design / dep sections — their own ship-time PRs will refresh
+forward-tense language per the AGENTS.md rule.
 
-1. **Move schema + loader from `agentforge` to `agentforge-core`.** Re-export from `agentforge.config` for backwards compat. No surface change. Updates Agent's import.
-2. **Widened schema**: `BudgetConfig`, `ModulesConfig` with `memory` / `graph` / `retriever` / `evaluators` / `observability` / `tools` / `protocols` sub-fields; `ProvidersConfig` (named registry); `OutputConfig`. Replace flat `budget_usd` with `budget: BudgetConfig`.
-3. **`system_prompt_file: Path`** field + loader logic to read it when present.
-4. **Layered env files** — `_load_layered(path, env)`; deep-merge helper.
-5. **Dotted-path overrides** — `parse_overrides(["a.b=10", ...])` → nested dict; merged after env vars.
-6. **`AGENTFORGE_CONFIG` + `AGENTFORGE_LOG_LEVEL` env shortcuts** in `load_config`.
-7. **Module-side schema integration** — `cls.config_schema` convention; loader walks `modules.*` blocks, resolves each entry's class, validates the `config` dict against the class's schema.
-8. **CLI `agentforge config validate`** — load + report errors with YAML paths.
-9. **CLI `agentforge config show [--resolved]`** — pretty-print as YAML; `--resolved` interpolates env vars + overrides.
-10. **CLI `agentforge config schema`** — emit JSON Schema for `AgentForgeConfig`.
-11. **Docs + Runbook + sweep + PR.** (Numbered 11 — let me call this chunk 11.)
+## Pre-commit gate
 
-Actually 11 chunks. The line count for this single PR will be substantial; chunking is for reviewability, not gating.
+Every chunk's commit passed the full gate (ruff format + check,
+mypy --strict, bandit, pytest unit + integration, coverage ≥ 90%).
 
-## TODO
+## Next after this PR merges
 
-- [x] User approves scope (single PR, Option A — full).
-- [ ] Chunks 1-11 implementation.
-- [ ] PR.
+1. Sync `main`, delete `feat/012-configuration-system` local +
+   remote.
+2. Next eligible per pipeline §1: lowest-numbered proposed with
+   deps shipped:
+   - **feat-011 (Scaffolding & upgrade)** — deps feat-010 ✓.
+     Now that feat-012 has shipped manifest format + config
+     schema integration, feat-011's manifest-based scaffolding
+     finally has its real dep met. **feat-011 is now the natural
+     next pick.**
+   - Or: do the **feat-010 destructive-CLI sub-feat first**
+     (deferred from feat-010 PR #16) — `agentforge add module`,
+     `swap`, `remove`. This unblocks feat-011's "scaffold a new
+     agent" workflow which uses the same manifest-apply machinery.
+
+   Pragmatic order: feat-010-destructive sub-feat first (small,
+   uses what feat-012 just shipped), then feat-011 which builds
+   on it. Worth flagging to the user.
 
 ## Reading order on session resume
 
 1. `AGENTS.md`
 2. `.claude/CLAUDE.md`
 3. `.claude/state/current.md` (this file)
-4. `docs/features/feat-012-configuration-system.md`
+4. After merge: choose between
+   `docs/features/feat-010-module-discovery-and-cli.md` (for the
+   destructive-CLI follow-up) or
+   `docs/features/feat-011-scaffolding-and-upgrade.md`.
