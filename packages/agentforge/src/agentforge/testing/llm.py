@@ -86,6 +86,35 @@ class MockLLMClient(LLMClient):
         )
 
     @classmethod
+    def from_recording(
+        cls,
+        path: str,
+        *,
+        provider: str = "mock",
+        model: str = "mock",
+    ) -> MockLLMClient:
+        """Replay a recording produced by `record_llm`.
+
+        Responses are returned in on-disk order — same as the
+        original real-provider sequence. Matching by request hash
+        is exposed for callers that need it; the default replay
+        is sequential because tests usually exercise the same flow
+        as the recording.
+        """
+        from agentforge.testing.recording import load_recording  # noqa: PLC0415
+
+        _, entries = load_recording(path)
+        responses: list[LLMResponse] = []
+        for entry in entries:
+            resp = dict(entry["response"])
+            # Pydantic strict mode requires tuples for tuple-typed
+            # fields; JSON serialisation lowered them to lists.
+            if isinstance(resp.get("tool_calls"), list):
+                resp["tool_calls"] = tuple(resp["tool_calls"])
+            responses.append(LLMResponse.model_validate(resp))
+        return cls(responses=responses, provider=provider, model=model)
+
+    @classmethod
     def deterministic(
         cls,
         response: str,

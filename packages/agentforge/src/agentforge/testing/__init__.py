@@ -42,6 +42,7 @@ from agentforge.testing.conformance import (
 )
 from agentforge.testing.factory import agent_factory
 from agentforge.testing.llm import MockLLMClient, ScriptedResponse
+from agentforge.testing.recording import load_recording, record_llm
 
 __all__ = [
     "FakeLLMClient",
@@ -50,6 +51,8 @@ __all__ = [
     "ScriptedResponse",
     "agent_factory",
     "echo_response",
+    "load_recording",
+    "record_llm",
     "run_memory_conformance",
     "run_strategy_conformance",
     "run_vector_conformance",
