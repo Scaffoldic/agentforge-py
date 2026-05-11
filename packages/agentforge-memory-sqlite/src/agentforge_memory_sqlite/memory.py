@@ -161,6 +161,33 @@ class SqliteMemoryStore(MemoryStore):
 
         return _agen()
 
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        if run_id is None and older_than is None and category is None:
+            raise ModuleError(
+                "delete() requires at least one filter; refusing to wipe every claim."
+            )
+        where: list[str] = []
+        params: list[Any] = []
+        if run_id is not None:
+            where.append("run_id = ?")
+            params.append(run_id)
+        if category is not None:
+            where.append("category = ?")
+            params.append(category)
+        if older_than is not None:
+            where.append("created_at < ?")
+            params.append(older_than.isoformat())
+        sql = "DELETE FROM claims WHERE " + " AND ".join(where)  # noqa: S608  # nosec B608
+        cur = await self._db.execute(sql, tuple(params))
+        await self._db.commit()
+        return cur.rowcount or 0
+
 
 # ----------------------------------------------------------------------
 # Helpers

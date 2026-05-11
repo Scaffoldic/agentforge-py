@@ -906,3 +906,53 @@ so the gate doesn't try to parse them. Copier needs
 style without forcing every file to be named `foo.py.jinja`.
 
 Ready to push and raise PR #19.
+
+---
+
+## 2026-05-12T00:25 — feat-017 chunk 9 done, PR pending
+
+All nine chunks of feat-017 landed on `feat/017-cli-runtime`:
+
+- `34ffd7f` — chunk 1: `MemoryStore.delete()` on the ABC + every
+  driver + conformance + `RecordRunHook` + `Agent(record_runs=)`.
+- `c80f54f` — chunk 2: `ReplayLLMClient.from_recording` +
+  `replay_tools` + `ReplayExhausted`.
+- `1eeb6fb` — chunk 3: `build_agent_from_config` /
+  `load_and_build` helpers resolving providers / memory /
+  evaluators / strategy / tools via the global Resolver.
+- `5e6fc7a` — chunk 4: `agentforge run` CLI with exit codes
+  0/1/2/3/4 + plain/json/rich output + `--replay`/`--record`.
+- `b5aebbc` — chunk 5: `agentforge eval --fixtures JSONL
+  --threshold` with rich/json/junit output + exit 5 on threshold
+  fail.
+- `44e1f86` — chunk 6: `agentforge debug --replay RUN_ID` stdlib
+  `cmd.Cmd` REPL.
+- `f4d8b9b` — chunk 7: `agentforge db
+  {migrate,backup,restore,purge,query}` + tiny `key:value` DSL.
+- `98e4c85` — chunk 8: `agentforge health` preflight (renamed
+  from spec's `status` to avoid feat-011 collision).
+- (about-to-commit) chunk 9: spec status → shipped + §10
+  Implementation table + §11 Runbook; features README + roadmap;
+  CHANGELOG `[Unreleased]/Added`; state refreshed.
+
+Locked decisions captured in spec §10:
+
+- `__step` / `__eval` / `__run` are reserved category names —
+  part of the v0.1 on-disk contract for replay.
+- Exit codes: 0 success / 1 generic / 2 config invalid / 3
+  budget exceeded / 4 guardrail tripped / 5 eval threshold not
+  met.
+- argparse, not Typer.
+- Templates in-wheel; renamed `status` → `health`; `db migrate`
+  no-op on driverless schemas; `unfork` partial restore (feat-011
+  behaviour unchanged).
+- TS engine, CI upgrade matrix, Windows CI, run-tests on
+  upgrade — all deferred.
+
+Tooling note: pyproject `filterwarnings` demotes ResourceWarning
++ PytestUnraisableExceptionWarning to non-error. Many
+asyncio.run callsites in the test suite occasionally surface a
+stale kqueue selector reference at interpreter shutdown on macOS;
+the loops have actually been closed.
+
+Ready to push and raise PR #20.

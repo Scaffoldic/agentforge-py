@@ -3,8 +3,8 @@ feature: none
 state: idle
 branch: main
 started_at: null
-last_milestone_at: 2026-05-11T23:59
-last_shipped: feat-011 shipped via PR #19 (awaiting merge)
+last_milestone_at: 2026-05-12T00:30
+last_shipped: feat-017 shipped via PR #20 (awaiting merge)
 blocker: null
 flags_for_user: []
 ---
@@ -15,38 +15,39 @@ flags_for_user: []
 
 ## Last shipped
 
-[`feat-011 — Scaffolding & upgrade`](../../docs/features/feat-011-scaffolding-and-upgrade.md)
-shipped in PR #19 with full Python scope:
+[`feat-017 — CLI runtime`](../../docs/features/feat-017-cli-runtime.md)
+shipped in PR #20 with full Python scope:
 
-- `agentforge new <name>` + 6 starter templates rendered via
-  Copier (`minimal`, `code-reviewer`, `patch-bot`, `docs-qa`,
-  `triage`, `research`).
-- `.agentforge-state/managed-files.lock` + `AGENTFORGE-MANAGED:`
-  marker headers (per-extension comment styles).
-- `agentforge upgrade` via Copier's three-way merge.
-- `agentforge fork` / `unfork` / `status`.
-- 12 + 23 unit tests; templates ship in-wheel via hatchling
-  force-include.
+- CLI: `agentforge run` (+ `--replay`/`--record`),
+  `agentforge eval`, `agentforge debug`, `agentforge db
+  {migrate,backup,restore,purge,query}`, `agentforge health`.
+- Foundations: `MemoryStore.delete()` on the ABC + every driver,
+  run-recording protocol (`__step`/`__eval`/`__run` categories),
+  `ReplayLLMClient` + `replay_tools`, `build_agent_from_config`.
+- Exit codes locked at 0/1/2/3/4/5.
 
 Deviations recorded in the spec §10:
 
-- Templates ship in-wheel (not in a separate
-  `agentforge-templates` repo) — keeps v0.x installs network-free.
-- `unfork` is partially restorative; full content re-render
-  happens on the next `agentforge upgrade`.
-- `--run-tests` on upgrade deferred.
-- TypeScript engine (ADR-0021) deferred.
+- `agentforge status` (spec) → `agentforge health` (to avoid
+  collision with feat-011's scaffolding `status`).
+- argparse instead of Typer.
+- Templates ship in-wheel (inherited from feat-011).
+- `db migrate` is a no-op for `InMemoryStore` / `SqliteMemoryStore`.
+- TS engine and CI upgrade matrix deferred.
 
 ## Next pick candidates (canonical numbering)
 
-- **feat-013** — MCP integration (consume MCP tool servers; expose
-  agent tools as MCP server).
-- **feat-014** — A2A protocol support (cross-framework agent calls).
-- **feat-017** — CLI runtime expansion (`run`, `eval`, `db`, ...).
-- **feat-019** — Developer experience + AI assistant rules (the
-  Runbook scaffold + AGENTS.md / CLAUDE.md / .cursorrules).
-- Vendor observability sub-feats (`agentforge-langfuse`,
-  `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd`).
+- **feat-016** — Testing framework (MockLLMClient + fake tools +
+  pytest/vitest helpers in `agentforge-testing`).
+- **feat-018** — Safety guardrails (InputValidator /
+  OutputValidator / ToolCallGate + prompt-injection + PII +
+  capability gates).
+- **feat-013** — MCP integration (consume MCP tool servers +
+  expose agent tools as MCP).
+- **feat-019** — Developer experience (16 runbooks + AGENTS.md /
+  CLAUDE.md / .cursorrules shipped with every scaffold).
+- **feat-014** / **feat-015** / **feat-020** — see specs.
+- Vendor observability sub-feats (langfuse/phoenix/evidently/statsd).
 
 User selects on session resume.
 
