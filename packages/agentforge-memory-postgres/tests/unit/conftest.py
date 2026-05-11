@@ -66,6 +66,10 @@ class PostgresFakeRunner:
             self.queries.append(_Query(sql, arg))
             await self._dispatch_execute(sql, arg)
 
+    async def execute_returning_count(self, sql: str, *params: Any) -> int:
+        self.queries.append(_Query(sql, params))
+        return await self._dispatch_returning_count(sql, params)
+
     async def close(self) -> None:
         self.closed = True
 
@@ -124,6 +128,30 @@ class PostgresFakeRunner:
                 self.vectors.pop(vid, None)
             return
         msg = f"PostgresFakeRunner execute: unrecognised SQL: {sql!r}"
+        raise AssertionError(msg)
+
+    async def _dispatch_returning_count(
+        self,
+        sql: str,
+        params: tuple[Any, ...],
+    ) -> int:
+        s = " ".join(sql.split())
+        if s.startswith("DELETE FROM claims WHERE"):
+            # Driver emits filters in fixed order: run_id, category,
+            # older_than. Each is bound to its own $N placeholder.
+            cursor = 0
+            kwargs: dict[str, Any] = {}
+            if "run_id =" in s:
+                kwargs["run_id"] = params[cursor]
+                cursor += 1
+            if "category =" in s:
+                kwargs["category"] = params[cursor]
+                cursor += 1
+            if "created_at <" in s:
+                kwargs["older_than"] = _to_datetime(params[cursor])
+                cursor += 1
+            return await self.memory_backing.delete(**kwargs)
+        msg = f"PostgresFakeRunner execute_returning_count: unrecognised SQL: {sql!r}"
         raise AssertionError(msg)
 
     async def _dispatch_select(self, sql: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:
