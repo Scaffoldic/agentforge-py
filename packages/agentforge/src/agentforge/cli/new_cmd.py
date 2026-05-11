@@ -23,6 +23,7 @@ from agentforge.cli._scaffold_state import (
     prepend_markers,
     write_managed_files_lock,
 )
+from agentforge.cli._shared_scaffold import inject_shared_scaffold
 
 _TEMPLATES = ("minimal", "code-reviewer", "patch-bot", "docs-qa", "triage", "research")
 """Templates shipped with the framework — discoverable via
@@ -96,6 +97,16 @@ def _run_new(args: argparse.Namespace) -> int:
         template_version=template_version,
     )
     prepend_markers(dst, template_name=args.template, template_version=template_version)
+
+    # feat-019: inject shared runbooks + AGENTS.md / CLAUDE.md /
+    # .cursorrules into every scaffolded agent.
+    shared_count = inject_shared_scaffold(
+        dst,
+        template_name=args.template,
+        template_version=template_version,
+    )
+    if shared_count:
+        sys.stdout.write(f"  → wrote {shared_count} shared scaffold files (runbooks + AI rules)\n")
 
     sys.stdout.write(f"  → done. Next: cd {args.project_slug} && uv sync\n")
     return 0
