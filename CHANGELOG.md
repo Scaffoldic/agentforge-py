@@ -21,6 +21,80 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-006 — Evaluators & benchmarks.** Ships the four
+  deterministic graders, the LLM-judge engine + six named judge
+  graders (new `agentforge-eval-geval` package), and the
+  runtime integration that runs evaluators after every
+  `Agent.run()` with budget gating.
+
+  *New in `agentforge` (runtime):*
+  - **`RunResult.eval_scores: tuple[EvalResult, ...]`** — new
+    field, defaults to `()`. Preserves configured evaluator
+    order. Adding a field with a safe default is a minor bump
+    under ADR-0007.
+  - **`Agent._run_evaluators`** runs after the strategy returns,
+    before `on_finish`. Each evaluator is gated on
+    `budget.remaining_usd()` against its `cost_estimate_usd`;
+    skipped graders are logged at WARN via the
+    `agentforge.evaluators` logger and don't appear in
+    `eval_scores`. Evaluators receive the `RunResult` as `finding`
+    and a context dict carrying `task`, `state`, `budget`.
+  - **`agentforge.eval.Coverage`** — fraction of expected items
+    found in the output (case-insensitive substring by default;
+    pass `extractor=` for structured output).
+  - **`agentforge.eval.FormatCompliance`** — three modes:
+    `regex=`, `pydantic_model=`, `json_parseable=True`. Score is
+    binary (1.0 / 0.0).
+  - **`agentforge.eval.RegressionVsBaseline`** — loads a JSONL
+    baseline file (`{"task": ..., "expected": ...}` per line);
+    `exact` or `structural` modes; `no_baseline` label with
+    NaN score when no baseline entry matches.
+  - **`agentforge.eval.Consistency`** — N re-runs via a caller-
+    supplied `runner: Callable[[str], Awaitable[Any]]`; score is
+    fraction-of-agreement. Custom `matcher=` for fuzzy compare.
+  - All four declare `cost_estimate_usd = 0.0` — they run on every
+    call regardless of budget.
+
+  *New package — `agentforge-eval-geval`:*
+  - **`GEval`** engine — generic LLM-judge `Evaluator`. Rubric is
+    a dict (or YAML) with `criteria`, `scoring`, optional
+    `examples`, optional `inputs` (context keys to inject).
+    Parses judge responses defensively; commits judge cost to
+    the run's `BudgetPolicy` via `contextlib.suppress` (best-
+    effort, never voids the result).
+    `GEval.from_rubric_file(path, judge=...)` loads YAML rubrics.
+  - Six **named graders** subclassing `GEval` with shipped
+    rubrics: `Correctness`, `Faithfulness`, `Groundedness`,
+    `Hallucination`, `Relevance`, `Helpfulness`. Each accepts a
+    `judge: LLMClient` plus optional context-field overrides
+    (`ground_truth_field`, `sources_field`).
+  - Six versioned YAML rubrics shipped inside the package
+    (`src/agentforge_eval_geval/rubrics/*.yaml`), force-included
+    in the wheel via hatchling.
+  - Entry-point registration under `agentforge.evaluators` for
+    every named grader + `geval` — feat-010 (module discovery)
+    will resolve `Agent(evaluators=["correctness", ...])` by
+    name when it ships.
+
+  Workspace: `agentforge-eval-geval` added to root `pyproject.toml`
+  workspace deps + sources + testpaths + coverage source. CI
+  workflow and `.pre-commit-config.yaml` extended in lockstep
+  with the new mypy / bandit / pytest paths.
+
+  *Deviations from spec §4:* variant graders are constructible
+  Python objects (not yet resolved by name — needs feat-010);
+  `RunResult.eval_scores` is a tuple, not a flat dict; eval
+  config from `agentforge.yaml` is deferred to feat-012; the
+  `agentforge eval` CLI is deferred to feat-017. See feat-006's
+  spec for the full deviation list and what's not yet shipped.
+
+  *Knock-on docs change:* feat-002's runbook is updated — the
+  ToT `scorer="judge"` note no longer says "until feat-006
+  lands"; instead it explains that feat-006 shipped the post-run
+  evaluator surface but ToT's in-strategy branch scoring still
+  calls `Agent.model` (a small follow-up to wire the named-
+  provider config).
+
 - **feat-008 — Findings & output shapes.** Ships the four
   built-in `Finding` variants and their renderers, plus a
   registry for dispatch. The `Finding` Protocol itself shipped

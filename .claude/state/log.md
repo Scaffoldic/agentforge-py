@@ -601,3 +601,56 @@ in-place built-in override. Top-level re-exports added.
   language at ship time per the AGENTS.md rule.
 
 Ready to push and raise PR.
+
+## 2026-05-11T13:30 — feat-008 merged @ #13; picking up feat-006
+User approved single-PR scope for feat-006 (target version 0.2,
+spans both `agentforge` and new `agentforge-eval-geval` package).
+Branched `feat/006-evaluators-and-benchmarks` and drafted 8-chunk
+plan.
+
+## 2026-05-11T14:00 — feat-006 chunks 1-5 done (runtime + 4 deterministic graders)
+- chunk 1 `87bd0f2`: `RunResult.eval_scores` tuple field +
+  `Agent._run_evaluators` loop (budget-gated; WARN logs skips via
+  `agentforge.evaluators` logger). Closes the feat-001 gap where
+  `evaluators=[...]` was accepted but never iterated.
+- chunk 2 `93b241a`: `Coverage` deterministic grader.
+- chunk 3 `6938866`: `FormatCompliance` (regex / pydantic_model /
+  json_parseable; multi-mode rejected at construction).
+- chunk 4 `3bad0bd`: `RegressionVsBaseline` (JSONL baseline; exact +
+  structural modes; `no_baseline` label with NaN score).
+- chunk 5 `8689b44`: `Consistency` (caller-supplied async runner;
+  agreement fraction; custom matcher; runner failure → fail label).
+
+## 2026-05-11T15:30 — feat-006 chunks 6+7 done (geval package)
+`f771791` — new workspace member `agentforge-eval-geval`:
+- `GEval` engine: rubric (dict or YAML), defensive JSON parsing,
+  budget commit via `contextlib.suppress`, score clamping to [0, 1].
+- 6 named graders: Correctness, Faithfulness, Groundedness,
+  Hallucination, Relevance, Helpfulness. Each loads a shipped YAML
+  rubric from `rubrics/`.
+- 6 versioned rubric YAMLs (criteria + scoring; some with `inputs`).
+- Entry-point registration under `agentforge.evaluators`.
+- Workspace + CI + pre-commit extended in lockstep with new mypy /
+  bandit / pytest paths (the AGENTS.md drift-trap rule applies).
+- 30 unit tests covering engine + grader dispatch.
+
+## 2026-05-11T16:00 — feat-006 chunk 8 done, PR pending
+- `docs/features/feat-006-evaluators-and-benchmarks.md`: status →
+  `shipped (Python)`; added Implementation status (chunk table +
+  deviations: eval_scores tuple not dict; format_compliance modes
+  ≠ spec's grammar; regression semantic deferred; consistency
+  uses caller-runner not auto-Agent; G-Eval cost commit best-
+  effort; no CLI here — feat-017). Added Runbook section (10
+  task entries: attach graders, pick deterministic vs LLM-judge,
+  budget gating, cheap judge for expensive agent, custom rubric,
+  baseline scoring, consistency, reading EvalResults, debugging
+  "never ran", when not to use).
+- `CHANGELOG.md` `[Unreleased] / Added`: full surface catalogue.
+- `docs/roadmap.md`: feat-006 row moved from Backlog → Shipped.
+- `docs/features/README.md`: feat-006 status `proposed` → `shipped`.
+- **Forward-reference sweep**: feat-002's runbook + Implementation
+  section rewritten — old text said "until feat-006 lands"; now
+  acknowledges feat-006 shipped the post-run surface while ToT's
+  in-strategy `scorer="judge"` is a separate follow-up.
+
+Ready to push.

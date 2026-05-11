@@ -33,7 +33,8 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-004](./features/feat-004-tools-system.md) | Tools system — `@tool` decorator + 4 default tools + dispatch enhancements + `FakeTool` | [#10](https://github.com/Scaffoldic/agentforge-py/pull/10) |
 | [feat-005](./features/feat-005-persistence-and-memory.md) | Persistence — MemoryStore + sqlite + postgres + neo4j + surrealdb + VectorStore + GraphStore + RAG | [#5](https://github.com/Scaffoldic/agentforge-py/pull/5) (sqlite + RAG, mis-labelled feat-007), [#7](https://github.com/Scaffoldic/agentforge-py/pull/7) (graph + neo4j + surrealdb, mis-labelled feat-009), [#8](https://github.com/Scaffoldic/agentforge-py/pull/8) (postgres, mis-labelled feat-008) |
 | [feat-007](./features/feat-007-production-rails.md) | Production rails — `BudgetPolicy` + `RunContext` + `idempotency_key_for` + `RunIdFilter` (shipped under feat-001) + `FallbackChain` cross-provider failover | [#11](https://github.com/Scaffoldic/agentforge-py/pull/11) |
-| [feat-008](./features/feat-008-findings-and-output-shapes.md) | Findings & output shapes — `SimpleFinding` / `PatchFinding` / `NarrativeFinding` / `MultiSpanFinding` variants + `Patch` / `Span` helpers + `FindingRenderer` ABC + `RendererRegistry` + 4 built-in renderers (scorecard / patch-applier / markdown / span-table) | (this PR) |
+| [feat-008](./features/feat-008-findings-and-output-shapes.md) | Findings & output shapes — `SimpleFinding` / `PatchFinding` / `NarrativeFinding` / `MultiSpanFinding` variants + `Patch` / `Span` helpers + `FindingRenderer` ABC + `RendererRegistry` + 4 built-in renderers (scorecard / patch-applier / markdown / span-table) | [#13](https://github.com/Scaffoldic/agentforge-py/pull/13) |
+| [feat-006](./features/feat-006-evaluators-and-benchmarks.md) | Evaluators — `Coverage` / `FormatCompliance` / `RegressionVsBaseline` / `Consistency` deterministic graders + `Agent.run()` evaluator loop + `RunResult.eval_scores` + `agentforge-eval-geval` package (`GEval` engine + `Correctness` / `Faithfulness` / `Groundedness` / `Hallucination` / `Relevance` / `Helpfulness` named judges) | (this PR) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -47,10 +48,6 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **[feat-006](./features/feat-006-evaluators-and-benchmarks.md) —
-  Evaluators & benchmarks.** `Evaluator` ABC was shipped under
-  feat-001; the full eval framework (closes `scorer="judge"`
-  placeholder in feat-002's `TreeOfThoughts`) is feat-006.
 - **[feat-009](./features/feat-009-observability.md) —
   Observability.** Structured logging + OpenTelemetry + dashboard
   exporters. Spec exists; not yet implemented. **Note:** PR #7 was

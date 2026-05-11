@@ -409,9 +409,12 @@ All four strategies ship in `agentforge.strategies`:
 - `ReActLoop` — observe / think / act / iterate.
 - `PlanExecuteLoop` — plan once, execute steps; replan on guardrail
   trip.
-- `TreeOfThoughts` — branching exploration with pluggable scorer
-  (`scorer="judge"` is a placeholder until feat-006 lands the eval
-  framework).
+- `TreeOfThoughts` — branching exploration with pluggable scorer.
+  feat-006 shipped the post-run evaluator surface, but ToT's
+  in-strategy `scorer="judge"` still calls `Agent.model` (same
+  model, separate calls). Wiring a dedicated judge provider for
+  ToT branch scoring is a follow-up; the named-provider config
+  block from feat-003 makes that a small change when needed.
 - `MultiAgentSupervisor` — delegate / execute workers / aggregate, with
   proportional budget split via `BudgetPolicy.remaining_usd() /
   n_workers`.
@@ -520,10 +523,13 @@ agent = Agent(
 )
 ```
 
-**Note:** until feat-006 (Evaluators) lands the full eval
-framework, `scorer="judge"` falls back to using `Agent.model` as
-the judge — same model, separate calls. The dedicated judge
-provider config arrives with feat-006.
+**Note:** feat-006 shipped the post-run evaluator surface
+(`Correctness`, `Faithfulness`, etc.), but ToT's *in-strategy*
+`scorer="judge"` still calls `Agent.model` for branch scoring —
+same model, separate calls. Wiring ToT branch scoring to a
+dedicated judge provider (the feat-003 named-provider mechanism)
+is a small follow-up; for now, use a model-level fallback or
+constrain `branch_factor` to keep judge cost bounded.
 
 ### How do I delegate to specialist workers?
 
