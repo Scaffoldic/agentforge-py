@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-010 |
 | **Title** | Module system — entry-point discovery, resolver, `agentforge add/swap/remove` CLI |
-| **Status** | shipped (Python — runtime + read-only `list` CLI; destructive `add/swap/remove` deferred to a follow-up alongside feat-012) |
+| **Status** | shipped (Python — full surface: runtime + `list` + `add` / `remove` / `swap` module CLI) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -247,31 +247,21 @@ identical. Manifest format identical.
 
 ## Implementation status
 
-**Status: shipped (Python — runtime + read-only `list` CLI).**
-Landed across 3 chunks on `feat/010-module-discovery`. The
-destructive CLI commands (`add`, `swap`, `remove`) have a hard
-dependency on feat-012 (Configuration system) for manifest-driven
-config edits + per-module config-schema validation, so they're
-deferred to a follow-up sub-feat that lands alongside / right
-after feat-012.
+**Status: shipped (Python — full surface).** Landed in two PRs:
+the read-only half on `feat/010-module-discovery` (PR #16) and the
+destructive CLI on `feat/010b-destructive-cli` (this PR).
 
 | Chunk | Scope |
 |---|---|
-| 1 | `ModuleInfo` frozen value type + `agentforge_core/resolver/discover.py` (entry-point scanner, lazy + cached); `Resolver.list_installed`; auto-trigger on first `resolve()`. |
-| 2 | `agentforge.cli` subpackage (argparse-based, no third-party deps); `agentforge list modules` command with `--category` + `--json`; `[project.scripts]` registration. |
-| 3 | This Implementation section + Runbook + CHANGELOG + roadmap + forward-ref sweep. |
+| **PR #16 (1)** | `ModuleInfo` frozen value type + `agentforge_core/resolver/discover.py` (entry-point scanner, lazy + cached); `Resolver.list_installed`; auto-trigger on first `resolve()`. |
+| **PR #16 (2)** | `agentforge.cli` subpackage (argparse-based, no third-party deps); `agentforge list modules` command with `--category` + `--json`; `[project.scripts]` registration. |
+| **PR #16 (3)** | Initial Implementation section + Runbook + CHANGELOG + roadmap. |
+| **This PR (1)** | `Manifest` / `EnvVarEntry` / `TemplateFile` / `AppliedManifest` value types in `agentforge-core/values/manifest.py`. Idempotent applier (`apply_manifest` / `reverse_manifest` / `read_applied`) with env-var append, template copy + marker, config-block deep-merge, state file at `.agentforge-state/manifests/<dist>.yaml`. |
+| **This PR (2-3)** | `agentforge add module <dist>` / `agentforge remove module <dist>` / `agentforge swap <category> <from> <to>` — pip subprocess (injectable for tests) + manifest discovery via `importlib.resources` + applier dispatch + state-aware reverse. |
+| **This PR (4)** | This section + Runbook updates + CHANGELOG + roadmap. |
 
 ### Deviations from this spec
 
-- **Single PR scope is runtime + read-only `list` CLI only.** Spec
-  §4.1 shows `agentforge add module ...`, `agentforge swap ...`,
-  `agentforge remove ...`. Those three commands manipulate
-  `agentforge.yaml`, apply per-module manifest files, validate
-  config against each module's `config_schema`, and shell out to
-  `pip install`. All of that depends on feat-012 (Configuration
-  system) — without it, the manifest format and config-schema
-  validation can't be specified cleanly. So this PR ships the
-  read-only half; the destructive half lands once feat-012 does.
 - **`Resolver.list_available()` not shipped.** Spec §4.2 lists it
   as querying PyPI. Defer — needs an HTTP client + caching
   strategy + offline-mode handling that's better designed in
@@ -282,20 +272,28 @@ after feat-012.
   `reset_discovery()`. Old behaviour would have broken tests that
   rely on import-time `@register` decorators (e.g. strategies)
   whose registrations are lost forever after a clear.
+- **YAML edits via plain `pyyaml`** — comments and key ordering
+  are lost on `agentforge add`. Documented in the runbook;
+  escalate to `ruamel.yaml` if users complain.
+- **`agentforge add` calls `python -m pip`** (not `uv add`):
+  works in any venv (uv, hatch, plain venv). Detecting `uv` and
+  switching is a follow-up.
+- **`agentforge swap` is not transactional** — if `add` fails
+  after `remove` succeeded, the agent is left module-less. The
+  state file lets you re-run `add` to recover.
 
 ### What's *not* yet implemented
 
-- **`agentforge add module X`** — `pip install` + manifest apply.
-- **`agentforge swap memory sqlite postgres`** — diff + apply.
-- **`agentforge remove module X`** — symmetric removal.
-- **Manifest format** (`manifest.yaml` per module) — spec lives
-  alongside feat-012.
 - **`Resolver.list_available()`** — PyPI catalogue query.
 - **`agentforge list modules --available`** — pairs with the
   above.
+- **`uv add` / `uv pip install` detection** — `pip` works in any
+  venv; uv-native install would be slightly faster.
 - **Entry-point cache invalidation on pip install/uninstall**
   (spec §8) — current implementation caches per-process; restart
   the process to pick up newly-installed modules.
+- **Transactional `swap`** — currently composed of
+  `remove` + `add`; not all-or-nothing.
 - **TypeScript port** of the resolver + CLI.
 
 ---
@@ -419,13 +417,123 @@ check:
 4. **Class is actually a class.** Entry points pointing at a
    function or instance get skipped with a WARN.
 
-### How do I write a module that ships with manifest + default config?
+### How do I add a module to my agent in one command?
 
-**Not yet supported in this PR.** The `manifest.yaml` format and
-`agentforge add module X` workflow ship in a follow-up sub-feat
-alongside feat-012 (Configuration system). For now, document the
-config block your module expects in your README; consumers paste
-it into `agentforge.yaml` manually.
+```bash
+$ agentforge add module agentforge-memory-postgres
+  → installing agentforge-memory-postgres
+  → applied manifest for agentforge-memory-postgres
+  Next:
+    - Set POSTGRES_DSN in your .env file.
+    - Run database migrations (`agentforge db migrate` is a feat-011 follow-up).
+```
+
+The command runs `python -m pip install <dist>`, reads the
+package's shipped `manifest.yaml`, and applies it: appends env
+vars to `.env.example` (idempotent), copies template files to
+the locations the manifest specifies (with a `# AGENTFORGE-
+MANAGED: <dist>` marker), and deep-merges a config block into
+`agentforge.yaml`. State lands at
+`.agentforge-state/manifests/<dist>.yaml` so `remove` can
+reverse it precisely.
+
+Re-running `agentforge add module X` on an already-applied
+module is a no-op + reprints the next-steps lines.
+
+### How do I write a module that ships with a manifest?
+
+Place `manifest.yaml` at the root of your package (i.e.
+`mypkg/manifest.yaml`, accessible via
+`importlib.resources.files("mypkg") / "manifest.yaml"`):
+
+```yaml
+# agentforge_memory_postgres/manifest.yaml
+category: memory
+name: postgres
+env_vars:
+  - name: POSTGRES_DSN
+    description: "Postgres connection string"
+    required: true
+  - name: POSTGRES_POOL_SIZE
+    description: "Connection pool max"
+    required: false
+    default: "10"
+templates:
+  - source: db/migrations/0001_init.sql
+    destination: db/migrations/agentforge/0001_init.sql
+config_block:
+  modules:
+    memory:
+      driver: postgres
+      config:
+        dsn: "${POSTGRES_DSN}"
+next_steps:
+  - "Set POSTGRES_DSN in your .env file."
+  - "Run `agentforge db migrate` to apply the schema."
+```
+
+`templates[].source` paths are relative to the package root.
+`overwrite: true` lets `add` replace an existing unmarked file
+at the destination (default: refuse with a clear error).
+
+### How do I swap one driver for another?
+
+```bash
+$ agentforge swap memory agentforge-memory-sqlite agentforge-memory-postgres
+  → swap: removing agentforge-memory-sqlite, installing agentforge-memory-postgres
+  → reversed manifest for agentforge-memory-sqlite
+  → uninstalling agentforge-memory-sqlite
+  → installing agentforge-memory-postgres
+  → applied manifest for agentforge-memory-postgres
+```
+
+`swap` is **not transactional** — if `add` fails after `remove`
+succeeded, the agent is left module-less. The state file lets
+you re-run `agentforge add module <to-dist>` to recover. For
+production rollouts, prefer a staged migration: add the new
+module under a different config name, switch over, then remove
+the old one.
+
+### How do I remove a module?
+
+```bash
+$ agentforge remove module agentforge-memory-postgres
+  → reversed manifest for agentforge-memory-postgres
+  → uninstalling agentforge-memory-postgres
+  → done.
+```
+
+The reverser reads the state file at
+`.agentforge-state/manifests/<dist>.yaml`, un-appends each env
+var line, deletes each marked template file, and deep-strips the
+config block from `agentforge.yaml` (pruning empty parent dicts).
+Then runs `pip uninstall -y`.
+
+If you already uninstalled the package manually,
+`agentforge remove` still cleans up env vars + templates from
+state — it just skips the config-block reverse (which needs the
+manifest).
+
+### How does idempotency / atomicity work?
+
+- **Idempotent add**: a second `add` on an already-applied module
+  prints "already applied" and re-prints `next_steps` without
+  re-running pip-side effects. Env-var lines are skipped if
+  `NAME=` already appears in `.env.example`. Template copies are
+  skipped if the marker matches.
+- **Partial apply**: if `apply_manifest` raises mid-way (e.g. a
+  template's destination exists without the marker), the state
+  file is still written for what *did* land. `agentforge remove`
+  uses that state to clean up partials.
+- **`swap` is not all-or-nothing.** Documented above.
+
+### Where does state live? Should I commit it?
+
+State files live at `.agentforge-state/manifests/<dist>.yaml`.
+**Commit them** — they tell the next developer / CI run exactly
+which framework modules are wired in. Add `.agentforge-state/`
+to `.gitignore` only if you want each developer to manage their
+own modules independently (rare).
 
 ### When should I NOT rely on entry-point discovery?
 

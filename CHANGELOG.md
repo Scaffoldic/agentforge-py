@@ -21,6 +21,61 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-010 destructive CLI (sub-feat completion).** Ships the
+  `add` / `remove` / `swap` module commands deferred from PR #16,
+  now that feat-012 (Configuration system) has landed the
+  manifest-validation primitives. Completes feat-010's full
+  surface.
+
+  *New in `agentforge-core`:*
+  - **Manifest value types** (`agentforge_core/values/manifest.py`):
+    - `Manifest` — what a module ships at `<package>/manifest.yaml`:
+      `category`, `name`, `env_vars`, `templates`, `config_block`,
+      `next_steps`.
+    - `EnvVarEntry` — name + description + required + optional default.
+    - `TemplateFile` — package-relative source + repo destination
+      + `overwrite` flag.
+    - `AppliedManifest` — state record at
+      `.agentforge-state/manifests/<dist>.yaml` so `remove` can
+      reverse the application precisely. Tracks which env vars
+      were appended, which templates were created, and whether
+      the config block landed.
+  - Re-exported from `agentforge_core` top-level.
+
+  *New in `agentforge`:*
+  - **`agentforge.cli.manifest_apply`** — pure-data applier:
+    - `apply_manifest(...)` — idempotent: env vars append to
+      `.env.example` (skip if `NAME=` present), templates copy
+      from `package_root` / `importlib.resources` to destinations
+      with a comment marker (`# AGENTFORGE-MANAGED: <dist>` for
+      sh/py/yaml/sql; `// ` for js/ts; `<!-- -->` for html/md),
+      config block deep-merges into `agentforge.yaml`. State
+      written inside `try/finally` so partial failures are
+      recoverable.
+    - `reverse_manifest(...)` — un-append env vars, unlink
+      templates, deep-strip the config block, delete state.
+      Safe when artifacts are already gone.
+    - `read_applied(...)` — load state or return `None`.
+  - **`agentforge.cli.module_cmd`** — three CLI subcommands:
+    - **`agentforge add module <distribution>`** — pip install +
+      manifest discovery via `importlib.resources` + apply + state
+      write + `next_steps` print. Idempotent: "already applied"
+      on re-run.
+    - **`agentforge remove module <distribution>`** — reverse
+      applier + `pip uninstall -y`. Tolerates the package being
+      already uninstalled (skips the config-block reverse).
+    - **`agentforge swap <category> <from> <to>`** — composed
+      remove + add. NOT transactional; documented.
+  - Pip subprocess is injected via a `PipRunner` callable so
+    tests don't hit the network; production calls
+    `python -m pip` in the active venv.
+
+  *Knock-on docs:* feat-010 spec's Implementation status updated —
+  `add`/`swap`/`remove` move out of "What's not yet implemented"
+  into the chunk table; `docs/roadmap.md`'s "destructive-CLI
+  sub-feat (deferred)" section removed; `docs/features/README.md`
+  catalogue row updated to reflect full feat-010 surface.
+
 - **feat-012 — Configuration system.** Widens the minimal
   schema feat-001 shipped into the full `agentforge.yaml` surface
   (target version 0.1, foundational), plus layered env files,

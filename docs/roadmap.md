@@ -36,8 +36,8 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-008](./features/feat-008-findings-and-output-shapes.md) | Findings & output shapes — `SimpleFinding` / `PatchFinding` / `NarrativeFinding` / `MultiSpanFinding` variants + `Patch` / `Span` helpers + `FindingRenderer` ABC + `RendererRegistry` + 4 built-in renderers (scorecard / patch-applier / markdown / span-table) | [#13](https://github.com/Scaffoldic/agentforge-py/pull/13) |
 | [feat-006](./features/feat-006-evaluators-and-benchmarks.md) | Evaluators — `Coverage` / `FormatCompliance` / `RegressionVsBaseline` / `Consistency` deterministic graders + `Agent.run()` evaluator loop + `RunResult.eval_scores` + `agentforge-eval-geval` package (`GEval` engine + `Correctness` / `Faithfulness` / `Groundedness` / `Hallucination` / `Relevance` / `Helpfulness` named judges) | [#14](https://github.com/Scaffoldic/agentforge-py/pull/14) |
 | [feat-009](./features/feat-009-observability.md) | Observability — `on_step` wiring + hook fan-out + error isolation + JSON log format + `agentforge-otel` package (`OpenTelemetryHook`, framework root span) | [#15](https://github.com/Scaffoldic/agentforge-py/pull/15) |
-| [feat-010](./features/feat-010-module-discovery-and-cli.md) | Module discovery (runtime + read-only CLI) — `importlib.metadata.entry_points` scan, `ModuleInfo`, `Resolver.list_installed`, `agentforge list modules` command | [#16](https://github.com/Scaffoldic/agentforge-py/pull/16) |
-| [feat-012](./features/feat-012-configuration-system.md) | Configuration system — widened root schema (`agent` + `modules` + `providers` + `output`), `BudgetConfig` (replaces flat `budget_usd`), layered env files, dotted-path overrides, `AGENTFORGE_CONFIG` / `AGENTFORGE_LOG_LEVEL` shortcuts, module-side schema integration, `agentforge config {validate,show,schema}` CLI | (this PR) |
+| [feat-010](./features/feat-010-module-discovery-and-cli.md) | Module discovery + full CLI — entry-point scan, `ModuleInfo`, `Resolver.list_installed`, `agentforge list/add/remove/swap module` commands, manifest-driven module wiring | [#16](https://github.com/Scaffoldic/agentforge-py/pull/16) (read-only) + (this PR — destructive CLI) |
+| [feat-012](./features/feat-012-configuration-system.md) | Configuration system — widened root schema (`agent` + `modules` + `providers` + `output`), `BudgetConfig` (replaces flat `budget_usd`), layered env files, dotted-path overrides, `AGENTFORGE_CONFIG` / `AGENTFORGE_LOG_LEVEL` shortcuts, module-side schema integration, `agentforge config {validate,show,schema}` CLI | [#17](https://github.com/Scaffoldic/agentforge-py/pull/17) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -53,16 +53,6 @@ move into "In flight" when starting.
 
 - **feat-011 through feat-020** — see specs under
   [`docs/features/`](./features/).
-
-### feat-010 destructive-CLI sub-feat (deferred)
-
-feat-010 shipped the runtime side (entry-point discovery, `Resolver.
-list_installed`) plus the read-only `agentforge list modules` CLI.
-The destructive CLI commands (`add module X`, `swap memory sqlite
-postgres`, `remove module X`) depend on feat-012 (Configuration
-system) for manifest application + per-module config-schema
-validation, and ship as a follow-up sub-feat alongside / right
-after feat-012.
 
 ### feat-009 vendor-package sub-feats (deferred)
 
