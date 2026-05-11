@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 import pytest
 from agentforge_core.contracts.memory import MemoryStore
@@ -54,6 +55,27 @@ class _MinimalStore(MemoryStore):
                 yield c
 
         return _agen()
+
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        del older_than
+        keep: dict[str, Claim] = {}
+        removed = 0
+        for cid, c in self._items.items():
+            if run_id is not None and c.run_id != run_id:
+                keep[cid] = c
+                continue
+            if category is not None and c.category != category:
+                keep[cid] = c
+                continue
+            removed += 1
+        self._items = keep
+        return removed
 
     async def close(self) -> None:
         self._items.clear()

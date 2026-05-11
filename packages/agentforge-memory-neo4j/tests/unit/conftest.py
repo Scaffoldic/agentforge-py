@@ -272,6 +272,14 @@ class MemoryFakeRunner:
         if "MERGE (n)-[:SUPERSEDES]->(o)" in c:
             self.supersede_edges.append((params["new"], params["old"]))
             return []
+        if c.startswith("MATCH (c:Claim) WHERE") and "DETACH DELETE x" in c:
+            older_than = params.get("older_than")
+            removed = await self.backing.delete(
+                run_id=params.get("run_id"),
+                category=params.get("category"),
+                older_than=datetime.fromisoformat(older_than) if older_than else None,
+            )
+            return [{"n": removed}]
         msg = f"MemoryFakeRunner write: unrecognised Cypher: {cypher!r}"
         raise AssertionError(msg)
 

@@ -41,6 +41,8 @@ class PostgresRunner(Protocol):
 
     async def executemany(self, sql: str, args: list[tuple[Any, ...]]) -> None: ...
 
+    async def execute_returning_count(self, sql: str, *params: Any) -> int: ...
+
     async def close(self) -> None: ...
 
 
@@ -86,6 +88,20 @@ class _AsyncpgPoolRunner:
             async with conn.transaction():
                 await conn.executemany(sql, args)
 
+    async def execute_returning_count(self, sql: str, *params: Any) -> int:
+        """Execute a mutating statement and return the affected-row count.
+
+        asyncpg's `conn.execute` returns a status tag like
+        ``"DELETE 3"``; we parse the trailing integer. Used by
+        `MemoryStore.delete` to surface the deleted-row count back to
+        callers.
+        """
+        async with self._pool.acquire() as conn:
+            await self._maybe_register_vector(conn)
+            async with conn.transaction():
+                tag = await conn.execute(sql, *params)
+        return _parse_count(tag)
+
     async def close(self) -> None:
         await self._pool.close()
 
@@ -101,6 +117,19 @@ class _AsyncpgPoolRunner:
         if not self._setup_pgvector:
             return
         await register_vector(conn)
+
+
+def _parse_count(tag: Any) -> int:
+    """Extract the affected-row count from an asyncpg status tag."""
+    if not isinstance(tag, str):
+        return 0
+    parts = tag.rsplit(maxsplit=1)
+    if not parts:
+        return 0
+    try:
+        return int(parts[-1])
+    except ValueError:
+        return 0
 
 
 __all__ = ["PostgresRunner"]

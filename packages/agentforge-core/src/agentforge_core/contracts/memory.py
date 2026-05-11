@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 from agentforge_core.values.claim import Claim
 
@@ -70,6 +71,26 @@ class MemoryStore(ABC):
 
         Required even on backends with paged queries — drivers paginate
         internally and yield `Claim`s as they arrive.
+        """
+
+    @abstractmethod
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        """Delete claims matching the given conjunctive filters.
+
+        At least one filter must be set; calling `delete()` with every
+        filter `None` raises `ModuleError` — a deliberate guard against
+        the silent total-wipe footgun. Returns the number of claims
+        deleted.
+
+        Added in feat-017 to back `agentforge db purge`. The opt-in
+        filter set is small on purpose; broader DSL queries route
+        through `agentforge db query` followed by per-id deletions.
         """
 
     @abstractmethod

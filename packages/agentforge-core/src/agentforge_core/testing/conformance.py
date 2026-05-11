@@ -63,6 +63,51 @@ async def _collect(it: AsyncIterator[Claim]) -> list[Claim]:
     return [c async for c in it]
 
 
+_EXPECTED_DELETE_COUNT = 2
+"""Magic-number constant for the `delete()` conformance cases."""
+
+
+async def _run_delete_conformance(store: MemoryStore) -> None:
+    """feat-017 `delete()` conformance cases (separated from the main
+    suite so the parent function stays under ruff's PLR0915 cap)."""
+    from agentforge_core.production.exceptions import ModuleError  # noqa: PLC0415
+
+    # No-filter refuses (defence against silent total wipe).
+    try:
+        await store.delete()
+    except ModuleError:
+        pass
+    else:
+        raise AssertionError("delete() with no filters must raise ModuleError")
+
+    # delete(run_id=...) only removes matching claims; accurate count.
+    purge_run = "run-purge"
+    keeper_run = "run-keep"
+    await store.put(_claim(run_id=purge_run, category="purge-me"))
+    await store.put(_claim(run_id=purge_run, category="purge-me"))
+    await store.put(_claim(run_id=keeper_run, category="purge-me"))
+    removed_run = await store.delete(run_id=purge_run)
+    assert removed_run == _EXPECTED_DELETE_COUNT, (
+        f"delete(run_id={purge_run!r}) must return count; got {removed_run}"
+    )
+    remaining = await store.query(category="purge-me")
+    assert all(c.run_id == keeper_run for c in remaining), (
+        "delete(run_id=...) must leave non-matching claims behind"
+    )
+
+    # delete(category=...) clears the whole category.
+    cat_marker = "ephemeral-step"
+    await store.put(_claim(category=cat_marker))
+    await store.put(_claim(category=cat_marker))
+    await store.put(_claim(category="something-else"))
+    removed_cat = await store.delete(category=cat_marker)
+    assert removed_cat == _EXPECTED_DELETE_COUNT, (
+        f"delete(category={cat_marker!r}) must report accurate count; got {removed_cat}"
+    )
+    after_cat = await store.query(category=cat_marker)
+    assert after_cat == [], "delete(category=...) must clear all claims of that category"
+
+
 async def run_memory_conformance(store: MemoryStore) -> None:
     """Run the full MemoryStore conformance suite against `store`.
 
@@ -150,6 +195,10 @@ async def run_memory_conformance(store: MemoryStore) -> None:
         sample = next(iter(caps))
         assert store.supports(sample) is True
     assert store.supports("definitely-not-a-capability-2026") is False
+
+    # 13-15. delete() — feat-017. Tested separately so the main
+    # conformance function stays under PLR0915's statement cap.
+    await _run_delete_conformance(store)
 
 
 # ----------------------------------------------------------------------

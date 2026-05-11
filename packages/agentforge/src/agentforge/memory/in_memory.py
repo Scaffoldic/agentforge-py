@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from collections.abc import AsyncIterator
+from datetime import datetime
 
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.production.exceptions import ModuleError
@@ -97,6 +98,33 @@ class InMemoryStore(MemoryStore):
                 yield claim
 
         return _agen()
+
+    async def delete(
+        self,
+        *,
+        run_id: str | None = None,
+        older_than: datetime | None = None,
+        category: str | None = None,
+    ) -> int:
+        if run_id is None and older_than is None and category is None:
+            raise ModuleError(
+                "delete() requires at least one filter; refusing to wipe every claim."
+            )
+        keep: OrderedDict[str, Claim] = OrderedDict()
+        removed = 0
+        for cid, claim in self._items.items():
+            if run_id is not None and claim.run_id != run_id:
+                keep[cid] = claim
+                continue
+            if category is not None and claim.category != category:
+                keep[cid] = claim
+                continue
+            if older_than is not None and claim.created_at >= older_than:
+                keep[cid] = claim
+                continue
+            removed += 1
+        self._items = keep
+        return removed
 
     async def close(self) -> None:
         self._items.clear()
