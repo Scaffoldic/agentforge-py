@@ -956,3 +956,46 @@ stale kqueue selector reference at interpreter shutdown on macOS;
 the loops have actually been closed.
 
 Ready to push and raise PR #20.
+
+---
+
+## 2026-05-12T01:30 — feat-016 chunk 5 done, PR pending
+
+All five chunks of feat-016 landed on `feat/016-testing-framework`:
+
+- `6c69bbe` — chunk 1: public `agentforge.testing` namespace +
+  `MockLLMClient` (from_script / deterministic + `call_count` +
+  `tool_calls_observed`) + re-exports of FakeTool / FakeLLMClient
+  / echo_response.
+- `72c4de5` — chunk 2: `agent_factory` (safe defaults including a
+  single-step LLM-call strategy) + pytest fixtures (`mock_llm`,
+  `temp_memory_store`) + conformance re-exports.
+- `327e525` — chunk 3: `record_llm(real, path, redactions)` +
+  `MockLLMClient.from_recording(path)` + `load_recording` +
+  versioned JSONL header + default redactions (api_key /
+  authorization / bearer) + recursive `_redact` over dicts/lists.
+- `f007d1e` — chunk 4: new `agentforge-testing` workspace member
+  (Tier-3) with `GoldenSetRunner`, `assert_snapshot`,
+  `analyze_recording`. Root pyproject + .pre-commit + ci.yml
+  extended.
+- (about-to-commit) chunk 5: spec status → shipped + §10
+  Implementation table + §11 Runbook; features README; roadmap;
+  CHANGELOG `[Unreleased]/Added`; state refreshed.
+
+Deviations captured in spec §10:
+
+- `agentforge._testing` retained as compat shim for existing
+  internal tests; new code uses `agentforge.testing`.
+- `MockLLMClient` doesn't yet satisfy a hypothetical
+  `run_llm_conformance` harness (none exists in core).
+- Replay matches by sequence today (request_hash persisted but
+  not consulted on replay).
+- VCR full redaction pipeline deferred; basic redaction ships.
+- TS port deferred (Python defines the cassette format).
+
+Tooling note: two N818 noqa annotations on `GoldenMismatch` and
+`SnapshotMismatch` — both subclass `AssertionError` so pytest
+reports them naturally, which is more important than the Error
+suffix.
+
+Ready to push and raise PR #21.

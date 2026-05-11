@@ -1,0 +1,61 @@
+# agentforge-testing — richer test helpers for AgentForge agents.
+#
+# Tier-3 sister package to `agentforge` (Tier 2). Pip-installable
+# separately for teams that want golden-set runners, snapshot
+# helpers, and recording analysis without dragging the dependency
+# into production. The lighter built-in surface ships inside
+# `agentforge` itself at `agentforge.testing` (feat-016 chunks 1-3).
+
+[project]
+name = "agentforge-testing"
+version = "0.0.0"
+description = "Richer test helpers for AgentForge (golden-set runner, snapshot, recording analysis)"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "testing", "snapshot", "golden", "framework"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "agentforge",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[tool.uv.sources]
+agentforge-core = { workspace = true }
+agentforge = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_testing"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_testing",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
