@@ -21,6 +21,76 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-019 — Developer experience + AI rules.** Every
+  `agentforge new` scaffold now ships with 16 task-oriented
+  runbooks plus AI-assistant rules (`AGENTS.md`, `CLAUDE.md`,
+  `.cursorrules`) framework-managed and upgrade-safe.
+
+  *Three-section managed/custom file format.* New helpers in
+  `agentforge.cli._scaffold_state`:
+  - `split_three_section(content) -> (managed, custom)` and
+    `merge_three_section(new_managed, existing_custom)` use the
+    `<!-- agentforge:end-managed -->` / `<!-- agentforge:custom
+    -->` / `<!-- agentforge:end-custom -->` markers (valid HTML
+    comments so common markdown linters don't choke).
+  - `agentforge upgrade` rewrites the managed section while
+    preserving the developer-owned custom tail.
+
+  *Shared scaffold injection.* New
+  `agentforge.cli._shared_scaffold.inject_shared_scaffold(dst,
+  template_name, template_version)`:
+  - Walks `agentforge.templates._shared` via
+    `importlib.resources`.
+  - `.tmpl` files render through Jinja (`autoescape=False` —
+    markdown output, never HTML rendered to a browser); the
+    suffix is stripped on write.
+  - Non-`.tmpl` files copy verbatim apart from a marker header.
+  - Lock entries are written under
+    `source_module: "template:<name>:_shared"` so the shared
+    files participate in `agentforge upgrade` / `fork`.
+  - `agentforge new` calls the injection automatically after
+    Copier finishes.
+
+  *Content shipped under `agentforge/templates/_shared/`:*
+  - `AGENTS.md.tmpl` — ~115-line canonical AI-rules document.
+    Project shape, file ownership (AGENTFORGE-MANAGED /
+    -FORKED markers + three-section format), architecture
+    invariants (tools / strategy / LLM clients / memory /
+    budget / run_id / guardrails), a runbook reference table,
+    anti-pattern list (LangChain idioms, hand-rolled JSON
+    schemas, raw SQL, cost-bypass, defensive try/except), pre-
+    commit checks.
+  - `CLAUDE.md` — thin pointer with a managed message + custom
+    section.
+  - `.cursorrules` — same pattern for Cursor.
+  - `docs/runbooks/README.md.tmpl` + 16 runbooks (01-set-up,
+    02-add-a-tool, 03-add-a-pipeline-task, 04-pick-strategy,
+    05-write-prompts, 06-test, 07-debug, 08-add-memory, 09-add-
+    mcp, 10-add-evaluators, 11-add-safety, 12-add-observability,
+    13-multi-provider, 14-deploy, 15-upgrade, 16-config). Each
+    follows the locked contract (Goal/Time/Prereqs/TL;DR/Step-
+    by-step/Variations/Symptom→Cause→Fix table/Related).
+
+  *New CLI subcommand `agentforge docs`:*
+  - `docs` lists every numbered runbook in `docs/runbooks/`.
+  - `docs <topic>` opens by filename stem, `.md` filename,
+    bare number, or alias (substring match against the
+    stripped stem). Uses `$EDITOR`; falls back to stdout.
+  - `docs --check` hashes every local runbook (marker line
+    stripped) against the framework's bundled copy; reports
+    `+local` / `~drift` and exits 1 when drift is present.
+  - `docs --serve` starts a SimpleHTTPRequestHandler on port
+    8765 over the runbooks directory.
+
+  Tests: 5 unit cases for three-section format; 5 for shared
+  scaffold injection; 10 for `agentforge docs`. Full pre-commit
+  gate green (ruff + mypy --strict + bandit + pytest + coverage
+  ≥ 90%).
+
+  *Spec*:
+  `docs/features/feat-019-developer-experience-and-ai-rules.md`
+  — Implementation status §10 + Runbook §11.
+
 - **feat-018 — Safety & security guardrails (full surface).**
   Adds the framework's input / output / tool-gate validation
   pipeline plus four vendor sister packages.
