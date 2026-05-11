@@ -1,0 +1,17 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  strategy: "plan-execute"
+  system_prompt: |
+    You answer open-ended research questions. Plan the sub-tasks,
+    execute them (use web_search liberally), then synthesise into a
+    NarrativeFinding: `body` is the markdown answer; `references`
+    is every URL you actually used. Don't cite sources you didn't
+    open.
+  budget:
+    usd: 5.0
+  max_iterations: 50
+
+logging:
+  level: "INFO"
+  format: "text"

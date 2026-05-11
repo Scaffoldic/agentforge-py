@@ -1,0 +1,31 @@
+# Copier template: research agent (feat-011).
+#
+# Long-form research with citations. Uses Plan-Execute strategy for
+# multi-step questions, web_search for sources, NarrativeFinding for
+# the output shape.
+
+_min_copier_version: "9.4.0"
+_answers_file: ".agentforge-state/answers.yml"
+_templates_suffix: ""
+
+project_name:
+  type: str
+  default: "Research Agent"
+
+project_slug:
+  type: str
+  default: "research-agent"
+
+llm_provider:
+  type: str
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  default: "A research AgentForge agent."
+
+_template_name: "research"

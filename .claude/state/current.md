@@ -1,42 +1,58 @@
 ---
-feature: feat-010b-destructive-cli
-state: pre-pr
-branch: feat/010b-destructive-cli
-started_at: 2026-05-11T22:00
-last_milestone_at: 2026-05-11T22:45
-last_shipped: feat-012 (Configuration system) shipped via PR #17 @ 758780f
+feature: none
+state: idle
+branch: main
+started_at: null
+last_milestone_at: 2026-05-11T23:59
+last_shipped: feat-011 shipped via PR #19 (awaiting merge)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-**feat-010 destructive-CLI sub-feat** — completes feat-010's full
-surface. The read-only half shipped under PR #16; this PR adds
-`agentforge add/remove/swap module` now that feat-012's manifest
-validation primitives are in.
+*None — awaiting next pick.*
 
-All 4 chunks landed. Ready to push + raise PR.
+## Last shipped
 
-## Chunks shipped
+[`feat-011 — Scaffolding & upgrade`](../../docs/features/feat-011-scaffolding-and-upgrade.md)
+shipped in PR #19 with full Python scope:
 
-| Chunk | Commit | Scope |
-|---|---|---|
-| 1 | `dadc6c4` | `Manifest` / `EnvVarEntry` / `TemplateFile` / `AppliedManifest` value types + idempotent applier (`apply_manifest` / `reverse_manifest` / `read_applied`). |
-| 2-3 | `f2c323c` | `agentforge add/remove/swap module` commands with injectable pip runner. |
-| 4 | (this commit) | Update feat-010 spec Implementation status; add Runbook entries for destructive commands; CHANGELOG; roadmap (remove "deferred" sub-feat block). |
+- `agentforge new <name>` + 6 starter templates rendered via
+  Copier (`minimal`, `code-reviewer`, `patch-bot`, `docs-qa`,
+  `triage`, `research`).
+- `.agentforge-state/managed-files.lock` + `AGENTFORGE-MANAGED:`
+  marker headers (per-extension comment styles).
+- `agentforge upgrade` via Copier's three-way merge.
+- `agentforge fork` / `unfork` / `status`.
+- 12 + 23 unit tests; templates ship in-wheel via hatchling
+  force-include.
 
-## Next after this PR merges
+Deviations recorded in the spec §10:
 
-1. Sync main, delete `feat/010b-destructive-cli` local + remote.
-2. **feat-011 (Scaffolding & upgrade)** is now the natural pick.
-   Deps feat-010 ✓ (now actually complete — manifest format and
-   destructive CLI both shipped). feat-011 will use the same
-   applier machinery to scaffold new agent repos.
+- Templates ship in-wheel (not in a separate
+  `agentforge-templates` repo) — keeps v0.x installs network-free.
+- `unfork` is partially restorative; full content re-render
+  happens on the next `agentforge upgrade`.
+- `--run-tests` on upgrade deferred.
+- TypeScript engine (ADR-0021) deferred.
+
+## Next pick candidates (canonical numbering)
+
+- **feat-013** — MCP integration (consume MCP tool servers; expose
+  agent tools as MCP server).
+- **feat-014** — A2A protocol support (cross-framework agent calls).
+- **feat-017** — CLI runtime expansion (`run`, `eval`, `db`, ...).
+- **feat-019** — Developer experience + AI assistant rules (the
+  Runbook scaffold + AGENTS.md / CLAUDE.md / .cursorrules).
+- Vendor observability sub-feats (`agentforge-langfuse`,
+  `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd`).
+
+User selects on session resume.
 
 ## Reading order on session resume
 
 1. `AGENTS.md`
 2. `.claude/CLAUDE.md`
 3. `.claude/state/current.md` (this file)
-4. After merge: `docs/features/feat-011-scaffolding-and-upgrade.md`
+4. `docs/roadmap.md` to pick next feature

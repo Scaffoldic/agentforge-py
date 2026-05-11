@@ -1,0 +1,34 @@
+# Copier template: code-reviewer agent (feat-011).
+#
+# Reviews code diffs / PRs and emits SimpleFinding issues. Wires
+# a file_read tool by default so the reviewer can pull source
+# context. Add evaluator graders (faithfulness, correctness) as
+# you build out the rubric.
+
+_min_copier_version: "9.4.0"
+_answers_file: ".agentforge-state/answers.yml"
+_templates_suffix: ""
+
+project_name:
+  type: str
+  help: "Human-readable project name."
+  default: "Code Reviewer"
+
+project_slug:
+  type: str
+  help: "Project slug (kebab-case)."
+  default: "code-reviewer"
+
+llm_provider:
+  type: str
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  default: "A code-reviewing AgentForge agent."
+
+_template_name: "code-reviewer"
