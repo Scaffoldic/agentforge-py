@@ -1,0 +1,31 @@
+# Copier template: patch-bot agent (feat-011).
+#
+# Emits PatchFinding — structured diffs with rationale and
+# confidence. Use for codemod / auto-fix workflows where the
+# downstream consumer applies the patch.
+
+_min_copier_version: "9.4.0"
+_answers_file: ".agentforge-state/answers.yml"
+_templates_suffix: ""
+
+project_name:
+  type: str
+  default: "Patch Bot"
+
+project_slug:
+  type: str
+  default: "patch-bot"
+
+llm_provider:
+  type: str
+  choices:
+    Bedrock (AWS): bedrock
+    Anthropic (direct): anthropic
+    OpenAI: openai
+  default: bedrock
+
+description:
+  type: str
+  default: "A patch-emitting AgentForge agent."
+
+_template_name: "patch-bot"

@@ -1,0 +1,25 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-haiku-4-5{% elif llm_provider == 'anthropic' %}anthropic:claude-haiku-4-5{% else %}openai:gpt-4o-mini{% endif %}"
+  system_prompt: |
+    You triage incoming issues / tickets / alerts. For each item
+    emit a `SimpleFinding` with `severity` in
+    {critical, warning, suggestion, info}, a one-word `category`,
+    a one-line `message`, and an actionable `recommendation`.
+    Classify, don't speculate.
+  budget:
+    usd: 1.0
+  max_iterations: 15
+
+# Pair with a Coverage evaluator once you have a known-issue
+# reference set:
+#
+# modules:
+#   evaluators:
+#     - name: coverage
+#       config:
+#         reference: ["security-issue-1", "perf-issue-2", ...]
+
+logging:
+  level: "INFO"
+  format: "text"

@@ -1,0 +1,23 @@
+agent:
+  name: "{{ project_slug }}"
+  model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  system_prompt: |
+    You are a careful code reviewer. For each issue, emit a
+    SimpleFinding with severity, category, file, line, and a
+    concrete recommendation. Stay grounded in the diff — don't
+    invent issues that aren't present.
+  budget:
+    usd: 3.0
+  max_iterations: 30
+
+modules:
+  evaluators:
+    # Wire the geval-based judges once you have rubric examples.
+    # - name: faithfulness
+    #   config:
+    #     sources_field: "retrieved_docs"
+    []
+
+logging:
+  level: "INFO"
+  format: "text"
