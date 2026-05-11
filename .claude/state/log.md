@@ -999,3 +999,54 @@ reports them naturally, which is more important than the Error
 suffix.
 
 Ready to push and raise PR #21.
+
+---
+
+## 2026-05-12T03:00 — feat-018 chunk 9 done, PR pending
+
+All nine chunks of feat-018 landed on `feat/018-safety-guardrails`:
+
+- `25abbf7` — chunk 1: ABCs + `ValidationResult` +
+  `GuardrailPolicy` (in `config.schema` to dodge a cycle through
+  `values.state`) + `GuardrailsConfig` / `GuardrailEntry`.
+- `a7743cb` — chunk 2: built-in basics (`prompt_injection_basic`,
+  `pii_redact_basic`, `capability_check`, `allowlist`) +
+  auto-registration via importing `agentforge.guardrails` from
+  `agentforge/__init__.py`.
+- `0123cb4` — chunk 3: `GuardrailEngine` + Agent integration +
+  `RunResult.guardrail_events` + `agentforge.audit` logger.
+  Wrapping LLM + tools at runtime keeps strategies oblivious.
+- `887079f` — chunk 4: conformance harnesses re-exported through
+  `agentforge.testing`.
+- `3b3bce7` — chunk 5: `agentforge-guard-llmguard` (LLM Guard
+  scanner suite; inverts risk score; `<sanitized>` flows out via
+  `redacted_content`).
+- `6148298` — chunk 6: `agentforge-guard-presidio` (Presidio
+  analyzer + anonymizer; `action: redact|score-only`; lazy
+  `AnalyzerEngine` load).
+- `529e54d` — chunk 7: `agentforge-guard-nemo` (NemoInput +
+  NemoOutput; `config_path` directory or injected runner;
+  Colang-DSL rails).
+- `4415239` — chunk 8: `agentforge-guard-llamaguard` (Llama Guard
+  3 over `LLMClient`; parses `safe` / `unsafe S1..S14`).
+- (about-to-commit) chunk 9: spec status → shipped + §10
+  Implementation table + §11 Runbook; features README; roadmap;
+  CHANGELOG `[Unreleased]/Added`; state refreshed.
+
+Vendor-module test pattern: each ships an inline fake runner in
+its test module (not `conftest.py`) so the monorepo's root
+conftest.py doesn't shadow it during the shared pre-commit
+gate. Each fake mocks the upstream-SDK runner protocol; the real
+runner lazy-imports the SDK and surfaces a clear ModuleError
+with pip remediation when missing.
+
+Tooling notes:
+- mypy overrides for `llm_guard.*` / `presidio_analyzer.*` /
+  `presidio_anonymizer.*` / `nemoguardrails.*` so the
+  `import_not_found` errors don't break the strict gate.
+- `Agent._build_runtime_metadata` helper extracted to keep
+  `Agent.run` under ruff's PLR0915 statement cap.
+- pyproject + .pre-commit + ci.yml extended in lock-step for
+  every new workspace member.
+
+Ready to push and raise PR #22.

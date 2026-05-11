@@ -46,7 +46,7 @@
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-018** | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs; built-in prompt-injection + PII + capability gates; modules for LLM Guard, Presidio, NeMo Guardrails, Llama Guard | proposed | 0.1 (basics), 0.2 (full ecosystem) | both | `agentforge` (built-ins), `agentforge-guard-llmguard`, `agentforge-guard-presidio`, `agentforge-guard-nemo`, `agentforge-guard-llamaguard` |
+| **feat-018** | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs; built-in prompt-injection + PII + capability gates; modules for LLM Guard, Presidio, NeMo Guardrails, Llama Guard | shipped (Python) | 0.1 (basics), 0.2 (full ecosystem) | both | `agentforge-core` (ABCs + values + conformance), `agentforge` (built-ins + engine), `agentforge-guard-llmguard`, `agentforge-guard-presidio`, `agentforge-guard-nemo`, `agentforge-guard-llamaguard` |
 
 ### Module system
 
