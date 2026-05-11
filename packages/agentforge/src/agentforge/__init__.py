@@ -21,6 +21,12 @@ from __future__ import annotations
 
 from agentforge_core import FallbackChain
 
+# feat-018: importing `agentforge.guardrails` here triggers the
+# module-side `@register(...)` decorators on `PromptInjectionBasic`,
+# `PIIRedactBasic`, `CapabilityCheck`, and `Allowlist` so they're
+# resolvable by name from `agentforge.yaml` without an explicit
+# import in the consumer.
+import agentforge.guardrails  # noqa: F401
 from agentforge._tools import tool
 from agentforge.agent import Agent
 from agentforge.config import AgentForgeConfig, load_config
