@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 
 from agentforge.cli.config_cmd import register_config_cmd
+from agentforge.cli.db_cmd import register_db_cmd
 from agentforge.cli.debug_cmd import register_debug_cmd
 from agentforge.cli.eval_cmd import register_eval_cmd
 from agentforge.cli.list_modules import register_list_modules
@@ -41,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     register_run_cmd(sub)
     register_eval_cmd(sub)
     register_debug_cmd(sub)
+    register_db_cmd(sub)
     return parser
 
 
