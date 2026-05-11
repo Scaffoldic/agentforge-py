@@ -35,12 +35,12 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check .
       - name: Mypy strict
-        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src
+        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src packages/agentforge-guard-presidio/src
       - name: Bandit
         # -c pyproject.toml so [tool.bandit] (skips B101) is honoured;
         # without it, the conformance suite's asserts in
         # agentforge_core.testing.conformance trip B101.
-        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src
+        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src packages/agentforge-guard-presidio/src
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
@@ -61,7 +61,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Pytest unit
-        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit packages/agentforge-memory-sqlite/tests/unit packages/agentforge-memory-neo4j/tests/unit packages/agentforge-memory-surrealdb/tests/unit packages/agentforge-memory-postgres/tests/unit packages/agentforge-eval-geval/tests/unit packages/agentforge-otel/tests/unit packages/agentforge-testing/tests/unit packages/agentforge-guard-llmguard/tests/unit tests/unit
+        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit packages/agentforge-memory-sqlite/tests/unit packages/agentforge-memory-neo4j/tests/unit packages/agentforge-memory-surrealdb/tests/unit packages/agentforge-memory-postgres/tests/unit packages/agentforge-eval-geval/tests/unit packages/agentforge-otel/tests/unit packages/agentforge-testing/tests/unit packages/agentforge-guard-llmguard/tests/unit packages/agentforge-guard-presidio/tests/unit tests/unit
       - name: Pytest integration
         run: uv run pytest -q -m "not live" packages/agentforge-bedrock/tests/integration tests/integration
       - name: Coverage
