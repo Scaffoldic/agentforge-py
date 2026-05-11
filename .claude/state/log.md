@@ -861,3 +861,48 @@ re-inventing the manifest format. Branched
 - `docs/features/README.md`: feat-010 catalogue row updated.
 
 Ready to push.
+
+---
+
+## 2026-05-11T23:55 — feat-011 chunk 6 done, PR pending
+
+All six chunks of feat-011 landed on `feat/011-scaffolding-and-upgrade`:
+
+- `d07714e` — chunk 1: Copier dep + `agentforge new` + `minimal`
+  template + 6 unit tests.
+- `1207568` — chunk 2: `code-reviewer`, `patch-bot`, `docs-qa`,
+  `triage`, `research` templates + parametrised smoke tests.
+- `9ce6a5c` — chunks 3-5: `.agentforge-state/managed-files.lock`
+  + per-extension marker headers + `agentforge upgrade` (Copier
+  three-way merge) + `agentforge fork`/`unfork`/`status` + 23
+  unit tests in `test_scaffold_state.py`.
+- (about-to-commit) chunk 6: spec status set to shipped + §10
+  Implementation status table + §11 Runbook;
+  `docs/features/README.md` row updated; `docs/roadmap.md` moves
+  feat-011 to shipped; CHANGELOG `[Unreleased] / Added` entry;
+  state files refreshed.
+
+Deviations from feat-011 §4.4 design recorded in spec §10:
+
+- Templates ship in-wheel (`importlib.resources.files`-based),
+  not a separate `agentforge-templates` repo. Hatchling
+  force-include preserves the `{{project_slug}}/...` directory
+  inside the wheel. Migration to a separate repo remains a
+  small follow-up if independent template versioning matters.
+- `unfork` is partially restorative — it re-prepends the
+  marker and updates the lock; content re-render happens on the
+  next `agentforge upgrade`.
+- `--run-tests` flag on `upgrade` deferred until the test-runner
+  integration (post-feat-019) lands.
+- TypeScript engine (ADR-0021) deferred.
+
+Tooling notes: templates contain Jinja-embedded `.py`/`.toml`
+files plus a `{{project_slug.replace('-', '_')}}` directory that
+isn't a valid Python package. Added
+`packages/agentforge/src/agentforge/templates/` to the mypy
+`exclude`, ruff `extend-exclude`, and global pre-commit `exclude`
+so the gate doesn't try to parse them. Copier needs
+`_templates_suffix: ""` to render file contents Cookiecutter-
+style without forcing every file to be named `foo.py.jinja`.
+
+Ready to push and raise PR #19.

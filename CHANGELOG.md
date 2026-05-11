@@ -21,6 +21,80 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-011 — Scaffolding & upgrade.** Ships the `agentforge new`
+  scaffolder, six starter templates, three-way-merge `agentforge
+  upgrade`, and the `fork` / `unfork` / `status` file-ownership
+  workflow. Day-1 → Day-365 story now resolved in Python.
+
+  *Templates (ship inside the `agentforge` wheel, rendered via
+  Copier with `_templates_suffix: ""` so file contents render
+  Cookiecutter-style):*
+  - `minimal` — one Agent, one tool, no persistence.
+  - `code-reviewer` — `SimpleFinding` scorecard renderer wired up.
+  - `patch-bot` — `PatchFinding` + `file_read` tool.
+  - `docs-qa` — RAG starter (placeholder for `VectorStore`).
+  - `triage` — `MultiSpanFinding` + classification rails.
+  - `research` — long-horizon agent with `web_search` placeholder.
+
+  Each template ships `copier.yml`, `agentforge.yaml`,
+  `pyproject.toml`, `.env.example`, `.gitignore`, `README.md`, and
+  `src/{{project_slug}}/{__init__.py,main.py}`.
+
+  *New CLI subcommands in `agentforge`:*
+  - **`agentforge new <name> [--template ...]`** — runs Copier
+    against the in-wheel template (resolved via
+    `importlib.resources.files("agentforge.templates")`), writes
+    `.agentforge-state/managed-files.lock`, and prepends
+    `AGENTFORGE-MANAGED: <template>@<version> hash:<sha256-prefix>`
+    headers to every managed file. Comment style is per-extension
+    (`#` for py/yaml/sql, `//` for js/ts, `<!-- -->` for html/md).
+  - **`agentforge upgrade [--to <ref>] [--dry-run]`** — wraps
+    Copier's `run_update` for the three-way merge against the
+    template version recorded in `.agentforge-state/answers.yml`.
+    Refreshes the managed-files lock afterwards, preserving any
+    entries flagged `forked`.
+  - **`agentforge fork <path>`** — strips the marker header, sets
+    `forked=true` in the lock. Future upgrades skip the file.
+  - **`agentforge unfork <path>`** — clears the flag and
+    re-prepends the marker; the next `agentforge upgrade` pulls
+    template content.
+  - **`agentforge status`** — walks the lock and prints files
+    grouped by `MANAGED` / `FORKED` / `DRIFTED` / `MISSING`. Drift
+    detection strips the marker line before hashing so prepending
+    a marker doesn't make a managed file look drifted.
+
+  *New module:* `agentforge.cli._scaffold_state` — pure functions
+  for lock I/O, `marker_for`, `hash_content`, `strip_marker`,
+  `write_managed_files_lock`, `prepend_markers`, `file_status`.
+
+  *Dependencies:* added `copier>=9.4` to `agentforge`.
+
+  *Tooling:* templates contain Jinja-embedded `.py` / `.toml`
+  files and `{{project_slug.replace('-', '_')}}` directories that
+  aren't valid Python packages. Added
+  `packages/agentforge/src/agentforge/templates/` to the mypy
+  `exclude`, ruff `extend-exclude`, and global pre-commit
+  `exclude` patterns. The templates dir is shipped via
+  `[tool.hatch.build.targets.wheel.force-include]` so hatchling
+  preserves the `{{project_slug}}/...` path inside the wheel.
+
+  *Tests:* 12 unit tests cover `agentforge new` plus a
+  parametrised smoke test that renders every shipped template; 23
+  unit tests cover `_scaffold_state` (marker styles, lock capture,
+  idempotency, all four `file_status` states, fork/unfork
+  roundtrip, upgrade dry-run).
+
+  *Deviations from the spec.* Templates ship in-wheel (not a
+  separate `agentforge-templates` repo) — keeps v0.x installs
+  network-free. `unfork` is partially restorative: it re-prepends
+  the marker but defers content re-render to the next `upgrade`.
+  `--run-tests` on upgrade is deferred. The TypeScript engine
+  (ADR-0021) and CI upgrade matrix are out of scope for this PR.
+
+  *Spec*:
+  `docs/features/feat-011-scaffolding-and-upgrade.md` — Implementation
+  status §10 + Runbook §11.
+
 - **feat-010 destructive CLI (sub-feat completion).** Ships the
   `add` / `remove` / `swap` module commands deferred from PR #16,
   now that feat-012 (Configuration system) has landed the
