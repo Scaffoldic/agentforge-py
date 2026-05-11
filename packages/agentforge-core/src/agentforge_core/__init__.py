@@ -59,10 +59,12 @@ from agentforge_core.production import (
 from agentforge_core.production.fallback import FallbackChain
 from agentforge_core.resolver import (
     Resolver,
+    discover_entry_points,
     parse_model_string,
     register,
     register_embedding_provider,
     register_provider,
+    reset_discovery,
 )
 from agentforge_core.values import (
     AgentState,
@@ -76,6 +78,7 @@ from agentforge_core.values import (
     LLMResponse,
     Message,
     MessageRole,
+    ModuleInfo,
     Path,
     RunResult,
     Step,
@@ -123,6 +126,7 @@ __all__ = [
     "MessageRole",
     "ModelNotFoundError",
     "ModuleError",
+    "ModuleInfo",
     "Path",
     "ProviderError",
     "RateLimitError",
@@ -148,6 +152,7 @@ __all__ = [
     "__version__",
     "bind_run",
     "current_run",
+    "discover_entry_points",
     "get_tracer",
     "install_json_formatter",
     "install_run_id_filter",
@@ -156,6 +161,7 @@ __all__ = [
     "register",
     "register_embedding_provider",
     "register_provider",
+    "reset_discovery",
     "reset_run",
     "uninstall_json_formatter",
     "uninstall_run_id_filter",
