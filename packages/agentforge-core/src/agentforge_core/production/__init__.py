@@ -37,6 +37,11 @@ from agentforge_core.production.log_filter import (
     install_run_id_filter,
     uninstall_run_id_filter,
 )
+from agentforge_core.production.log_format import (
+    JsonFormatter,
+    install_json_formatter,
+    uninstall_json_formatter,
+)
 from agentforge_core.production.run_context import (
     RunContext,
     bind_run,
@@ -52,6 +57,7 @@ __all__ = [
     "BudgetPolicy",
     "CapabilityNotSupported",
     "GuardrailViolation",
+    "JsonFormatter",
     "ModelNotFoundError",
     "ModuleError",
     "ProviderError",
@@ -62,8 +68,10 @@ __all__ = [
     "TimeoutError",
     "bind_run",
     "current_run",
+    "install_json_formatter",
     "install_run_id_filter",
     "new_run",
     "reset_run",
+    "uninstall_json_formatter",
     "uninstall_run_id_filter",
 ]

@@ -31,6 +31,7 @@ from agentforge_core.production import (
     BudgetPolicy,
     CapabilityNotSupported,
     GuardrailViolation,
+    JsonFormatter,
     ModelNotFoundError,
     ModuleError,
     ProviderError,
@@ -41,9 +42,11 @@ from agentforge_core.production import (
     TimeoutError,
     bind_run,
     current_run,
+    install_json_formatter,
     install_run_id_filter,
     new_run,
     reset_run,
+    uninstall_json_formatter,
     uninstall_run_id_filter,
 )
 
@@ -109,6 +112,7 @@ __all__ = [
     "GraphSegment",
     "GraphStore",
     "GuardrailViolation",
+    "JsonFormatter",
     "LLMClient",
     "LLMResponse",
     "MemoryStore",
@@ -141,6 +145,7 @@ __all__ = [
     "__version__",
     "bind_run",
     "current_run",
+    "install_json_formatter",
     "install_run_id_filter",
     "new_run",
     "parse_model_string",
@@ -148,5 +153,6 @@ __all__ = [
     "register_embedding_provider",
     "register_provider",
     "reset_run",
+    "uninstall_json_formatter",
     "uninstall_run_id_filter",
 ]
