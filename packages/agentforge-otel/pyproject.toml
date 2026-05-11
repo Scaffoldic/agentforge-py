@@ -1,0 +1,62 @@
+# agentforge-otel — OpenTelemetry tracing + metrics for AgentForge.
+#
+# Tier-3 module per ADR-0003. Installing this package wires up the
+# OTel SDK (provider + OTLP exporter + sampler) so that the framework
+# spans emitted from `agentforge-core/observability/tracing.py`
+# actually reach a collector. Without this package the spans degrade
+# to OTel's NonRecordingSpan (near-zero cost).
+
+[project]
+name = "agentforge-otel"
+version = "0.0.0"
+description = "OpenTelemetry tracing + metrics emitter for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "observability", "opentelemetry", "tracing"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.27",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration — feat-010 will load by name from
+# `modules.observability` in agentforge.yaml.
+[project.entry-points."agentforge.hooks"]
+otel = "agentforge_otel.hook:OpenTelemetryHook"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_otel"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_otel",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

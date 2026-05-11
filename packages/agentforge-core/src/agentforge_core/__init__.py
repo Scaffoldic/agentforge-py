@@ -24,6 +24,8 @@ from agentforge_core.contracts import (
     Tool,
     VectorStore,
 )
+from agentforge_core.observability import SCOPE_NAME as OBSERVABILITY_SCOPE_NAME
+from agentforge_core.observability import get_tracer
 from agentforge_core.production import (
     AgentForgeError,
     AuthenticationError,
@@ -91,6 +93,7 @@ from agentforge_core.values import (
 __version__ = "0.0.0"
 
 __all__ = [
+    "OBSERVABILITY_SCOPE_NAME",
     "AgentForgeError",
     "AgentState",
     "AuthenticationError",
@@ -145,6 +148,7 @@ __all__ = [
     "__version__",
     "bind_run",
     "current_run",
+    "get_tracer",
     "install_json_formatter",
     "install_run_id_filter",
     "new_run",
