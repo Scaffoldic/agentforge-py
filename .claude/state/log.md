@@ -465,3 +465,55 @@ just gains the Runbook authoring sub-task.
   from backlog to shipped.
 
 PR #11 to be raised next.
+
+## 2026-05-11T10:00 — feat-007 shipped, opening chore/backfill-runbooks
+PR #11 (feat-007 FallbackChain) merged to main @ `f61ad44`. Synced
+main, deleted `feat/007-production-rails` local + remote. Branched
+`chore/backfill-runbooks` for the retroactive Runbook policy
+application (task #76).
+
+## 2026-05-11T10:30 — chore/backfill-runbooks ready for PR
+Authored `## Runbook` sections on five shipped specs:
+- feat-001 — minimum agent / budget caps / step trace / hooks /
+  config / provider switching / sync shim
+- feat-002 — strategy picker / tuning ReAct / Plan-Execute
+  replanning / ToT judge scorer / MultiAgentSupervisor
+- feat-003 — Bedrock setup / cross-region profiles / caching /
+  thinking / embeddings / cost / custom provider registration
+- feat-004 — `@tool` decorator / locking down shell + file_read /
+  `FakeTool` / timeouts / step inspection
+- feat-005 — backend picker / sqlite / postgres / neo4j / surrealdb /
+  RAG via Retriever / namespacing / init_schema / live tests
+
+Also fixed a stale `Agent(budget=BudgetPolicy(...))` example in
+feat-007's existing runbook — the constructor takes `budget_usd=`
++ `max_iterations=`, not `budget=`. Same form used in feat-001
+runbook from the start.
+
+Pre-commit gate green (doc-only diff). CHANGELOG entry added under
+`[Unreleased] / Docs`. PR to be raised next.
+
+## 2026-05-11T11:00 — forward-reference hygiene added to chore PR
+User flagged that the backfilled runbooks reference unshipped
+features (feat-006/011/012/018/020 + backlog provider/tool packs)
+and asked how those get cleaned up when the dependencies ship.
+
+Adopted "mechanism by policy" — runbook content stays as-is
+(forward references are useful signposts today), with two
+guardrails to prevent rot:
+
+1. **AGENTS.md** gets a workflow rule — every feature PR runs
+   `git grep -nE 'feat-NNN|<backlog-pkgs>' docs/features/*.md`
+   for its own number plus any backlog packages it ships, and
+   updates every match so existing runbooks reflect the now-
+   shipped surface.
+2. **`.claude/checklists/pre-pr.md`** gains the same line as a
+   blocking item under "Documentation complete".
+3. The "Audience…When feat-011 / feat-019 ship…" preamble on
+   every runbook (6 specs: feat-001/002/003/004/005/007) is
+   rephrased tense-neutral so it doesn't decay if feat-011/019
+   slip. New form: "This is the canonical home for the feature's
+   runbook; feat-011 / feat-019 consume these sections into
+   scaffolded agent projects."
+
+CHANGELOG addendum under the same `[Unreleased] / Docs` entry.

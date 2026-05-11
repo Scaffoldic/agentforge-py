@@ -37,9 +37,15 @@ Before `gh pr create`, verify the branch is in PR-ready state.
 - [ ] Feature doc Status updated (`in-progress` → ready for `shipped`
       pending merge).
 - [ ] AGENTS.md updated if conventions changed.
-- [ ] Runbook updated if user-facing behaviour changed (in
-      `agentforge-templates` repo if applicable; doc cross-reference
-      noted in PR body).
+- [ ] `## Runbook` section added/updated on the matching canonical
+      spec (task-oriented, audience: agent developers using the
+      framework).
+- [ ] **Forward references swept.** Run
+      `git grep -nE 'feat-NNN|<backlog-pkg-names>' docs/features/*.md`
+      for this feature's number and any backlog packages it ships.
+      Update or delete every match in existing `## Runbook` sections
+      so they reflect the shipped surface, not past-tense "when this
+      lands…" caveats.
 - [ ] ADR(s) written for any load-bearing decisions.
 - [ ] Cross-references resolve (no dangling links).
 

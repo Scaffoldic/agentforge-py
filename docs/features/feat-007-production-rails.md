@@ -365,9 +365,9 @@ agent = Agent(model=chain, tools=[...])
 ## Runbook
 
 Audience: agent developers using AgentForge to build production
-agents. Task-oriented. When feat-011 (Copier scaffolding) and
-feat-019 (runbook system) ship, this section is consumed by the
-templating engine and rendered into scaffolded agent projects.
+agents. Task-oriented "how do I…" content. This is the canonical
+home for the feature's runbook; feat-011 / feat-019 consume these
+sections into scaffolded agent projects.
 
 ### How do I configure cross-provider fallback?
 
@@ -412,14 +412,16 @@ chain = FallbackChain(
 
 ### How do I set a budget cap on top of fallback?
 
-`BudgetPolicy` and `FallbackChain` are independent. Combine:
+`BudgetPolicy` and `FallbackChain` are independent. Combine using
+the `Agent` constructor's budget kwargs:
 
 ```python
-from agentforge import Agent, BudgetPolicy, FallbackChain
+from agentforge import Agent, FallbackChain
 
 agent = Agent(
     model=FallbackChain([...]),
-    budget=BudgetPolicy(usd=5.0, max_tokens=200_000, max_iterations=50),
+    budget_usd=5.0,
+    max_iterations=50,
 )
 ```
 
