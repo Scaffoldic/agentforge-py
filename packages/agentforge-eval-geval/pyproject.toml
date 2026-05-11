@@ -1,0 +1,74 @@
+# agentforge-eval-geval — LLM-judge evaluators for AgentForge.
+#
+# Per ADR-0003 this is a Tier-3 module. Adds the six named LLM-judge
+# graders from feat-006 §4.2 (`correctness`, `faithfulness`,
+# `groundedness`, `hallucination`, `relevance`, `helpfulness`) plus
+# the underlying `GEval` engine for custom rubrics. Each grader is
+# parameterised by a judge `LLMClient` so a Sonnet-powered agent can
+# use a Haiku judge — cheaper, less self-agreement bias.
+
+[project]
+name = "agentforge-eval-geval"
+version = "0.0.0"
+description = "LLM-judge evaluators (G-Eval) for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "evaluation", "geval", "llm-judge"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Testing",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+# Entry-point registration — feat-010 will load these by name so
+# `Agent(evaluators=["correctness"])` resolves to the right class.
+[project.entry-points."agentforge.evaluators"]
+correctness = "agentforge_eval_geval.graders:Correctness"
+faithfulness = "agentforge_eval_geval.graders:Faithfulness"
+groundedness = "agentforge_eval_geval.graders:Groundedness"
+hallucination = "agentforge_eval_geval.graders:Hallucination"
+relevance = "agentforge_eval_geval.graders:Relevance"
+helpfulness = "agentforge_eval_geval.graders:Helpfulness"
+geval = "agentforge_eval_geval.engine:GEval"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_eval_geval"]
+
+# Rubric YAML files ship inside the package so `_load_rubric` finds
+# them from `__file__.parent / "rubrics"` after install.
+[tool.hatch.build.targets.wheel.force-include]
+"src/agentforge_eval_geval/rubrics" = "agentforge_eval_geval/rubrics"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_eval_geval",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

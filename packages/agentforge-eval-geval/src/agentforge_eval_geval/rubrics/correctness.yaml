@@ -1,0 +1,19 @@
+# Correctness rubric — "does the output match the ground-truth answer?"
+#
+# `inputs` lists context keys the engine should render alongside the
+# output (e.g. `expected` for the ground-truth field). Pin via the
+# `Correctness(ground_truth_field=...)` kwarg.
+
+version: 1
+criteria: |
+  Compare the output to the ground-truth answer. The output is
+  correct if it conveys the same facts as the ground truth, even
+  when the wording differs. It is incorrect when it contradicts the
+  ground truth, omits a key fact, or adds an unsupported claim.
+scoring: |
+  1.0 — output is fully correct (matches every key fact, no errors).
+  0.7 — minor wording differences but core facts match.
+  0.3 — partial match (some facts correct, others wrong or missing).
+  0.0 — output contradicts the ground truth or fails to answer.
+inputs:
+  - expected
