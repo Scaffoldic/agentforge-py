@@ -33,6 +33,7 @@ dependencies = [
     "agentforge-testing",
     "agentforge-guard-llmguard",
     "agentforge-guard-presidio",
+    "agentforge-guard-nemo",
 ]
 
 [tool.uv.workspace]
@@ -51,6 +52,7 @@ agentforge-otel = { workspace = true }
 agentforge-testing = { workspace = true }
 agentforge-guard-llmguard = { workspace = true }
 agentforge-guard-presidio = { workspace = true }
+agentforge-guard-nemo = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -248,6 +250,7 @@ testpaths = [
     "packages/agentforge-testing/tests",
     "packages/agentforge-guard-llmguard/tests",
     "packages/agentforge-guard-presidio/tests",
+    "packages/agentforge-guard-nemo/tests",
     "tests",
 ]
 markers = [
@@ -289,6 +292,7 @@ source = [
     "packages/agentforge-testing/src",
     "packages/agentforge-guard-llmguard/src",
     "packages/agentforge-guard-presidio/src",
+    "packages/agentforge-guard-nemo/src",
 ]
 branch = true
 parallel = true
