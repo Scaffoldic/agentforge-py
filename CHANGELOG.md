@@ -48,6 +48,57 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-007 — Production rails (`FallbackChain` only).** Closes
+  out canonical feat-007. Cost budget (`BudgetPolicy`), run-id
+  propagation (`RunContext`, `current_run`, `idempotency_key_for`),
+  and structured-log run-id tagging (`RunIdFilter`) all shipped
+  under feat-001 already; this PR adds the last remaining piece
+  — cross-provider failover.
+
+  *New in `agentforge-core`:*
+  - **`FallbackChain`** (`agentforge_core.production.fallback`)
+    wraps multiple `LLMClient`s. On `retry_on` exception, falls
+    through to the next provider (after retrying the current one
+    `attempts_per_provider` times). Implements `LLMClient` so any
+    strategy that accepts an `LLMClient` accepts a chain
+    transparently.
+  - String providers resolve via the global `Resolver` (same path
+    as `Agent(model="bedrock:…")`).
+  - `capabilities()` returns the **intersection** of every wrapped
+    provider's capabilities; a chain can only honestly claim what
+    every fallback delivers.
+  - Optional methods (`call_with_cache`, `call_with_thinking`)
+    raise `CapabilityNotSupported` unless every wrapped provider
+    declares the capability (capability-intersection rule).
+  - `stream` raises `CapabilityNotSupported` unconditionally;
+    streaming with cross-provider fallback semantics is harder
+    than the unary call and deferred to a follow-up.
+  - `last_used_provider` (int | None) tracks the index of the
+    provider that answered the most recent call (diagnostic).
+  - `close()` cascades in reverse-construction order; individual
+    close failures are logged and swallowed (best-effort cleanup).
+
+  *Public surface:*
+  - `from agentforge import FallbackChain` (also
+    `from agentforge_core import FallbackChain`).
+
+  *Coverage:* 23 unit tests for the chain itself + 4 Agent-
+  integration tests covering constructor wiring, ReActLoop
+  dispatch, fallback on RateLimitError, top-level import.
+
+  *New workflow rule (locked in 2026-05-10):* every feature PR
+  now adds a **`## Runbook` section** to the matching canonical
+  spec. Audience: agent developers using AgentForge to build
+  production agents. Task-oriented "how do I configure / tune /
+  debug" content. When feat-011 (Copier scaffolding) and feat-019
+  (runbook system) ship, the templating engine consumes these
+  sections into scaffolded agent projects. feat-007's spec is the
+  first to carry one (configure cross-provider fallback, tune
+  retries, combine with budget, read run_id from a tool, debug
+  "every provider failed", etc.). Already-shipped features
+  (feat-001/002/003/004/005) get backfilled in a separate
+  `chore/backfill-runbooks` PR.
+
 - **feat-004 — Tools system.** Adds the decorator + default tools +
   dispatch enhancements that turn a typed Python function into a
   ready-to-use `Tool`, and the four default tools every agent gets

@@ -406,3 +406,62 @@ scripted-response Tool for unit tests. 10 unit tests.
 Updated docs/features/feat-004 Implementation status, CHANGELOG,
 roadmap (moved feat-004 from backlog to shipped). Pre-commit hook
 ID migrated from `ruff` (legacy alias) to `ruff-check`.
+
+## 2026-05-10T17:25 — feat-004 shipped
+PR #10 merged at `2b1a37c`. Branch deleted local + remote.
+Six chunks landed cleanly: @tool decorator, calculator + file_read,
+shell + web_search, _dispatch_tool helper + ReAct/PlanExecute
+refactor, FakeTool test helper, docs + ruff hook id migrate.
+
+## 2026-05-10T17:30 — feat-007 started
+Branch: `feat/007-production-rails`. State: `analysing`.
+
+User question on scope: "production rails covers all modern
+guardrails, cost, budget, security etc". Clarified canonical
+split: feat-007 is narrower (cost budget + run_id +
+idempotency + FallbackChain). Modern security guardrails are
+feat-018 (Safety). Observability is feat-009.
+
+Most of feat-007 already shipped under feat-001 (BudgetPolicy,
+RunContext, current_run, idempotency_key_for, RunIdFilter). Only
+remaining piece: FallbackChain. User picked "Ship feat-007
+(FallbackChain only) — small (Recommended)".
+
+Chunk plan (3 total) in state/current.md awaiting approval.
+
+## 2026-05-10T17:50 — Runbook policy locked in
+User asked why runbooks aren't part of each feature PR. Reviewed
+canonical model: per docs/README.md, runbooks live in the (yet-to-
+exist) agentforge-templates repo and are owned by feat-019. Bootstrap
+problem: features ship today without their developer-facing runbook
+content; feat-019 would need to author 16 retroactively.
+
+User's choice (locked):
+1. **Inline `## Runbook` section in each feat-NNN spec.** When
+   feat-011 + feat-019 ship, the templating engine consumes these
+   sections into scaffolded agent projects. Single source of truth.
+2. **Backfill** runbook sections for feat-001/002/003/004/005 in
+   a separate `chore/backfill-runbooks` PR AFTER feat-007 ships
+   (don't disrupt in-flight work).
+
+Updates landed:
+- AGENTS.md Workflow §: new rule "Every feature PR adds a
+  `## Runbook` section in the matching canonical spec".
+- memory feedback_workflow.md rule #8 added (audience: agent
+  developers, not framework maintainers).
+- state/current.md feat-007 chunk 3 expanded to include the
+  Runbook section as part of the docs-update commit.
+
+feat-007 chunk plan unchanged in count (still 3 chunks); chunk 3
+just gains the Runbook authoring sub-task.
+
+## 2026-05-10T18:30 — feat-007 chunks 1-3 done
+- chunk 1 `6bdd066`: FallbackChain class + 23 unit tests
+- chunk 2 `2e7d2d3`: top-level re-export + 4 Agent-integration tests
+- chunk 3 (this): CHANGELOG, Implementation status, **first-ever
+  Runbook section** (configure fallback / tune retries / combine
+  with budget / read run_id from a tool / debug "every provider
+  failed" / when not to use FallbackChain), roadmap moved feat-007
+  from backlog to shipped.
+
+PR #11 to be raised next.

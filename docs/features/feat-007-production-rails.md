@@ -269,3 +269,248 @@ and `FallbackChain` shape identical.
 - Archived: `docs/archive/cr/CR-008-cross-provider-fallback.md`,
   `CR-010-run-id-context-propagation.md`, `CR-013-idempotency-keys.md`,
   `docs/archive/subsystem-production-rails.md`
+
+---
+
+## Implementation status
+
+**Status: shipped (Python). TypeScript port pending.**
+
+feat-007's surface largely shipped under feat-001:
+
+| Piece | Status |
+|---|---|
+| `BudgetPolicy` (USD / token / iteration / error-streak caps) | shipped feat-001 |
+| `RunContext` + `current_run()` (ContextVar-bound run state) | shipped feat-001 |
+| `RunContext.idempotency_key_for(*parts)` | shipped feat-001 |
+| `RunIdFilter` (auto-tags log records with run_id) | shipped feat-001 |
+| `BudgetPolicy.reserve` / `commit` / `record_error` / `record_success` | shipped feat-001; consumed feat-002 |
+| **`FallbackChain`** | **shipped this PR** |
+
+`FallbackChain` landed via PR #11 on `feat/007-production-rails`
+across three chunks:
+
+| Chunk | Commit | Scope |
+|---|---|---|
+| 1 | `6bdd066` | `FallbackChain` class (`agentforge_core/production/fallback.py`); 23 unit tests |
+| 2 | `2e7d2d3` | Top-level re-export (`from agentforge import FallbackChain`); 4 Agent-integration tests |
+| 3 | (this) | CHANGELOG, Implementation status, Runbook section, PR |
+
+### Public surface delivered
+
+```python
+from agentforge import Agent, FallbackChain
+
+chain = FallbackChain(
+    [
+        "anthropic:claude-sonnet-4.7",
+        "bedrock:anthropic.claude-sonnet-4.7",
+        "openai:gpt-4o",
+    ],
+    retry_on=(RateLimitError, ProviderError),  # default
+    attempts_per_provider=1,                   # default
+)
+agent = Agent(model=chain, tools=[...])
+```
+
+### Deviations from this spec
+
+- **`FallbackChain` is NOT re-exported from
+  `agentforge_core.production`.** The natural location creates a
+  circular import (`production/__init__.py` → `fallback` →
+  `contracts.llm` → `production.exceptions.CapabilityNotSupported`
+  → back into `production/__init__.py` while still loading). The
+  workaround documented inline in `production/__init__.py`:
+  `FallbackChain` is imported from the submodule directly inside
+  `agentforge_core/__init__.py`, which runs *after* `production`
+  finishes. Users reach it via
+  `from agentforge_core import FallbackChain` or
+  `from agentforge import FallbackChain`.
+- **`stream` is not supported** in v0.1. Streaming with
+  cross-provider fallback semantics is harder than the unary call
+  (events from provider N might partially arrive before fallback
+  N+1 kicks in). `chain.stream(...)` raises
+  `CapabilityNotSupported` unconditionally. Callers needing
+  streaming pick a single provider.
+- **Capability-intersection rule** for optional methods
+  (`call_with_cache`, `call_with_thinking`) — locked in by user
+  decision before chunk 1. The chain's `capabilities()` returns
+  the intersection of every wrapped provider's capabilities, and
+  optional methods raise `CapabilityNotSupported` unless every
+  wrapped provider declares the capability.
+- **Default `retry_on` includes `AuthenticationError`** via
+  inheritance (`AuthenticationError` extends `ProviderError`).
+  Intentional: one provider's auth being misconfigured is a
+  legitimate reason to try the next provider with its own auth.
+  Callers wanting tighter behaviour pass
+  `retry_on=(RateLimitError,)`.
+
+### What's *not* yet implemented
+
+- **`RunResult.retry_provider_used`**: spec mentions tracking
+  which provider answered. `FallbackChain.last_used_provider`
+  exposes the index for diagnostics, but `RunResult` does not yet
+  carry the field. Adding it is a minor bump on the locked
+  `RunResult` shape; lands in a follow-up or alongside feat-009
+  (Observability) where the field becomes most useful.
+- **Provider-level retry backoff** at the chain level. Today the
+  chain just retries `attempts_per_provider` times in immediate
+  succession. Backoff sits per-provider (the bedrock driver
+  already implements bounded exponential backoff with jitter
+  internally).
+- **TypeScript port** of the entire feat-007 surface.
+
+---
+
+## Runbook
+
+Audience: agent developers using AgentForge to build production
+agents. Task-oriented. When feat-011 (Copier scaffolding) and
+feat-019 (runbook system) ship, this section is consumed by the
+templating engine and rendered into scaffolded agent projects.
+
+### How do I configure cross-provider fallback?
+
+Wrap your providers in `FallbackChain` and pass it as `model`:
+
+```python
+from agentforge import Agent, FallbackChain
+
+chain = FallbackChain([
+    "anthropic:claude-sonnet-4.7",          # primary
+    "bedrock:anthropic.claude-sonnet-4.7",  # fallback 1
+    "openai:gpt-4o",                        # fallback 2
+])
+agent = Agent(model=chain, tools=[...])
+```
+
+Order matters — the chain tries the **first** provider first and
+only falls back on a `retry_on` exception. Put the cheapest /
+fastest / most-trusted provider first.
+
+### How do I tune retries?
+
+Two levers:
+
+```python
+chain = FallbackChain(
+    providers=["anthropic:claude-sonnet-4.7", "bedrock:..."],
+    retry_on=(RateLimitError, ServiceError),  # narrow the set
+    attempts_per_provider=3,                  # try each provider 3x
+)
+```
+
+- `retry_on` is the **set of exception types** that trigger
+  fallback. Default `(RateLimitError, ProviderError)` covers
+  every transient provider error, including auth/model-not-found
+  (since they're `ProviderError` subclasses). Pass a narrower
+  tuple to keep falling back only on rate limits or service
+  errors.
+- `attempts_per_provider` is how many times each provider is
+  retried **before** moving to the next one. Default 1 (no
+  retry; first failure → next provider).
+
+### How do I set a budget cap on top of fallback?
+
+`BudgetPolicy` and `FallbackChain` are independent. Combine:
+
+```python
+from agentforge import Agent, BudgetPolicy, FallbackChain
+
+agent = Agent(
+    model=FallbackChain([...]),
+    budget=BudgetPolicy(usd=5.0, max_tokens=200_000, max_iterations=50),
+)
+```
+
+Failover cost counts against the same budget — falling over to a
+more expensive provider exhausts the budget sooner, tripping
+`BudgetExceeded` per the existing semantics.
+
+### How do I read the run_id from inside a tool?
+
+```python
+from agentforge import current_run
+
+@tool
+def charge_customer(amount_cents: int, customer_id: str) -> dict:
+    """Charge a customer (uses the run's idempotency key)."""
+    ctx = current_run()
+    return stripe.charge(
+        amount=amount_cents,
+        customer=customer_id,
+        idempotency_key=ctx.idempotency_key_for("charge", customer_id),
+    )
+```
+
+`current_run()` reads the per-run `RunContext` from the ContextVar
+`Agent.run()` binds. Safe to call from any tool body or any code
+running inside `Agent.run()`'s scope.
+
+`ctx.idempotency_key_for(*parts)` is **stable for the lifetime of
+one run** — retries within the run reuse the same key, so
+external services (Stripe, SQS, etc.) dedupe them. Different runs
+get different keys.
+
+### How do I tag my logs with run_id automatically?
+
+Already on by default:
+
+```python
+import logging
+log = logging.getLogger(__name__)
+log.info("Looking up user %s", user_id)
+# stdout: 2026-05-10 14:23:01 [run_id=01HX...ZYZ] INFO Looking up user U-42
+```
+
+`Agent.__init__` installs `RunIdFilter` on the root logger
+(idempotent — installing again is a no-op). To opt out:
+`Agent(install_log_filter=False)`.
+
+### How do I debug "which provider answered my call"?
+
+Read `chain.last_used_provider` after a call:
+
+```python
+chain = FallbackChain(["anthropic:...", "bedrock:..."])
+agent = Agent(model=chain)
+result = await agent.run("hello")
+print(f"answered by provider index {chain.last_used_provider}")
+# 0 = anthropic, 1 = bedrock
+```
+
+`None` until the first successful call; the index is 0-based and
+reflects the chain's construction order.
+
+### How do I debug "every provider failed"?
+
+The **last** provider's exception bubbles up. The chain logs a
+WARNING for each fallback transition:
+
+```
+WARNING agentforge_core.production.fallback: provider 1/3 (BedrockClient)
+        raised RateLimitError (attempt 1/1); trying next provider
+WARNING agentforge_core.production.fallback: provider 2/3 (BedrockClient)
+        raised RateLimitError (attempt 1/1); trying next provider
+```
+
+Set `agentforge_core.production.fallback` to DEBUG or INFO during
+development to see the full transition log. WARNINGS are usually
+sufficient in production.
+
+### When should I NOT use FallbackChain?
+
+- **Streaming**: `FallbackChain.stream` raises
+  `CapabilityNotSupported`. Pick a single provider for streaming.
+- **Providers with very different capabilities**: the chain's
+  `capabilities()` is the intersection. Wrapping a
+  caching-supporting Anthropic with a non-caching OpenAI means
+  `chain.supports("caching")` is `False`. Either use
+  `FallbackChain` only over capability-equivalent providers, or
+  avoid declaring the capability.
+- **When `AuthenticationError` is config drift, not transient**:
+  the default `retry_on` falls back on auth errors too. If your
+  auth-error means "credentials rotated and need updating",
+  failing over hides that signal. Pass
+  `retry_on=(RateLimitError, ServiceError, TimeoutError)` for
+  stricter behaviour.
