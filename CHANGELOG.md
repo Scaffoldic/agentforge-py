@@ -21,6 +21,74 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-009 — Observability (OTel only).** Ships the framework-
+  side observability wiring + the `agentforge-otel` package. Vendor-
+  specific backends (Langfuse, Phoenix, Evidently, StatsD) are
+  deferred to follow-up sub-feats — the spec's thesis backs this:
+  OTel is the wire format, every major collector ingests OTLP.
+
+  *Runtime fan-out + on_step wiring (`agentforge`):*
+  - **`on_step` actually fires now**. The kwarg was accepted under
+    feat-001 but never invoked — closes that gap.
+  - **List-of-hooks fan-out**: `on_step` / `on_finish` accept a
+    single callable OR a list. Type aliases `StepHooks` /
+    `FinishHooks`. Internally normalised; fires in registration
+    order.
+  - **Error isolation**: hook exceptions logged at WARN via
+    `agentforge.observability` and swallowed. Spec §4.3:
+    "Observability must never break the run."
+  - **Async hooks supported** for both `on_step` and `on_finish`.
+  - **Steps fire on error paths** too (inside `try/finally`).
+
+  *JSON log format (`agentforge-core`):*
+  - **`JsonFormatter`** — one JSON object per record with `ts`,
+    `level`, `logger`, `msg`, `run_id`, and any `extra` fields
+    passed through.
+  - **`install_json_formatter` / `uninstall_json_formatter`** —
+    idempotent install of a `StreamHandler` with `JsonFormatter`
+    on the root (or any) logger.
+  - `Agent.__init__` installs it when `logging.format == "json"`
+    in the config.
+
+  *OTel API surface (`agentforge-core`):*
+  - Adds `opentelemetry-api>=1.27` as a runtime dependency.
+    Degrades to no-op spans when no SDK is installed.
+  - New `agentforge_core/observability/tracing.py` with
+    `get_tracer()` and `SCOPE_NAME = "agentforge"`.
+  - `Agent.run` opens a root `agent.run` span with attributes for
+    run_id, task, finish_reason, cost, tokens, duration, and
+    step count.
+
+  *New package — `agentforge-otel`:*
+  - **`OpenTelemetryHook(endpoint=, service_name=, sample_rate=,
+    redact_fields=)`** — construction installs the OTel SDK tracer
+    provider + OTLP gRPC exporter + `TraceIdRatioBased` sampler.
+    Idempotent; respects existing user-installed providers.
+  - Satisfies both `on_step` and `on_finish` via `__call__` type
+    dispatch. Step events add per-step attributes to the active
+    span; tool-call events add `agentforge.tool.*` with key-based
+    arg redaction. Finish handling emits an `agentforge.observability`
+    INFO summary.
+  - Default `redact_fields`: `api_key`, `password`, `secret`,
+    `token`, `authorization`. Override per-instance.
+  - Entry-point registration under `agentforge.hooks` for
+    feat-010 resolver lookup.
+
+  *What's NOT yet shipped:* the four vendor packages
+  (`agentforge-langfuse`, `agentforge-phoenix`,
+  `agentforge-evidently`, `agentforge-statsd`); `strategy.iteration`
+  / `llm.call` / `tool.<name>` / `evaluator.<name>` as proper OTel
+  child spans (current implementation flattens them as events on
+  the root span); A2A trace propagation; content-based PII
+  redaction; TypeScript port. See feat-009's Implementation
+  section for the full list.
+
+  *Knock-on docs:* `feat-004` (Tools) had a "Cost attribution per
+  tool — feat-009 (Observability)" forward-tense item in
+  "What's not yet implemented"; now reflects that feat-009 has
+  shipped per-tool cost attribution via the OTel hook's
+  `agent.tool_call` events.
+
 - **feat-006 — Evaluators & benchmarks.** Ships the four
   deterministic graders, the LLM-judge engine + six named judge
   graders (new `agentforge-eval-geval` package), and the

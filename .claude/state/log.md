@@ -654,3 +654,58 @@ plan.
   in-strategy `scorer="judge"` is a separate follow-up.
 
 Ready to push.
+
+## 2026-05-11T16:30 — feat-006 merged @ #14; picking up feat-009
+User approved single-PR scope, Option B — OTel only, vendor
+packages (Langfuse / Phoenix / Evidently / StatsD) deferred to
+follow-up sub-feats. Spec's own thesis backs it ("OTel is the wire
+format"). Branched `feat/009-observability` and drafted 7-chunk plan.
+
+## 2026-05-11T17:00 — feat-009 chunks 1-2 done
+- chunk 1 `d369dc2`: closed long-standing gap — `Agent(on_step=...)`
+  now actually fires (was accepted but ignored under feat-001).
+  List-of-hooks fan-out for both on_step + on_finish; per-hook
+  try/except isolation via `_safe_call_hook` (logs WARN through
+  `agentforge.observability`); async hooks awaited.
+- chunk 2 `ccee40d`: JSON log format — `JsonFormatter` +
+  install/uninstall helpers in core; Agent wires when
+  `logging.format == "json"` config.
+
+## 2026-05-11T17:45 — feat-009 chunks 3-6 done
+`7901253` — OTel surface end-to-end:
+- core adds `opentelemetry-api` dep; new
+  `agentforge_core/observability/tracing.py` with `get_tracer()`.
+- `Agent.run` wraps the run in an `agent.run` span carrying
+  run_id / task / finish_reason / cost / tokens / duration /
+  n_steps.
+- new `agentforge-otel` package: `OpenTelemetryHook(endpoint=,
+  service_name=, sample_rate=, redact_fields=)` configures SDK +
+  OTLP exporter on construction (idempotent; respects existing
+  user-installed provider). Dispatches both `on_step` and
+  `on_finish` via `__call__`. Step + tool-call events with
+  key-based arg redaction (default: api_key, password, secret,
+  token, authorization).
+- Workspace + CI + pre-commit + mypy override extended in
+  lockstep with the new package.
+- Tests via OTel's `InMemorySpanExporter`.
+
+## 2026-05-11T18:00 — feat-009 chunk 7 done, PR pending
+- `docs/features/feat-009-observability.md`: status → `shipped
+  (Python, OTel only)`; added Implementation status (7-chunk
+  table; deviations: OTel-only scope, root span only — not
+  full tree, key-based redaction not content-based, required
+  service_name); added Runbook (8 task entries: add observability,
+  emit JSON logs, fan out multiple backends, custom hook, redact
+  secrets, keep cost low, read span attributes, vendor
+  compatibility, when not to use).
+- `CHANGELOG.md`: full `[Unreleased] / Added` entry for feat-009
+  + knock-on note about feat-004 runbook update.
+- `docs/roadmap.md`: feat-009 row moved Backlog → Shipped; new
+  "feat-009 vendor-package sub-feats" section documents the four
+  deferred packages.
+- `docs/features/README.md`: feat-009 status updated.
+- `docs/features/feat-004-tools-system.md`: "Cost attribution
+  per tool — feat-009" moved out of "what's not yet" list with a
+  note that feat-009 has shipped it via the OTel hook.
+
+Ready to push.

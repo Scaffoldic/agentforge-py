@@ -348,9 +348,13 @@ gate destructive tool use.
 - Entry-point auto-loading of third-party tool packages — that's
   feat-010 (Module discovery).
 - MCP bridging (`@tool` ↔ MCP server endpoints) — feat-013.
-- Cost attribution per tool — feat-009 (Observability).
 - Tool-level rate limiting — feat-018 (Safety).
 - TypeScript port of the entire feat-004 surface.
+
+feat-009 shipped per-tool cost attribution via the OTel hook —
+`OpenTelemetryHook` emits `agent.tool_call` span events tagging
+`agentforge.tool.name` + redacted args. Install `agentforge-otel`
+and the costs flow to whatever OTel collector you point at.
 
 ---
 
