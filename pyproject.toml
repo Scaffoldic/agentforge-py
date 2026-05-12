@@ -275,7 +275,7 @@ testpaths = [
     "tests",
 ]
 markers = [
-    "live: tests that hit real LLM providers (excluded from pre-commit)",
+    "live: tests that hit real LLM providers or spawn real protocol servers (excluded from pre-commit)",
     "slow: tests that take > 1s (excluded from default unit run)",
     "conformance: ABC-conformance suite that drivers must pass",
 ]
