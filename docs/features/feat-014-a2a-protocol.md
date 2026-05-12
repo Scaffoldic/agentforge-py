@@ -9,7 +9,7 @@
 | **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.4 (after stability bar reached on core) |
+| **Target version** | 0.1 (contracts + client + server + bridge — shipped); 0.2 (production runner + A2A discovery / registry + bi-directional streaming) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-a2a` |
 | **Depends on** | feat-001, feat-004, feat-007 (run_id propagation across calls) |

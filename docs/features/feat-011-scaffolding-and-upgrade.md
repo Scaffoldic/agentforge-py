@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — `new` + 6 templates + `upgrade` + `fork`/`unfork`/`status`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.1 (`new`), 0.3 (`upgrade`, `fork`) |
+| **Target version** | 0.1 (`new` + 6 templates + `upgrade` + `fork` / `unfork` / `status` — all shipped) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge` (CLI), `agentforge-templates` (template repo) |
 | **Depends on** | feat-010 |
