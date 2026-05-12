@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from agentforge_a2a.auth import BearerAuth, ClientAuth, MutualTLSAuth, build_outgoing_auth
 from agentforge_a2a.bridge import A2ABridge
-from agentforge_a2a.client import A2APeer, agent_call, discover_peer
+from agentforge_a2a.client import A2APeer, agent_call, agent_call_stream, discover_peer
 from agentforge_a2a.config import A2AConfig
 from agentforge_a2a.server import A2AServer
 from agentforge_a2a.values import (
@@ -52,6 +52,7 @@ __all__ = [
     "ClientAuth",
     "MutualTLSAuth",
     "agent_call",
+    "agent_call_stream",
     "build_outgoing_auth",
     "discover_peer",
 ]
