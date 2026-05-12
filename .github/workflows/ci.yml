@@ -68,6 +68,34 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"
 
+  live:
+    # feat-014 v0.2: live integration tests for every package that
+    # ships a `tests/integration/test_*_live.py` suite. Runs on every
+    # PR and push to main, but does NOT gate merge — branch protection
+    # stays on the `test` job. We tighten this once the live suite
+    # stabilises across more packages.
+    name: Live (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    if: success() || failure()
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest live (every package shipping integration/)
+        run: uv run pytest -q -m live packages/agentforge-mcp/tests/integration packages/agentforge-a2a/tests/integration
+
   coverage-ratchet:
     name: Coverage ratchet vs main
     runs-on: ubuntu-latest
