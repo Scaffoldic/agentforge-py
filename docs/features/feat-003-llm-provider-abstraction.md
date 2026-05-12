@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-003 |
 | **Title** | LLM & embedding providers — `LLMClient` + `EmbeddingClient` ABCs, named-provider registry, capability negotiation |
-| **Status** | proposed |
+| **Status** | shipped (Python — `LLMClient` + `EmbeddingClient` ABCs + named-provider registry; `agentforge-bedrock`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 |

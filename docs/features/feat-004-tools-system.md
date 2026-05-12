@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-004 |
 | **Title** | Tools system — `@tool` decorator, `Tool` ABC, default tool set |
-| **Status** | proposed |
+| **Status** | shipped (Python — `Tool` ABC + `@tool` decorator + 4 default tools + `FakeTool`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 |
