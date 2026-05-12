@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-007 |
 | **Title** | Production rails — cost budget, fallback chain, run_id propagation, idempotency |
-| **Status** | proposed |
+| **Status** | shipped (Python — `BudgetPolicy` + `RunContext` + `idempotency_key_for` + `RunIdFilter` + `FallbackChain`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.1 |

@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-005 |
 | **Title** | Persistence — unified MemoryStore + drivers (sqlite, postgres, surrealdb, neo4j) |
-| **Status** | proposed |
+| **Status** | shipped (Python — `MemoryStore` + sqlite/postgres/neo4j/surrealdb + `VectorStore` + `GraphStore` + RAG; PRs #5/#7/#8 mis-labelled — see §10) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) |

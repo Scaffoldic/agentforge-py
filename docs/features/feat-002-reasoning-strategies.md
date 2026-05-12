@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-002 |
 | **Title** | Reasoning strategies — ReAct, Plan-Execute, Tree-of-Thoughts, Multi-Agent (all stable from v0.1) |
-| **Status** | proposed |
+| **Status** | shipped (Python — ReAct + Plan-Execute + ToT + Multi-Agent loops) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Last updated** | 2026-05-10 |

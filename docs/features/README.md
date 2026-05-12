@@ -33,12 +33,12 @@
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
 | **feat-001** | Core contracts & `Agent` orchestrator | shipped (Python; TS pending) | 0.1 | both | `agentforge-core`, `agentforge` |
-| **feat-002** | Reasoning strategies (ReAct stable; Plan-Execute / ToT / Multi-Agent experimental) | proposed | 0.1 (ReAct), 0.3 (rest) | both | `agentforge`, `agentforge-strategies-experimental` |
-| **feat-003** | LLM & embedding providers — `LLMClient` + `EmbeddingClient`, named-provider registry (multi-LLM agents: reasoning + judge + embedding), capability negotiation | proposed | 0.1 | both | `agentforge-core` + provider modules (`agentforge-anthropic`, `-bedrock`, `-openai`, `-voyage`, ...) |
-| **feat-004** | Tools system (`@tool` decorator, `Tool` ABC, default tool set) | proposed | 0.1 | both | `agentforge` |
-| **feat-005** | Persistence — `MemoryStore` ABC + drivers (sqlite, postgres, surrealdb, neo4j) | proposed | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) | both | `agentforge-memory-*` |
+| **feat-002** | Reasoning strategies (ReAct + Plan-Execute + ToT + Multi-Agent — all stable from v0.1) | shipped (Python) | 0.1 | both | `agentforge` (all four loops in-runtime) |
+| **feat-003** | LLM & embedding providers — `LLMClient` + `EmbeddingClient`, named-provider registry (multi-LLM agents: reasoning + judge + embedding), capability negotiation | shipped (Python — ABCs + registry + `agentforge-bedrock`) | 0.1 | both | `agentforge-core` + provider modules (`agentforge-bedrock` shipped; `agentforge-anthropic`, `-openai`, `-voyage`, ... deferred to v0.3) |
+| **feat-004** | Tools system (`@tool` decorator, `Tool` ABC, default tool set, `FakeTool`) | shipped (Python) | 0.1 | both | `agentforge` |
+| **feat-005** | Persistence — `MemoryStore` ABC + drivers (sqlite, postgres, surrealdb, neo4j) + `VectorStore` + `GraphStore` + RAG | shipped (Python — full surface; PRs #5/#7/#8 mis-labelled per spec §10) | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) | both | `agentforge-memory-sqlite`, `-postgres`, `-neo4j`, `-surrealdb` |
 | **feat-006** | Evaluators (deterministic + LLM-judge: correctness, faithfulness, groundedness, hallucination, relevance, helpfulness, coverage, format compliance, regression, consistency) | shipped (Python) | 0.2 | both | `agentforge`, `agentforge-eval-geval`, optional `-ragas`, `-deepeval`, `-toxicity`, `-codeexec` |
-| **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | proposed | 0.1 | both | `agentforge-core`, `agentforge` |
+| **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | shipped (Python) | 0.1 | both | `agentforge-core`, `agentforge` |
 | **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-core` |
 | **feat-009** | Observability — structured logging (JSON) + distributed tracing (OTel) + hook fan-out; vendor backends (Langfuse / Phoenix / Evidently / StatsD) deferred to follow-up sub-feats | shipped (Python, OTel only) | 0.2 | both | `agentforge`, `agentforge-otel`, future `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd` |
 
