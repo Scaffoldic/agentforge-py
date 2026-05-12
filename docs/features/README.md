@@ -67,7 +67,7 @@
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-020** | Chat agents — `ChatSession` wrapper, `ChatHistoryStore` (memory/sqlite/postgres/redis drivers), streaming, HTTP/WebSocket/SSE server, multi-tenant isolation, per-turn cost/guardrails, idempotency, cancellation | proposed | 0.2 (contracts + memory + sqlite + chat-http), 0.3 (postgres + redis + reference channel adapter) | both | `agentforge-chat`, `agentforge-chat-history-postgres`, `agentforge-chat-history-redis`, `agentforge-chat-http`, optional `agentforge-chat-slack` |
+| **feat-020** | Chat agents — `ChatSession` wrapper, `ChatHistoryStore` (memory/sqlite/postgres/redis drivers), streaming, HTTP/WebSocket/SSE server, multi-tenant isolation, per-turn cost/guardrails, idempotency, cancellation | shipped (Python v0.2 scope) | 0.2 (contracts + memory + sqlite + chat-http — shipped), 0.3 (postgres + redis + reference channel adapter + real per-token streaming) | both | `agentforge-chat`, `agentforge-chat-history-postgres`, `agentforge-chat-history-redis`, `agentforge-chat-http`, optional `agentforge-chat-slack` |
 
 ### Pipeline
 

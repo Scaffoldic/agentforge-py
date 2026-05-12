@@ -80,6 +80,23 @@ def validate_module_configs(
     if cfg.modules.pipeline is not None:
         for task_entry in cfg.modules.pipeline.tasks:
             _validate_named(r, "tasks", task_entry, strict=strict)
+    if cfg.modules.chat is not None:
+        if cfg.modules.chat.history is not None:
+            _validate_driver(
+                r,
+                "chat.history",
+                cfg.modules.chat.history.driver,
+                cfg.modules.chat.history.config,
+                strict=strict,
+            )
+        if cfg.modules.chat.truncation is not None:
+            _validate_driver(
+                r,
+                "chat.truncation",
+                cfg.modules.chat.truncation.strategy,
+                cfg.modules.chat.truncation.config,
+                strict=strict,
+            )
 
 
 def _validate_one(
@@ -131,6 +148,33 @@ def _validate_named(
     except ValidationError as exc:
         raise ModuleError(
             f"modules.{category}[{entry.name!r}].config failed validation: "
+            f"{exc.errors(include_url=False)}"
+        ) from exc
+
+
+def _validate_driver(
+    resolver: Resolver,
+    category: str,
+    name: str,
+    config: dict[str, Any],
+    *,
+    strict: bool,
+) -> None:
+    """Validate a driver-by-name + config dict (feat-020 chat hook)."""
+    try:
+        cls = resolver.resolve(category, name)
+    except ModuleError:
+        if strict:
+            raise
+        return
+    schema = _read_config_schema(cls)
+    if schema is None:
+        return
+    try:
+        schema.model_validate(config)
+    except ValidationError as exc:
+        raise ModuleError(
+            f"modules.{category}.config failed validation for {name!r}: "
             f"{exc.errors(include_url=False)}"
         ) from exc
 

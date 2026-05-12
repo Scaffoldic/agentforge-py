@@ -36,6 +36,8 @@ dependencies = [
     "agentforge-guard-nemo",
     "agentforge-guard-llamaguard",
     "agentforge-mcp",
+    "agentforge-chat",
+    "agentforge-chat-http",
 ]
 
 [tool.uv.workspace]
@@ -57,6 +59,8 @@ agentforge-guard-presidio = { workspace = true }
 agentforge-guard-nemo = { workspace = true }
 agentforge-guard-llamaguard = { workspace = true }
 agentforge-mcp = { workspace = true }
+agentforge-chat = { workspace = true }
+agentforge-chat-http = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -259,6 +263,8 @@ testpaths = [
     "packages/agentforge-guard-nemo/tests",
     "packages/agentforge-guard-llamaguard/tests",
     "packages/agentforge-mcp/tests",
+    "packages/agentforge-chat/tests",
+    "packages/agentforge-chat-http/tests",
     "tests",
 ]
 markers = [
@@ -303,6 +309,8 @@ source = [
     "packages/agentforge-guard-nemo/src",
     "packages/agentforge-guard-llamaguard/src",
     "packages/agentforge-mcp/src",
+    "packages/agentforge-chat/src",
+    "packages/agentforge-chat-http/src",
 ]
 branch = true
 parallel = true

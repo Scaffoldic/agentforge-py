@@ -1,0 +1,70 @@
+# agentforge-chat — Chat-agent runtime for AgentForge.
+#
+# `ChatSession` wraps a one-shot `Agent` into a multi-turn,
+# stateful conversation; ships in-memory + sqlite history
+# drivers + four truncation strategies.
+#
+# Per ADR-0003 (three-tier package model — this is Tier 2, a
+# framework runtime extension).
+
+[project]
+name = "agentforge-chat"
+version = "0.0.0"
+description = "Chat-agent runtime (ChatSession + history drivers + truncation) for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "chat", "conversation", "chatbot"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "agentforge",
+]
+
+[project.optional-dependencies]
+sqlite = ["aiosqlite>=0.20"]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.chat.history"]
+memory = "agentforge_chat.history:InMemoryChatHistory"
+sqlite = "agentforge_chat.sqlite:SqliteChatHistory"
+
+[project.entry-points."agentforge.chat.truncation"]
+sliding_window = "agentforge_chat.truncation:SlidingWindow"
+token_budget = "agentforge_chat.truncation:TokenBudget"
+summarise_oldest = "agentforge_chat.truncation:SummariseOldest"
+hybrid = "agentforge_chat.truncation:Hybrid"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_chat"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_chat",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

@@ -1,0 +1,32 @@
+# Module manifest for `agentforge add module chat` (feat-010).
+name: chat
+description: |
+  Chat-agent runtime (feat-020). Adds the `agentforge_chat` package
+  with `ChatSession`, in-memory + SQLite history drivers, and four
+  truncation strategies.
+
+distribution:
+  pip_name: agentforge-chat
+
+config_block:
+  modules.chat:
+    history:
+      driver: memory   # memory | sqlite (sqlite needs `agentforge-chat[sqlite]`)
+      config: {}
+    truncation:
+      strategy: sliding_window
+      max_turns: 50
+    session:
+      per_turn_budget_usd: null
+      per_session_budget_usd: null
+      idempotency_window_s: 60
+
+entry_points:
+  agentforge.chat.history:
+    memory: agentforge_chat.history:InMemoryChatHistory
+    sqlite: agentforge_chat.sqlite:SqliteChatHistory
+  agentforge.chat.truncation:
+    sliding_window: agentforge_chat.truncation:SlidingWindow
+    token_budget: agentforge_chat.truncation:TokenBudget
+    summarise_oldest: agentforge_chat.truncation:SummariseOldest
+    hybrid: agentforge_chat.truncation:Hybrid

@@ -1,10 +1,10 @@
 ---
 feature: none
 state: idle
-branch: feat/015-pipeline-and-tasks
+branch: feat/020-chat-agents-v02
 started_at: null
 last_milestone_at: 2026-05-12
-last_shipped: feat-015 shipped via PR #25 (open for review)
+last_shipped: feat-020 v0.2 scope shipped via PR #26 (open for review)
 blocker: null
 flags_for_user: []
 ---
@@ -15,77 +15,64 @@ flags_for_user: []
 
 ## Last shipped
 
-[`feat-015 — Pipeline & deterministic tasks`](../../docs/features/feat-015-pipeline-and-tasks.md)
-opened as PR #25 (framework-only feature inside `agentforge`):
+[`feat-020 — Chat agents (v0.2 scope)`](../../docs/features/feat-020-chat-agents.md)
+opened as PR #26 across three packages:
 
-- `agentforge_core.contracts.task.Task` ABC +
-  `agentforge_core.values.pipeline.PipelineResult` frozen value.
-- `agentforge.pipeline.Pipeline` engine with DAG validation
-  (cycles / duplicates / missing deps at construction),
-  `asyncio.Semaphore`-bounded parallelism, per-task
-  `asyncio.wait_for(timeout_s)`, `on_task_error` continue/fail
-  modes, `PipelineFailure` exception.
-- `PipelineFindingsTool` built-in tool with category/severity
-  filters; `Agent(pipeline=...)` kwarg; `Agent.run(task, *,
-  context, replay_pipeline)` API; per-run system-prompt
-  addendum.
-- `modules.pipeline:` config block + `build_pipeline_from_config`
-  wired into `build_agent_from_config`.
-- `__pipeline` recording category + `load_pipeline_result`
-  replay so side-effect-bearing tasks don't double-run on
-  `agentforge run --replay`.
-- `FinishReason` literal extended with `"pipeline"`.
-- Public re-exports + renderer-compat sanity test.
+- **`agentforge-core` extensions**: `ChatHistoryStore` and
+  `HistoryTruncationStrategy` ABCs; `ChatTurn`, `SessionInfo`,
+  `ChatChunk`, `ChatResponse` frozen value models;
+  `run_chat_history_conformance` / `run_truncation_conformance`
+  harnesses; `modules.chat:` schema (`ChatConfig` /
+  `ChatHistoryDriverConfig` / `ChatTruncationConfig` /
+  `ChatSessionConfig`) + `_validate_driver` helper.
+- **`agentforge-chat` (new)**: `ChatSession` (send + stream +
+  history + reset + idempotency + per-turn/per-session budgets +
+  input/output guardrails); `InMemoryChatHistory` +
+  `SqliteChatHistory` drivers; four truncation strategies
+  (sliding-window / token-budget / summarise-oldest / hybrid);
+  per-session lock registry + LRU+TTL idempotency cache;
+  `build_chat_session_from_config(config, agent)`.
+- **`agentforge-chat-http` (new)**: FastAPI `ChatServer` with
+  REST + WebSocket + SSE + bearer-auth + token-bucket rate
+  limiting + cross-owner 403; `BearerAuthPolicy` ABC +
+  `EnvBearerAuth` placeholder pending feat-014.
 
-Deviations recorded in spec §10:
+Deviations recorded in spec §11:
 
-- `Agent.run` gained both `context=` and `replay_pipeline=`
-  kwargs (spec showed `context=` only).
-- `finish_reason = "pipeline"` is new; the CLI maps it to
-  generic exit 1 to keep the exit-code surface stable.
-- Mid-run pipeline streaming, end-to-end LLM-using task
-  example, and TS port are deferred.
+- Streaming is buffer-then-stream only (strategy ABC has no
+  `stream()` method yet; sentence-segmented chunks ship the
+  correct wire format today).
+- Cancellation is pre-LLM only (WS disconnect propagates).
+- Single-process locking only (cross-process Redis lock is
+  v0.3).
+- `BearerAuthPolicy` is a v0.2 stub; becomes a thin adapter
+  on top of feat-014's `AuthPolicy` when that lands.
+- Approximate token counting in `TokenBudget`.
+
+Deferred to v0.3 follow-up PRs:
+
+- `agentforge-chat-history-postgres` driver.
+- `agentforge-chat-history-redis` driver.
+- `agentforge-chat-slack` reference channel adapter.
+- Real per-token streaming through the strategy loop.
+- Cross-process per-session locking.
+- Provider-aware tokenisation.
+- TS port.
 
 ### Previously
 
-[`feat-013 — MCP integration`](../../docs/features/feat-013-mcp-integration.md)
-shipped in PR #24 as the new Tier-3 `agentforge-mcp` module:
-
-- `MCPClientRunner` / `MCPServerRunner` protocols +
-  `MCPToolDescriptor` value.
-- `MCPToolAdapter` (`build_adapter(runner, descriptor,
-  server_name)`) — synthesises a `Tool` subclass per MCP tool
-  with a server-prefixed name + Pydantic input schema.
-- `MCPServerClient.{from_stdio, from_http, from_sse}` —
-  consumes external MCP servers; `discover_tools` + `tool_filter`.
-- `MCPServer.{from_stdio, from_http}` — exposes local tools as
-  MCP with `allowed` whitelist semantics.
-- `MCPBridge.from_config(config)` — orchestrates clients +
-  optional server; `start` / `close` lifecycle.
-- `manifest.yaml` so `agentforge add module mcp` registers
-  the protocol entry.
-
-Deviations recorded in spec §10:
-
-- Production runner classes (`_SDKClientRunner`,
-  `_SDKServerRunner`) scaffolded but scoped to
-  `# pragma: no cover` — they raise
-  `Production MCP runner not implemented yet` until the
-  framework's first integration test against a real MCP server.
-- `Agent.tools` auto-merge via `build_agent_from_config` is
-  follow-up (today the bridge is opt-in; tests use it via the
-  bare constructor).
-- TS port deferred.
+[`feat-015 — Pipeline & deterministic tasks`](../../docs/features/feat-015-pipeline-and-tasks.md)
+shipped in PR #25 (merged 2026-05-12).
 
 ## Next pick candidates (canonical numbering)
 
-- **feat-015** — Pipelines & deterministic tasks. v0.2-target.
-  Runbook 03 cross-references it.
 - **feat-014** — A2A (agent-to-agent) protocol. v0.4-target.
-- **feat-020** — Chat agents (ChatSession + history stores +
-  HTTP/WebSocket/SSE server). v0.2-target. Largest remaining.
+- **feat-020 v0.3 follow-ups** — postgres / redis / slack
+  drivers, real streaming, cross-process lock, provider-aware
+  tokeniser.
 - Vendor observability sub-feats (langfuse/phoenix/evidently/
   statsd).
+- Backfill chore PRs (Runbooks for feat-001–005).
 
 User selects on session resume.
 

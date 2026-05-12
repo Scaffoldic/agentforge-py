@@ -1211,3 +1211,68 @@ Tooling notes:
   keeping `Pipeline.run` under PLR0915.
 
 Ready to push and raise PR #25.
+
+
+## 2026-05-12T14:00 — feat-020 (Chat agents v0.2 scope) shipped
+
+Branch `feat/020-chat-agents-v02` opens PR #26. v0.2 scope only
+per the scope-preference exception (one half clearly riskier):
+v0.3 postgres / redis / slack drivers + real streaming +
+cross-process locking deferred to follow-up PRs.
+
+Chunks landed:
+
+- chunk 1 (`2bd8f38`): `agentforge_core.contracts.chat.{ChatHistoryStore,
+  HistoryTruncationStrategy}` ABCs +
+  `agentforge_core.values.chat.{ChatTurn, SessionInfo, ChatChunk,
+  ChatResponse}` + conformance harnesses.
+- chunk 2 (`d6d0a73`): new `agentforge-chat` workspace member with
+  `InMemoryChatHistory` + `SqliteChatHistory` drivers + four
+  truncation strategies + entry-points + manifest.yaml; root
+  pyproject + pre-commit + CI updated.
+- chunk 3 (`e4ff78d`): `ChatSession` (send + stream + history +
+  reset + close + idempotency + per-turn/per-session budgets +
+  guardrails wired); per-session asyncio.Lock registry via
+  WeakValueDictionary; LRU+TTL idempotency cache;
+  sentence-segmenting `stream()` using buffer-then-stream
+  semantics.
+- chunk 4 (`200b38e`): new `agentforge-chat-http` workspace
+  member with FastAPI REST + WS + SSE + `BearerAuthPolicy` +
+  `EnvBearerAuth` + in-process rate limiting + cross-owner 403.
+- chunk 5 (`1369c95`): `modules.chat:` config schema +
+  `_validate_driver` helper +
+  `build_chat_session_from_config` +
+  `register_chat_history` / `register_chat_truncation`
+  resolver helpers.
+- chunk 6 (about-to-commit): spec status → shipped + §11
+  Implementation Status + §12 Runbook + features README +
+  roadmap + CHANGELOG + state refreshed.
+
+Deviations captured in spec §11:
+
+- Streaming is buffer-then-stream only (strategy ABC has no
+  `stream()` method yet).
+- Cancellation is pre-LLM only.
+- Single-process locking; cross-process Redis lock deferred.
+- `BearerAuthPolicy` is a v0.2 placeholder; refactors to
+  feat-014's `AuthPolicy` when it lands.
+- Approximate token counting in `TokenBudget`.
+
+Tooling notes:
+
+- New filename collision avoided: chat-http's test file is
+  `test_chat_server.py` (the workspace already has
+  `test_server.py` in agentforge-mcp; pytest collection fails
+  on duplicate basenames).
+- B008 (`Depends` in defaults) noqa'd on every FastAPI route
+  function; standard FastAPI idiom.
+- B107 (hardcoded password default) noqa'd on
+  `EnvBearerAuth(token_env_var="API_TOKENS")` — the value
+  is the env-var NAME, not a token.
+- WebSocket consumer extracted to a method (`_consume_stream`)
+  so B023 (loop-variable capture in closure) is cleanly
+  avoided.
+- `uv sync` after adding each package pulls fastapi /
+  uvicorn / httpx into the shared venv.
+
+Ready to push and raise PR #26.
