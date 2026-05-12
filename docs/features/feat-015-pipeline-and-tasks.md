@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-015 |
 | **Title** | Pipeline — `Pipeline` engine, `Task` ABC, deterministic dimension-of-analysis tasks |
-| **Status** | proposed |
+| **Status** | shipped |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -206,7 +206,162 @@ ecosystems differ (Python's coverage tools ≠ TS's coverage tools).
 - Long-running pipelines (hours+). Out of scope; the framework targets
   agent-run timescales (seconds to minutes).
 
-## 10. References
+## 10. Implementation status (Python)
 
-- feat-001, feat-008
+Shipped in PR #25. Framework-only feature inside the main
+`agentforge` package — no new sister packages.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `255f0f7` | `agentforge_core.contracts.task.Task` ABC + `agentforge_core.values.pipeline.PipelineResult` (frozen) + `FinishReason` literal extended with `"pipeline"` + `run_task_conformance` harness in `agentforge_core.testing`. |
+| 2 | `ca03e27` | `agentforge.pipeline.Pipeline` engine: DAG validation (duplicate names / missing deps / cycles at construction), `asyncio.Semaphore`-bounded parallelism, per-task `asyncio.wait_for(timeout_s)`, `on_task_error` continue/fail. `PipelineFailure` exception + `register_task(name)` resolver helper. |
+| 3 | `69298ca` | `PipelineFindingsTool` built-in tool + `Agent(pipeline=...)` kwarg + `Agent.run(task, *, context, replay_pipeline)` API. System-prompt addendum threaded per-run; `PipelineResult` recorded as `__pipeline` claim; `load_pipeline_result` for replay; `Agent.run` refactored under PLR0915. |
+| 4 | `9782786` | `modules.pipeline:` config block (`PipelineConfig` + `PipelineTaskEntry`) + module-schema validation via the `tasks` resolver category + `build_pipeline_from_config` wired into `build_agent_from_config`. |
+| 5 | `0586e3f` | Public re-exports (`agentforge.{Pipeline, Task, PipelineResult, PipelineFailure, PipelineFindingsTool, register_task}`) + renderer-compat sanity test against `RendererRegistry.default()`. |
+| 6 | (this PR) | Docs + Runbook + roadmap + CHANGELOG + state. |
+
+### Deviations from the design
+
+- **`Agent.run(task, *, context=None, replay_pipeline=None)`.**
+  The spec showed `agent.run(task, context={...})` only;
+  shipped with an additional `replay_pipeline` keyword so the
+  CLI's `--replay` path can short-circuit re-execution of
+  side-effect-bearing tasks. Caller-facing surface for the
+  common case is unchanged.
+- **Pipeline failures use `finish_reason = "pipeline"`.** The
+  `FinishReason` literal in `agentforge_core.values.state`
+  gained a new entry. The feat-017 CLI maps it to generic exit 1
+  (no separate exit code allocated; the exit-code surface stays
+  stable).
+- **Recording integration.** `agentforge.recording` exposes a
+  new `PIPELINE_CATEGORY = "__pipeline"` reserved category +
+  `record_pipeline_result(...)` helper alongside the feat-017
+  step/eval/run categories. Replay reads the claim back via
+  `agentforge.replay.load_pipeline_result`.
+- **TypeScript port deferred.** The contract is locked; TS port
+  lands with the TS scaffolding.
+
+### Open items
+
+- **Mid-run streaming pipeline output.** Spec §8 deferred this;
+  no follow-up needed yet — batch handoff is sufficient for v0.2.
+- **LLM-using tasks (`cost_estimate_usd > 0`).** The engine
+  charges declared cost against the run budget; an end-to-end
+  example wiring a `Task` to an `LLMClient` ships when the first
+  real use case lands (likely the code-reviewer template).
+- **Live integration test of `--replay` with a recorded
+  pipeline.** Covered by unit tests today; a CLI-level smoke run
+  will land with the next round of integration test work.
+
+## 11. Runbook
+
+### How do I add a deterministic task?
+
+Subclass `Task`, declare the class attributes, implement
+`async run(context) -> list[Finding]`:
+
+```python
+from collections.abc import Mapping
+from typing import Any
+
+from agentforge import SimpleFinding, Task
+from agentforge_core.contracts.finding import Finding
+
+
+class CoverageTask(Task):
+    name = "coverage"
+    cost_estimate_usd = 0.0
+    timeout_s = 30.0
+    depends_on = ()
+
+    async def run(self, context: Mapping[str, Any]) -> list[Finding]:
+        repo = context["repo_path"]
+        pct = await measure_coverage(repo)  # your own helper
+        return [SimpleFinding(
+            severity="warning" if pct < 0.7 else "info",
+            category="coverage",
+            message=f"Coverage at {pct:.0%}",
+        )]
+```
+
+Then build a `Pipeline` and pass it to the agent:
+
+```python
+from agentforge import Agent, Pipeline
+
+pipeline = Pipeline([CoverageTask(), LintTask()], max_concurrent=4)
+agent = Agent(
+    model="anthropic:claude-sonnet-4-6",
+    pipeline=pipeline,
+    system_prompt="You are a code reviewer.",
+)
+result = await agent.run(
+    "Review this PR",
+    context={"repo_path": "./repo"},
+)
+```
+
+The LLM sees the consolidated findings two ways: as a markdown
+addendum on the system prompt, and via a built-in
+`pipeline_findings(category=..., severity=...)` tool it can
+re-query.
+
+### How do I wire a pipeline from config?
+
+Register your task class (entry point or
+`@register_task("name")`) and list it in `agentforge.yaml`:
+
+```yaml
+modules:
+  pipeline:
+    enabled: true
+    max_concurrent: 4
+    on_task_error: continue        # or "fail"
+    tasks:
+      - name: coverage
+      - name: lint
+        config: {strict: true}
+```
+
+`agentforge config validate` checks both the schema shape and
+each task's per-entry `config` against its `config_schema` (if
+declared). `agentforge health` confirms the resolver finds every
+referenced task.
+
+### How do I debug a failing task?
+
+On `on_task_error="continue"` (default), the engine emits a
+`SimpleFinding(category="pipeline.task_failure",
+rule_id=<task_name>)` for the offending task. The full
+exception message lives in `PipelineResult.task_failures`. Use
+`agentforge debug --replay <run-id>` to step through the
+recorded run and inspect the cached findings via the
+`pipeline_findings` tool.
+
+On `on_task_error="fail"`, the engine cancels outstanding
+runners and raises `PipelineFailure` (the agent run terminates
+with `finish_reason = "pipeline"`).
+
+### How does replay handle pipeline output?
+
+`Agent(record_runs=memory)` persists each `PipelineResult` as a
+single `__pipeline` claim. `agentforge run --replay <run-id>`
+loads it back via `agentforge.replay.load_pipeline_result` and
+threads it into `Agent.run(replay_pipeline=...)` — the agent
+sees the recorded findings and skips actual task execution.
+Side-effect-bearing tasks (file writes, network calls) don't
+double-run on replay.
+
+To exercise the path directly in tests:
+
+```python
+from agentforge.replay import load_pipeline_result
+
+recorded = await load_pipeline_result(memory, run_id)
+await agent.run(task, replay_pipeline=recorded)
+```
+
+## 12. References
+
+- feat-001, feat-008, feat-017
 - Archived: `docs/archive/cr/CR-019f-pipeline-descriptor.md`

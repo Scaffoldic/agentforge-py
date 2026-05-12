@@ -1150,3 +1150,64 @@ Tooling notes:
   mirroring `contextlib.suppress` (mypy-friendly).
 
 Ready to push and raise PR #24.
+
+
+## 2026-05-12T11:00 — feat-015 (Pipeline & deterministic tasks) shipped
+
+Branch `feat/015-pipeline-and-tasks` opens PR #25. Full spec in one
+PR (framework-only inside the main `agentforge` package; no new
+sister packages).
+
+Chunks landed:
+
+- chunk 1 (`255f0f7`): `Task` ABC in
+  `agentforge_core.contracts.task` + `PipelineResult` frozen value
+  in `agentforge_core.values.pipeline` + `FinishReason` literal
+  extended with `"pipeline"` + `run_task_conformance` harness.
+- chunk 2 (`ca03e27`): `Pipeline` engine with DAG validation +
+  `asyncio.Semaphore` parallelism + per-task
+  `asyncio.wait_for` + `on_task_error` continue/fail +
+  `PipelineFailure` + `register_task` resolver helper.
+- chunk 3 (`69298ca`): `PipelineFindingsTool` built-in tool +
+  `Agent(pipeline=...)` kwarg + `Agent.run(task, *, context,
+  replay_pipeline)` + system-prompt addendum + budget
+  accounting + `__pipeline` recording category +
+  `load_pipeline_result` replay + CLI `--replay` integration.
+  `Agent.run` refactored under PLR0915 (`_finalize_result` +
+  module-level `_tag_run_span`).
+- chunk 4 (`9782786`): `modules.pipeline:` schema +
+  `PipelineTaskEntry`/`PipelineConfig` +
+  `validate_module_configs` extension +
+  `build_pipeline_from_config` wired into
+  `build_agent_from_config`.
+- chunk 5 (`0586e3f`): public re-exports
+  (`agentforge.{Pipeline, Task, PipelineResult, PipelineFailure,
+  PipelineFindingsTool, register_task}`) +
+  `agentforge.testing.run_task_conformance` +
+  renderer-compat sanity test.
+- chunk 6 (about-to-commit): spec status → shipped + §10
+  Implementation Status + §11 Runbook + features README +
+  roadmap + CHANGELOG + state refreshed.
+
+Deviations captured in spec §10:
+
+- `Agent.run` gained both `context=` and `replay_pipeline=`
+  kwargs (spec showed `context=` only).
+- `finish_reason = "pipeline"` is new; CLI maps it to
+  generic exit 1 (no separate exit code).
+- Mid-run pipeline streaming, end-to-end LLM-using task
+  example, and TS port deferred.
+
+Tooling notes:
+
+- Internal `Pipeline` engine collections type findings as
+  `list[Any]` (not `list[Finding]`) because the `Finding`
+  Protocol declares settable attributes that frozen Pydantic
+  finding subclasses don't satisfy structurally under mypy
+  strict. The public API (`Task.run` return type,
+  `PipelineResult.findings`) stays Finding-typed.
+- `_RunState` is a tiny private class threading the engine's
+  per-run scratch through `_run_one` / `_record_failure`,
+  keeping `Pipeline.run` under PLR0915.
+
+Ready to push and raise PR #25.
