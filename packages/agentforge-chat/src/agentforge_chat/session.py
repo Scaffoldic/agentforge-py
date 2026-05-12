@@ -30,11 +30,12 @@ from uuid import uuid4
 
 from agentforge.agent import Agent
 from agentforge_core.contracts.chat import ChatHistoryStore, HistoryTruncationStrategy
+from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.production.exceptions import (
     BudgetExceeded,
     GuardrailViolation,
 )
-from agentforge_core.values.chat import ChatChunk, ChatResponse, ChatTurn
+from agentforge_core.values.chat import ChatChunk, ChatResponse, ChatTurn, StreamingEvent
 
 from agentforge_chat._idempotency import IdempotencyCache
 from agentforge_chat._locks import lock_for
@@ -279,6 +280,18 @@ class ChatSession:
                 f"budget ${self._per_session_budget:.4f}"
             )
 
+    def _strategy_overrides_stream(self) -> bool:
+        """True when the agent's strategy defines its own `stream()`.
+
+        Distinguishes "real per-token streaming" from the default
+        ABC behaviour (which just wraps `run()` + emits one `done`).
+        Real per-token strategies override `stream()` to yield text /
+        tool-call events as the LLM emits them. v0.2 falls back to
+        buffer-then-stream when the override isn't there so v0.1
+        callers get the same wire shape they had before.
+        """
+        return type(self._agent._strategy).stream is not ReasoningStrategy.stream
+
     async def _stream_impl(
         self,
         message: str,
@@ -291,6 +304,18 @@ class ChatSession:
                 async for chunk in self._chunks_for(cached):
                     yield chunk
                 return
+            if self._strategy_overrides_stream():
+                try:
+                    async for chunk in self._stream_per_token(message, cancellation=cancellation):
+                        yield chunk
+                    return  # noqa: TRY300 — return in try is the explicit happy-path exit
+                except (BudgetExceeded, GuardrailViolation, asyncio.CancelledError) as exc:
+                    yield ChatChunk(
+                        kind="error",
+                        turn_id=uuid4().hex,
+                        content={"reason": type(exc).__name__, "message": str(exc)},
+                    )
+                    return
             try:
                 response, _ = await self._run_turn(message, cancellation=cancellation)
             except (BudgetExceeded, GuardrailViolation, asyncio.CancelledError) as exc:
@@ -303,6 +328,93 @@ class ChatSession:
             self._stash_cache(idempotency_key, response)
             async for chunk in self._chunks_for(response):
                 yield chunk
+
+    async def _stream_per_token(
+        self,
+        message: str,
+        *,
+        cancellation: asyncio.Event | None,
+    ) -> AsyncIterator[ChatChunk]:
+        """Drive the agent via `agent.stream(task)` and forward every
+        `StreamingEvent` as a `ChatChunk`. Persists the user + final
+        assistant turns and updates per-session budgets the same way
+        `_run_turn` does.
+        """
+        ctx = self._guard_context()
+        validated_msg = await self._agent._guardrails.check_input(message, ctx)
+        user_turn = await self._build_user_turn(validated_msg)
+        if cancellation is not None and cancellation.is_set():
+            raise asyncio.CancelledError("chat turn cancelled before agent.stream")
+        task = await self._compose_task(user_turn)
+        assistant_turn_id = uuid4().hex
+        cumulative = ""
+        run_summary: dict[str, Any] | None = None
+        start = time.monotonic()
+        async for event in self._agent.stream(task):
+            chunk = self._chunk_from_event(event, assistant_turn_id)
+            if event.kind == "done":
+                if isinstance(event.content, dict):
+                    run_summary = event.content
+                break
+            if event.kind == "text" and isinstance(event.content, str):
+                cumulative += event.content
+            yield chunk
+        duration_ms = int((time.monotonic() - start) * 1000)
+        if run_summary is None:
+            run_summary = {
+                "output": cumulative,
+                "run_id": uuid4().hex,
+                "cost_usd": 0.0,
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "finish_reason": "completed",
+                "duration_ms": duration_ms,
+            }
+        final_text = (
+            str(run_summary.get("output", cumulative))
+            if isinstance(run_summary.get("output"), str)
+            else cumulative
+        )
+        validated_out = await self._agent._guardrails.check_output(final_text, ctx)
+        assistant_turn = ChatTurn(
+            id=assistant_turn_id,
+            session_id=self._session_id,
+            role="assistant",
+            content=validated_out,
+            run_id=str(run_summary.get("run_id", "")),
+            tokens_in=int(run_summary.get("tokens_in", 0) or 0),
+            tokens_out=int(run_summary.get("tokens_out", 0) or 0),
+            cost_usd=float(run_summary.get("cost_usd", 0.0) or 0.0),
+        )
+        await self._history.append(assistant_turn)
+        if self._on_turn is not None:
+            self._on_turn(assistant_turn)
+        self._total_cost += float(run_summary.get("cost_usd", 0.0) or 0.0)
+        self._turn_count += 1
+        await self._history.update_session_metadata(
+            self._session_id,
+            {"owner": self._owner, "total_cost_usd": self._total_cost},
+        )
+        self._enforce_budgets(float(run_summary.get("cost_usd", 0.0) or 0.0))
+        yield ChatChunk(
+            kind="done",
+            turn_id=assistant_turn_id,
+            content={
+                "run_id": str(run_summary.get("run_id", "")),
+                "cost_usd": float(run_summary.get("cost_usd", 0.0) or 0.0),
+                "tokens_in": int(run_summary.get("tokens_in", 0) or 0),
+                "tokens_out": int(run_summary.get("tokens_out", 0) or 0),
+            },
+        )
+
+    def _chunk_from_event(self, event: StreamingEvent, turn_id: str) -> ChatChunk:
+        return ChatChunk(
+            kind=event.kind,
+            content=event.content,
+            cumulative_text=event.cumulative_text,
+            turn_id=turn_id,
+            metadata=dict(event.metadata),
+        )
 
     async def _chunks_for(self, response: ChatResponse) -> AsyncIterator[ChatChunk]:
         cumulative = ""

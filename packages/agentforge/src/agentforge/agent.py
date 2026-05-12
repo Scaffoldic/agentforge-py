@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -62,6 +62,7 @@ from agentforge_core.production.run_context import (
     reset_run,
 )
 from agentforge_core.resolver import Resolver, parse_model_string
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.state import AgentState, FinishReason, RunResult, Step
 
 from agentforge.config import AgentForgeConfig, load_config
@@ -459,6 +460,124 @@ class Agent:
                 _tag_run_span(run_span, result, finish_reason)
                 await self._fire_finish(result)
                 return result
+        finally:
+            reset_run(token)
+
+    async def stream(
+        self,
+        task: str,
+        *,
+        context: dict[str, Any] | None = None,
+        replay_pipeline: PipelineResult | None = None,
+    ) -> AsyncIterator[StreamingEvent]:
+        """Streaming counterpart to :meth:`run` (feat-020 v0.2).
+
+        Drives the agent via ``strategy.stream(state)`` and yields
+        every event as it arrives. Same setup as ``run()`` —
+        guardrails on input, pipeline, RunContext binding, span
+        tracing, finalize-result, on_finish hook. The terminal
+        ``done`` event carries the full :class:`RunResult` shape in
+        ``content`` (``output`` / ``run_id`` / ``cost_usd`` /
+        ``tokens_in`` / ``tokens_out`` / ``finish_reason``) so
+        callers don't need a second round-trip.
+
+        Strategies that don't override
+        :meth:`ReasoningStrategy.stream` get the ABC's default
+        behaviour: one terminal ``done`` event. Callers (e.g.
+        :class:`ChatSession`) check the override and fall back to
+        the buffered ``run()`` + segment-and-stream path when the
+        default is in effect.
+        """
+        if self._closed:
+            raise ModuleError("Agent has been closed; create a new instance.")
+        ctx: RunContext = new_run(task=task)
+        token = bind_run(ctx)
+        started_ms = time.monotonic()
+        finish_reason: FinishReason = "completed"
+        tracer = get_tracer()
+        try:
+            with tracer.start_as_current_span(
+                "agent.stream",
+                attributes={
+                    "agentforge.run_id": ctx.run_id,
+                    "agentforge.task": task,
+                },
+            ) as run_span:
+                run_budget = BudgetPolicy(
+                    usd=self._budget.usd,
+                    max_tokens=self._budget.max_tokens,
+                    max_iterations=self._budget.max_iterations,
+                    error_streak_limit=self._budget.error_streak_limit,
+                )
+                guard_ctx: dict[str, Any] = {
+                    "run_id": ctx.run_id,
+                    "project": self._config.agent.name or "default",
+                }
+                pipeline_result: PipelineResult | None = None
+                state: AgentState | None = None
+                try:
+                    pipeline_result = await self._maybe_run_pipeline(
+                        context=context,
+                        run_budget=run_budget,
+                        run_id=ctx.run_id,
+                        replay_pipeline=replay_pipeline,
+                    )
+                except PipelineFailure:
+                    finish_reason = "pipeline"
+                    raise
+                run_system_prompt = self._compose_system_prompt(pipeline_result)
+                metadata = self._build_runtime_metadata(
+                    run_budget, guard_ctx, system_prompt=run_system_prompt
+                )
+                try:
+                    validated_task = await self._guardrails.check_input(task, guard_ctx)
+                    state = AgentState(
+                        run_id=ctx.run_id,
+                        task=validated_task,
+                        metadata=metadata,
+                    )
+                    async for event in self._strategy.stream(state):
+                        # Strategy may emit a terminal `done` itself
+                        # (default ABC impl does). Swallow it — we
+                        # emit the canonical terminal `done` below
+                        # with the full RunResult shape.
+                        if event.kind == "done":
+                            continue
+                        yield event
+                except BudgetExceeded:
+                    finish_reason = "budget_exceeded"
+                    raise
+                except GuardrailViolation:
+                    finish_reason = "guardrail"
+                    raise
+                except AgentForgeError:
+                    finish_reason = "error"
+                    raise
+                finally:
+                    if state is not None:
+                        await self._fire_steps(list(state.steps))
+                result = await self._finalize_result(
+                    state=state,
+                    task=task,
+                    run_budget=run_budget,
+                    run_id=ctx.run_id,
+                    started_ms=started_ms,
+                    finish_reason=finish_reason,
+                )
+                _tag_run_span(run_span, result, finish_reason)
+                await self._fire_finish(result)
+                yield StreamingEvent(
+                    kind="done",
+                    content={
+                        "output": result.output,
+                        "run_id": result.run_id,
+                        "cost_usd": float(result.cost_usd),
+                        "tokens_in": int(result.tokens_in),
+                        "tokens_out": int(result.tokens_out),
+                        "finish_reason": str(result.finish_reason),
+                        "duration_ms": int(result.duration_ms),
+                    },
+                )
         finally:
             reset_run(token)
 
