@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-guard-llamaguard"
-version = "0.0.0"
+version = "0.1.0"
 description = "Llama Guard 3 classifier for AgentForge guardrails"
 readme = "README.md"
 requires-python = ">=3.13"

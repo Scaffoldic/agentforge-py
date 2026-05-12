@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-chat-http"
-version = "0.0.0"
+version = "0.1.0"
 description = "FastAPI HTTP + WebSocket + SSE server for AgentForge chat sessions"
 readme = "README.md"
 requires-python = ">=3.13"

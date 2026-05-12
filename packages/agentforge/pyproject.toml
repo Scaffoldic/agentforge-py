@@ -14,7 +14,7 @@
 
 [project]
 name = "agentforge"
-version = "0.0.0"
+version = "0.1.0"
 description = "AgentForge — open-source plug-and-play framework for production AI agents"
 readme = "README.md"
 requires-python = ">=3.13"

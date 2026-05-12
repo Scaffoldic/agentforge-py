@@ -1,10 +1,10 @@
 ---
 feature: none
 state: in_progress
-branch: chore/release-notes-template-and-version-cleanup
+branch: chore/release-v0.1.0
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-014 shipped via PR #27 (merged 2026-05-12)
+last_shipped: v0.1.0 release prep in flight (PR pending)
 blocker: null
 flags_for_user: []
 ---
