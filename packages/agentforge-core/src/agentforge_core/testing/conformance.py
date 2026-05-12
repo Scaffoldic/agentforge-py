@@ -950,10 +950,15 @@ async def run_truncation_conformance(strategy: HistoryTruncationStrategy) -> Non
     ]
     picked = await strategy.select(seq, "next msg", {})
     ids = [t.id for t in seq]
-    picked_ids = [t.id for t in picked]
-    # subsequence check
+    # Output must preserve order: original turns appear in the same
+    # relative order as in `seq`. Synthesised summary turns marked
+    # `metadata["agentforge_chat.summary"] == True` are allowed
+    # (`SummariseOldest`) and skipped from the subsequence check.
     iter_ids = iter(ids)
-    for pid in picked_ids:
-        assert pid in iter_ids, (
-            "truncation output must be a subsequence of input (order preserved, no inserted turns)"
+    for t in picked:
+        if t.metadata.get("agentforge_chat.summary") is True:
+            continue
+        assert t.id in iter_ids, (
+            "truncation output must preserve input order "
+            "(no reordered or inserted non-summary turns)"
         )

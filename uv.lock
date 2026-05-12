@@ -11,6 +11,7 @@ resolution-markers = [
 members = [
     "agentforge",
     "agentforge-bedrock",
+    "agentforge-chat",
     "agentforge-core",
     "agentforge-eval-geval",
     "agentforge-guard-llamaguard",
@@ -64,6 +65,28 @@ requires-dist = [
     { name = "aioboto3", specifier = ">=13.0" },
     { name = "botocore", specifier = ">=1.35" },
 ]
+
+[[package]]
+name = "agentforge-chat"
+version = "0.0.0"
+source = { editable = "packages/agentforge-chat" }
+dependencies = [
+    { name = "agentforge" },
+    { name = "agentforge-core" },
+]
+
+[package.optional-dependencies]
+sqlite = [
+    { name = "aiosqlite" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge", editable = "packages/agentforge" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "aiosqlite", marker = "extra == 'sqlite'", specifier = ">=0.20" },
+]
+provides-extras = ["sqlite"]
 
 [[package]]
 name = "agentforge-core"
@@ -253,6 +276,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "agentforge" },
     { name = "agentforge-bedrock" },
+    { name = "agentforge-chat" },
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
     { name = "agentforge-guard-llamaguard" },
@@ -286,6 +310,7 @@ dev = [
 requires-dist = [
     { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-chat", editable = "packages/agentforge-chat" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
     { name = "agentforge-guard-llamaguard", editable = "packages/agentforge-guard-llamaguard" },
