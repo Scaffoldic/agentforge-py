@@ -4,6 +4,7 @@ Public surface:
 
 - `agent_call(target, payload, *, peers, ...)` — outgoing A2A
   client.
+- `discover_peer(peer)` — probe a peer's `/a2a/v1/info`.
 - `A2APeer` — per-peer config + runner.
 - `A2AServer(agent, ..., auth, endpoints)` — FastAPI server
   exposing this agent as an A2A peer.
@@ -12,34 +13,46 @@ Public surface:
 - `BearerAuth` / `MutualTLSAuth` — client-side credential
   builders. (Server-side bearer validation uses the canonical
   `agentforge_core.contracts.auth.AuthPolicy`.)
+- `A2APeerInfo`, `A2AEndpointDescriptor` — discovery wire
+  shapes returned by `/a2a/v1/info`.
 """
 
 from __future__ import annotations
 
 from agentforge_a2a.auth import BearerAuth, ClientAuth, MutualTLSAuth, build_outgoing_auth
 from agentforge_a2a.bridge import A2ABridge
-from agentforge_a2a.client import A2APeer, agent_call
+from agentforge_a2a.client import A2APeer, agent_call, agent_call_stream, discover_peer
 from agentforge_a2a.config import A2AConfig
 from agentforge_a2a.server import A2AServer
 from agentforge_a2a.values import (
+    A2AChunk,
+    A2AChunkKind,
     A2AEndpointConfig,
+    A2AEndpointDescriptor,
     A2AExposeConfig,
     A2APeerConfig,
+    A2APeerInfo,
     A2AResponse,
 )
 
 __all__ = [
     "A2ABridge",
+    "A2AChunk",
+    "A2AChunkKind",
     "A2AConfig",
     "A2AEndpointConfig",
+    "A2AEndpointDescriptor",
     "A2AExposeConfig",
     "A2APeer",
     "A2APeerConfig",
+    "A2APeerInfo",
     "A2AResponse",
     "A2AServer",
     "BearerAuth",
     "ClientAuth",
     "MutualTLSAuth",
     "agent_call",
+    "agent_call_stream",
     "build_outgoing_auth",
+    "discover_peer",
 ]

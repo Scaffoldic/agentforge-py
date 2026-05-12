@@ -15,6 +15,7 @@ the fakes for their own integration tests.
 from __future__ import annotations
 
 import ssl
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,18 +24,28 @@ from typing import Any
 class _Call:
     url: str
     headers: dict[str, str]
-    json: dict[str, Any]
+    json: dict[str, Any] | None
     ssl_context: ssl.SSLContext | None
     timeout_s: float
 
 
 class FakeA2AClientRunner:
-    """Records POSTs and returns a configurable canned response."""
+    """Records POSTs / GETs / streams and returns canned data."""
 
-    def __init__(self, *, response: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        response: dict[str, Any] | None = None,
+        get_response: dict[str, Any] | None = None,
+        responses_stream: list[dict[str, Any]] | None = None,
+    ) -> None:
         self._response: dict[str, Any] = response if response is not None else {}
+        self._get_response: dict[str, Any] | None = get_response
+        self._stream: list[dict[str, Any]] = list(responses_stream or [])
         self._error: Exception | None = None
         self.calls: list[_Call] = []
+        self.get_calls: list[_Call] = []
+        self.stream_calls: list[_Call] = []
         self.closed = False
 
     @classmethod
@@ -44,8 +55,14 @@ class FakeA2AClientRunner:
     def set_response(self, response: dict[str, Any]) -> None:
         self._response = response
 
+    def set_get_response(self, response: dict[str, Any]) -> None:
+        self._get_response = response
+
+    def set_stream(self, chunks: list[dict[str, Any]]) -> None:
+        self._stream = list(chunks)
+
     def set_error(self, error: Exception) -> None:
-        """Next `post()` will raise this error."""
+        """Next `post()` (or `get()` / `post_stream()`) raises this."""
         self._error = error
 
     async def post(
@@ -70,6 +87,53 @@ class FakeA2AClientRunner:
             err, self._error = self._error, None
             raise err
         return dict(self._response)
+
+    async def get(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str],
+        ssl_context: ssl.SSLContext | None,
+        timeout_s: float,
+    ) -> dict[str, Any]:
+        self.get_calls.append(
+            _Call(
+                url=url,
+                headers=dict(headers),
+                json=None,
+                ssl_context=ssl_context,
+                timeout_s=timeout_s,
+            )
+        )
+        if self._error is not None:
+            err, self._error = self._error, None
+            raise err
+        body = self._get_response if self._get_response is not None else self._response
+        return dict(body)
+
+    async def post_stream(
+        self,
+        url: str,
+        *,
+        headers: dict[str, str],
+        json: dict[str, Any],
+        ssl_context: ssl.SSLContext | None,
+        timeout_s: float,
+    ) -> AsyncIterator[dict[str, Any]]:
+        self.stream_calls.append(
+            _Call(
+                url=url,
+                headers=dict(headers),
+                json=dict(json),
+                ssl_context=ssl_context,
+                timeout_s=timeout_s,
+            )
+        )
+        if self._error is not None:
+            err, self._error = self._error, None
+            raise err
+        for chunk in self._stream:
+            yield dict(chunk)
 
     async def close(self) -> None:
         self.closed = True
