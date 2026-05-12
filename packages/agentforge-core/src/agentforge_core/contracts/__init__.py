@@ -7,6 +7,7 @@ consumes them by reference to the abstraction, never the implementation.
 
 from __future__ import annotations
 
+from agentforge_core.contracts.chat import ChatHistoryStore, HistoryTruncationStrategy
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.finding import Finding
@@ -20,12 +21,14 @@ from agentforge_core.contracts.tool import Tool
 from agentforge_core.contracts.vector_store import VectorStore
 
 __all__ = [
+    "ChatHistoryStore",
     "EmbeddingClient",
     "EvalResult",
     "Evaluator",
     "Finding",
     "FindingRenderer",
     "GraphStore",
+    "HistoryTruncationStrategy",
     "LLMClient",
     "MemoryStore",
     "ReasoningStrategy",

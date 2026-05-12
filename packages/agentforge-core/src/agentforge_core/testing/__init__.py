@@ -13,6 +13,7 @@ have to depend on the full runtime.
 from __future__ import annotations
 
 from agentforge_core.testing.conformance import (
+    run_chat_history_conformance,
     run_embedding_conformance,
     run_graph_conformance,
     run_input_validator_conformance,
@@ -21,10 +22,12 @@ from agentforge_core.testing.conformance import (
     run_strategy_conformance,
     run_task_conformance,
     run_tool_gate_conformance,
+    run_truncation_conformance,
     run_vector_conformance,
 )
 
 __all__ = [
+    "run_chat_history_conformance",
     "run_embedding_conformance",
     "run_graph_conformance",
     "run_input_validator_conformance",
@@ -33,5 +36,6 @@ __all__ = [
     "run_strategy_conformance",
     "run_task_conformance",
     "run_tool_gate_conformance",
+    "run_truncation_conformance",
     "run_vector_conformance",
 ]
