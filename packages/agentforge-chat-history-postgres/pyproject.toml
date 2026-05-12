@@ -1,0 +1,59 @@
+# agentforge-chat-history-postgres — Postgres-backed ChatHistoryStore.
+#
+# Sister package to agentforge-memory-postgres. Implements
+# `ChatHistoryStore` from agentforge-core over an asyncpg connection
+# pool. Drop-in for SqliteChatHistory when chat-http needs to scale
+# beyond a single SQLite file (multi-writer concurrency, managed DB
+# guarantees, point-in-time recovery — Neon / Supabase / RDS).
+
+[project]
+name = "agentforge-chat-history-postgres"
+version = "0.1.0"
+description = "Postgres-backed ChatHistoryStore for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "chat", "postgres", "history"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "asyncpg>=0.30",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.chat.history"]
+postgres = "agentforge_chat_history_postgres:PostgresChatHistory"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_chat_history_postgres"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_chat_history_postgres",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
