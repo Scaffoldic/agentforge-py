@@ -11,7 +11,26 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
-_None yet — v0.2.0 cycle begins here._
+- **feat-013 v0.2 — production MCP runner.** Replaced the
+  `# pragma: no cover` stubs in `agentforge-mcp` with real
+  implementations against the upstream `mcp` Python SDK.
+  `_SDKClientRunner` opens transport + `ClientSession` lazily
+  via `AsyncExitStack`, normalises `list_tools` /
+  `call_tool` results, concatenates `TextContent` blocks.
+  `_SDKServerRunner` accumulates registrations and applies
+  the SDK's decorator pattern over the registry on `serve()`
+  (stdio transport for v0.2; HTTP / SSE expose deferred to
+  v0.2.1). Gated by the framework's first
+  `@pytest.mark.live` integration test (echo server
+  subprocess + stdio round-trip).
+- **`agentforge-mcp[mcp]` optional extra.** `pip install
+  agentforge-mcp[mcp]` pulls `mcp>=1.0,<2`. The package
+  remains importable without the SDK; only the production
+  transport raises `ModuleError` with pip remediation when
+  the SDK is missing.
+- **`live` pytest marker description** broadened to "tests
+  that hit real LLM providers or spawn real protocol
+  servers" (feat-013's live test is the first one shipping).
 
 ### Changed
 
