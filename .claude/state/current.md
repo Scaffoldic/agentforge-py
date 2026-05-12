@@ -4,14 +4,17 @@ state: in_progress
 branch: chore/feat-013-production-mcp-runner
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: v0.1.0 — Foundation (tagged 2026-05-12)
+last_shipped: feat-013 v0.2 production MCP runner (PR pending)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-*None — awaiting next pick.*
+[`feat-013 — MCP integration`](../../docs/features/feat-013-mcp-integration.md)
+v0.2 follow-up: production `_SDKClientRunner` +
+`_SDKServerRunner` against the upstream `mcp` SDK; gated by
+the framework's first `@pytest.mark.live` integration test.
 
 ## Last shipped
 

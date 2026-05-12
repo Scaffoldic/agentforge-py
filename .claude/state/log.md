@@ -1368,3 +1368,43 @@ https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.1.0
 First AgentForge release. All 18 workspace packages at 0.1.0.
 20 canonical specs (feat-001 through feat-020) shipped. The
 v0.2.0 backlog is in docs/roadmap.md "v0.2.0 backlog" section.
+
+
+## 2026-05-12T20:00 — feat-013 v0.2 production MCP runner
+
+Branch `chore/feat-013-production-mcp-runner` opens the
+first v0.2 cycle PR. Four chunks:
+
+- chunk 1 (`eadcf66`): `_SDKClientRunner` real impl —
+  `AsyncExitStack`-managed session + transport; `list_tools`
+  normalises results to `MCPToolDescriptor`; `call_tool`
+  concatenates `TextContent` blocks; `close()` tears
+  down. Root pyproject adds `mcp>=1.0,<2` to dev deps.
+- chunk 2 (`03bfba9`): `_SDKServerRunner` real impl —
+  accumulates registrations; on `serve()` applies SDK
+  decorator pattern over registry; stdio transport for
+  v0.2; HTTP / SSE expose deferred to v0.2.1.
+- chunk 3 (`339753e`): `agentforge-mcp` declares
+  `[project.optional-dependencies] mcp = ["mcp>=1.0,<2"]`.
+- chunk 4 (`175fdfa`): Live integration test — echo server
+  subprocess + `MCPServerClient.from_stdio` round-trip,
+  marked `@pytest.mark.live`; default pre-commit / CI gate
+  skips via `-m "not live"`. Framework's first live test.
+- chunk 5 (about-to-commit): spec §10 v0.2 follow-up
+  addendum; troubleshooting table updated; roadmap entry
+  flipped; CHANGELOG `[Unreleased] / Added` populated.
+
+Tooling notes:
+
+- The SDK's `@server.list_tools()` / `@server.call_tool()`
+  decorators are untyped — each handler gets
+  `# type: ignore[untyped-decorator]` on the decorator line
+  and `# type: ignore[no-any-unimported]` on the signature
+  (return type uses an Any-imported SDK type). The global
+  mypy override for `mcp.*` disables follow-imports but
+  doesn't suppress these in consumer code.
+- Live test runs in 0.45s on developer machine. A dedicated
+  "live" CI job lands when feat-014 A2A ships its matching
+  production runner (i.e. ≥ 2 live tests justify the job).
+
+Ready to push and raise PR.

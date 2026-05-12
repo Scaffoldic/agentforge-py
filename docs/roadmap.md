@@ -78,11 +78,21 @@ bottom. Pick one to move into "In flight" when starting; mark
 
 ### feat-013 follow-up — production MCP runner
 
-The shipped MCP package scopes its production runner behind
-`MCPClientRunner` / `MCPServerRunner` protocols with
-`# pragma: no cover`. v0.2 replaces those stubs with a real
-runner against stdio + HTTP/SSE MCP servers, gated by a live
-integration test.
+**Status: stdio half shipped on the v0.1 → v0.2 line** (see
+spec §10 "v0.2 follow-up"). `_SDKClientRunner` and
+`_SDKServerRunner` are real implementations against the
+upstream `mcp` SDK; framework's first `@pytest.mark.live`
+integration test exercises the end-to-end stdio path
+(`packages/agentforge-mcp/tests/integration/test_mcp_live.py`).
+`pip install agentforge-mcp[mcp]` pulls the SDK as an
+optional extra.
+
+What remains for v0.2.1:
+
+- HTTP / SSE server transport for `_SDKServerRunner` — needs
+  `mcp.server.streamable_http` + uvicorn wiring.
+- Non-text content handling (`ImageContent`,
+  `EmbeddedResource`) in `_SDKClientRunner.call_tool`.
 
 ### feat-014 follow-ups — production A2A runner + discovery + streaming
 
