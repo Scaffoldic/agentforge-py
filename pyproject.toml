@@ -282,6 +282,11 @@ markers = [
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning:pydantic._internal.*",
+    # feat-014 v0.2 live tests spin up uvicorn, which imports
+    # `websockets.legacy` (deprecated). The deprecation is benign for
+    # our HTTP-only use; demote to non-error so the live job stays green.
+    "ignore::DeprecationWarning:websockets.legacy",
+    "ignore::DeprecationWarning:uvicorn.protocols.websockets.*",
     # feat-017: CLI commands use asyncio.run inside argparse handlers.
     # Combined with test suites that also call asyncio.run (e.g. Copier
     # in new_cmd tests), Python's loop GC sometimes emits an

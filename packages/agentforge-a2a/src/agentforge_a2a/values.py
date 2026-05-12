@@ -38,7 +38,10 @@ class A2AResponse(BaseModel):
     """Response returned by `agent_call(...)` and built by
     `A2AServer.POST /a2a/v1/calls`."""
 
-    model_config = ConfigDict(frozen=True, strict=True)
+    # Not strict: the wire format coerces tuple↔list on JSON round-trip,
+    # so the client-side `model_validate(response.json())` needs the
+    # default lax sequence handling.
+    model_config = ConfigDict(frozen=True)
 
     output: Any
     findings: tuple[dict[str, Any], ...] = ()
