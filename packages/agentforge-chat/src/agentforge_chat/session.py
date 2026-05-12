@@ -38,7 +38,10 @@ from agentforge_core.production.exceptions import (
 from agentforge_core.values.chat import ChatChunk, ChatResponse, ChatTurn, StreamingEvent
 
 from agentforge_chat._idempotency import IdempotencyCache
-from agentforge_chat._locks import lock_for
+from agentforge_chat._locks import (
+    SessionLockFactory,
+    default_session_lock_factory,
+)
 from agentforge_chat._segment import segment_for_stream
 from agentforge_chat.history import InMemoryChatHistory
 from agentforge_chat.truncation import SlidingWindow
@@ -62,6 +65,7 @@ class ChatSession:
         per_session_budget_usd: float | None = None,
         idempotency_window_s: float = 60.0,
         on_turn: OnTurnHook | None = None,
+        session_lock_factory: SessionLockFactory | None = None,
     ) -> None:
         self._agent = agent
         self._session_id = session_id if session_id is not None else uuid4().hex
@@ -76,7 +80,8 @@ class ChatSession:
         self._per_turn_budget = per_turn_budget_usd
         self._per_session_budget = per_session_budget_usd
         self._on_turn = on_turn
-        self._lock = lock_for(self._session_id)
+        factory = session_lock_factory or default_session_lock_factory
+        self._lock = factory(self._session_id)
         self._idempotency: IdempotencyCache[ChatResponse] = IdempotencyCache(
             ttl_s=idempotency_window_s
         )

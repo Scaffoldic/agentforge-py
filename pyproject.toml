@@ -39,6 +39,7 @@ dependencies = [
     "agentforge-chat",
     "agentforge-chat-http",
     "agentforge-chat-history-postgres",
+    "agentforge-chat-history-redis",
     "agentforge-a2a",
 ]
 
@@ -64,6 +65,7 @@ agentforge-mcp = { workspace = true }
 agentforge-chat = { workspace = true }
 agentforge-chat-http = { workspace = true }
 agentforge-chat-history-postgres = { workspace = true }
+agentforge-chat-history-redis = { workspace = true }
 agentforge-a2a = { workspace = true }
 
 [tool.uv]
@@ -218,6 +220,20 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_chat_history_postgres.*"
 disable_error_code = ["no-any-unimported"]
 
+# redis-py ships stubs as of 5.x, but the async submodule still
+# leaks Any in some return paths. Suppress import-not-found so the
+# chat-history-redis package builds cleanly when redis isn't
+# installed (lazy import in `_build_client_runner`).
+[[tool.mypy.overrides]]
+module = ["redis", "redis.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_chat_history_redis.*"
+disable_error_code = ["no-any-unimported"]
+
 # feat-018: llm-guard / presidio / nemoguardrails / Llama Guard SDKs
 # either ship without py.typed or aren't installed by default
 # (vendor modules import them lazily). Skip strict typechecks for
@@ -288,6 +304,7 @@ testpaths = [
     "packages/agentforge-chat/tests",
     "packages/agentforge-chat-http/tests",
     "packages/agentforge-chat-history-postgres/tests",
+    "packages/agentforge-chat-history-redis/tests",
     "packages/agentforge-a2a/tests",
     "tests",
 ]
@@ -341,6 +358,7 @@ source = [
     "packages/agentforge-chat/src",
     "packages/agentforge-chat-http/src",
     "packages/agentforge-chat-history-postgres/src",
+    "packages/agentforge-chat-history-redis/src",
     "packages/agentforge-a2a/src",
 ]
 branch = true
