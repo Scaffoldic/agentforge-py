@@ -1,17 +1,32 @@
 ---
-feature: none
-state: idle
-branch: feat/020-chat-agents-v02
-started_at: null
+feature: feat-014
+state: in_progress
+branch: feat/014-a2a-protocol
+started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-020 v0.2 scope shipped via PR #26 (open for review)
+last_shipped: feat-020 v0.2 scope shipped via PR #26 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-*None — awaiting next pick.*
+[`feat-014 — A2A protocol`](../../docs/features/feat-014-a2a-protocol.md)
+
+Full-spec scope. 6 chunks:
+
+1. Canonical `AuthPolicy` ABC + `Principal` value in
+   `agentforge-core` + A2A exceptions; `EnvBearerAuth` in
+   `agentforge`; chat-http refactor.
+2. `agentforge-a2a` package skeleton + value types
+   (`A2AResponse`, peer/expose config) + `A2AClientRunner` /
+   `A2AServerRunner` Protocols.
+3. `agent_call(target, payload)` client + `BearerAuth` /
+   `MutualTLSAuth` + `FakeA2AClientRunner` for tests.
+4. `A2AServer` FastAPI app + bearer auth + parent_run_id
+   propagation + budget cap; `A2ABridge.from_config`.
+5. `A2AConfig` Pydantic schema + module-schemas validation hook.
+6. Docs (spec §10/§11) + roadmap + CHANGELOG + state + PR.
 
 ## Last shipped
 
