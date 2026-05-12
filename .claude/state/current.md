@@ -1,20 +1,23 @@
 ---
-feature: feat-013 v0.2 follow-up
-state: in_progress
-branch: chore/feat-013-production-mcp-runner
+feature: feat-014 v0.2 follow-up
+state: in_review
+branch: chore/feat-014-production-runner-discovery-streaming
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-013 v0.2 production MCP runner (PR pending)
+last_shipped: feat-013 v0.2 production MCP runner shipped via PR #32 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-[`feat-013 — MCP integration`](../../docs/features/feat-013-mcp-integration.md)
-v0.2 follow-up: production `_SDKClientRunner` +
-`_SDKServerRunner` against the upstream `mcp` SDK; gated by
-the framework's first `@pytest.mark.live` integration test.
+[`feat-014 — A2A protocol`](../../docs/features/feat-014-a2a-protocol.md)
+v0.2 follow-up: production HTTP runner (httpx + uvicorn),
+A2A discovery (`/a2a/v1/info` + `discover_peer` +
+`A2ABridge.discover_all`), and bi-directional streaming
+(`POST /a2a/v1/calls/stream` + `agent_call_stream`). Closes
+the three open items v0.1 deferred. Also adds the framework's
+non-gating `live` CI job (≥ 2 packages now ship live tests).
 
 ## Last shipped
 

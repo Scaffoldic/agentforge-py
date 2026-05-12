@@ -31,10 +31,47 @@ release tag bumps every workspace member to the same minor version.
 - **`live` pytest marker description** broadened to "tests
   that hit real LLM providers or spawn real protocol
   servers" (feat-013's live test is the first one shipping).
+- **feat-014 v0.2 — production A2A runner.**
+  `_HTTPXClientRunner` and `_UvicornServerRunner` now wrap
+  `httpx.AsyncClient` + `uvicorn.Server` respectively;
+  v0.1's `# pragma: no cover` `NotImplementedError` stubs are
+  replaced with real lifecycle (`close()` on the client,
+  `stop()` on the server). Bodies stay under
+  `# pragma: no cover`; coverage of the real transport lives
+  in the new live integration suite.
+- **feat-014 v0.2 — A2A discovery.** `GET /a2a/v1/info`
+  returns the full `A2APeerInfo` shape (version, server_name,
+  list of `A2AEndpointDescriptor` with description +
+  JSON-Schema input shapes). New
+  `agentforge_a2a.discover_peer(peer)` helper +
+  `A2ABridge.discover_all()` + `bridge.peer_info` cache.
+  Discovery is client-side: no central registry.
+- **feat-014 v0.2 — A2A bi-directional streaming.** Server
+  exposes `POST /a2a/v1/calls/stream` as Server-Sent-Events
+  (`text/event-stream`). Client helper `agent_call_stream(...)`
+  yields `A2AChunk` frames as they arrive. Step-level
+  granularity for v0.2 (one chunk per agent `Step` plus a
+  terminal `done` / `error`); real per-token LLM streaming
+  blocks on `ReasoningStrategy.stream()` and is deferred to
+  v0.3.
+- **Three new live integration tests** under
+  `packages/agentforge-a2a/tests/integration/` covering the
+  unary, discovery, and streaming round-trips against a real
+  uvicorn server on a random localhost port.
 
 ### Changed
 
-_None yet._
+- **CI: new non-gating `live` job.** Runs
+  `pytest -m live` against every package shipping a
+  `tests/integration/test_*_live.py` suite (mcp + a2a as of
+  v0.2). Ubuntu + macOS matrix on Python 3.13.
+  `continue-on-error: true` — branch protection still gates
+  on the main `test` job. Tightening to gate-on-merge once
+  the live suite stabilises is tracked as a v0.3 follow-up.
+- **`A2AResponse.findings` model config drops `strict=True`.**
+  JSON round-trip coerces tuple↔list; client-side
+  `model_validate(response.json())` needs the default lax
+  sequence handling. The wire format is unchanged.
 
 ### Deprecated
 
