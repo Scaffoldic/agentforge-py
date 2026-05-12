@@ -15,6 +15,7 @@ from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.renderer import FindingRenderer
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.task import Task
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.contracts.vector_store import VectorStore
 
@@ -28,6 +29,7 @@ __all__ = [
     "LLMClient",
     "MemoryStore",
     "ReasoningStrategy",
+    "Task",
     "Tool",
     "VectorStore",
 ]
