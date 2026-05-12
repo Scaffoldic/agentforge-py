@@ -631,12 +631,65 @@ the new `agentforge-chat-http`.
 
 ### Open items
 
-- `agentforge-chat-history-postgres` driver (v0.3).
-- `agentforge-chat-history-redis` driver (v0.3).
-- `agentforge-chat-slack` reference channel adapter (v0.3).
-- Real per-token streaming through the strategy loop.
-- Cross-process per-session locking (Redis-backed).
-- Provider-aware tokenisation in `TokenBudget`.
+(All v0.2 follow-up items shipped — see the "v0.2 follow-up"
+subsection below for the per-chunk commit table.)
+
+Remaining for v0.3+:
+
+- A2A per-token streaming via the new `ReasoningStrategy.stream()`
+  ABC method (separate feat-014 follow-up PR; the contract +
+  consumer paths are in place after v0.2).
+- Overriding `stream()` on the built-in `ReActLoop` so
+  out-of-the-box agents emit per-token text without a custom
+  strategy.
+- Multi-cluster `Redlock` for `RedisSessionLock`.
+- Sentence-window streaming guardrails (v0.2 keeps the
+  post-stream final-text check).
+
+### v0.2 follow-up — postgres + redis + slack + per-token streaming + cross-process lock + provider-aware tokeniser
+
+Shipped on the v0.1 → v0.2 line in one PR per the user-chosen
+"full v0.2 spec" scope. Eight chunks closing all six deferred
+items from v0.1.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `6f4c258` | `ReasoningStrategy.stream()` non-abstract default ABC method emits one terminal `done` event (backward-compatible). New `StreamingEvent` frozen value. New `Agent.stream(task)` mirrors `Agent.run(task)` but drives the strategy via `stream()` + yields events as they arrive + emits a final canonical `done` carrying the full `RunResult` shape. `ChatSession._stream_impl` graduates: when the strategy overrides `stream()`, forwards events to wire as `ChatChunk` frames; otherwise falls back to v0.1 buffer-then-stream. |
+| 2 | `952c024` | `agentforge_chat.tokenisers`: `tiktoken_tokeniser(model)` + `anthropic_tokeniser()` with lazy SDK imports + `ModuleError` remediation when missing. `TokenBudget.__init__` accepts optional `tokeniser: Tokeniser | None`; falls back to the 4-chars-per-token heuristic when None. |
+| 3 | `ee99648` | New Tier-3 sister package `agentforge-chat-history-postgres`. `PostgresChatHistory.from_dsn(dsn)` opens an asyncpg pool + bootstraps schema (`CREATE TABLE IF NOT EXISTS`). Dual-table design (`chat_sessions` + `chat_turns`) with a composite index on `(session_id, timestamp)`. `PostgresRunner` Protocol + `_AsyncpgPoolRunner` production runner under `# pragma: no cover`. `PostgresFakeRunner` in `src/_inmem_runner.py` for unit tests. 100 % unit coverage on the new package. Live integration test gated by `RUN_LIVE_POSTGRES_DSN`. |
+| 4 / 5 | `76f7896` | New Tier-3 sister package `agentforge-chat-history-redis` + cross-process `SessionLock` (chunks 4 + 5 combined since the lock impl lives in the redis package). `RedisChatHistory.from_url(url)` over redis-py async. Key layout: turn hash + per-session sorted set + session meta hash + sessions index set. Native TTL via `EXPIRE`. `RedisSessionLock` + `redis_session_lock_factory(runner)` use `SET NX PX` + UUID fencing + Lua unlock. `agentforge_chat._locks` extended with `SessionLock` Protocol + `InMemorySessionLock` wrapping the v0.1 `asyncio.Lock` + `default_session_lock_factory`. `ChatSession.__init__` accepts optional `session_lock_factory`. |
+| 6 | `7e5f19a` | New Tier-3 sister package `agentforge-chat-slack` — Slack reference channel adapter. `SlackChatAdapter(session_factory, runner, batch_window_s)` maps `message` + `app_mention` events to `ChatSession.send`, posts a placeholder + batches `chat.update` calls every `batch_window_s` seconds with cumulative text (Slack rate-limits per channel, so per-token is impractical). `SlackRunner` Protocol + `_BoltClientRunner` production runner under `# pragma: no cover`. `FakeSlackRunner` for unit tests. Live test scaffold omitted in v0.2 (no free CI Slack workspace). |
+| 7 | `1617e9a` | `.github/workflows/ci.yml` `live` job picks up the postgres + redis live suites alongside mcp + a2a. Adds a GH Actions `services:` block for Postgres + Redis on Ubuntu; macOS leaves env vars unset so service-backed tests skip cleanly. Branch protection still gates on the `test` job. |
+| 8 | (this PR) | Spec §11 v0.2 follow-up + §12 runbook updates + roadmap + CHANGELOG + state. |
+
+### v0.2 deviations from the v0.1 spec
+
+- **Step-level / paragraph-level streaming for Slack, not
+  per-token.** Slack's per-channel `chat.update` rate limit
+  makes true per-token streaming impractical; the adapter
+  batches every `batch_window_s` seconds.
+- **`RedisSessionLock` uses single-cluster `SET NX PX` +
+  UUID fencing**, not full multi-cluster Redlock. Sufficient
+  for the typical chat-http deployment (1-N workers sharing
+  one Redis); multi-cluster Redlock is a v0.3 follow-up.
+- **Output guardrails still run post-stream**, not against
+  the streaming buffer. v0.2 ships the contract; sentence-
+  window streaming guardrails wait for v0.3.
+- **`Agent.stream()` is a public method.** Spec §4.2 only
+  documented `ChatSession.stream`; adding `Agent.stream` was
+  the cleanest path to per-token chat streaming without
+  bypassing pipeline + evaluator hooks.
+
+### v0.2 out-of-scope (deferred to v0.3+)
+
+- A2A per-token streaming via the new ABC method (separate
+  feat-014 follow-up PR).
+- Concrete `stream()` overrides on `ReActLoop` + the three
+  experimental strategies.
+- Provider-aware tokenisers for Bedrock / Vertex / Mistral
+  models (one-line additions in v0.3 when first user lands).
+- Migration framework for the Postgres schema.
+- Multi-cluster Redlock for RedisSessionLock.
 
 ## 12. Runbook
 
@@ -755,3 +808,132 @@ assert (await session.send("hi")).content == "hi back"
 `run_chat_history_conformance(store)` from
 `agentforge_core.testing` validates any custom store against
 the locked contract.
+
+### How do I run with Postgres history? (v0.2)
+
+```python
+from agentforge_chat_history_postgres import PostgresChatHistory
+
+history = await PostgresChatHistory.from_dsn(
+    "postgresql://user:pw@host:5432/agentforge"
+)
+session = ChatSession(agent=agent, history_store=history, ...)
+```
+
+`from_dsn()` opens an asyncpg pool + bootstraps the
+`chat_sessions` + `chat_turns` tables idempotently
+(`CREATE TABLE IF NOT EXISTS`). No migration framework in v0.2.
+
+Capabilities: `{"ttl", "encryption_at_rest", "full_text_search"}`.
+
+### How do I run with Redis history? (v0.2)
+
+```python
+from agentforge_chat_history_redis import RedisChatHistory
+
+history = await RedisChatHistory.from_url(
+    "redis://localhost:6379",
+    ttl_seconds=86_400,  # one day; None = no expiry
+)
+session = ChatSession(agent=agent, history_store=history, ...)
+```
+
+Native TTL via `EXPIRE`. Capabilities:
+`{"ttl", "streaming_load"}`. Trades durability for speed
+relative to Postgres / SQLite — ideal for high-throughput
+chat farms.
+
+### How do I deploy chat-http behind multiple workers? (v0.2)
+
+```python
+from agentforge_chat_history_redis import (
+    RedisChatHistory,
+    redis_session_lock_factory,
+)
+from agentforge_chat_history_redis._runner import _RedisClientRunner
+import redis.asyncio as redis_asyncio
+
+client = redis_asyncio.Redis.from_url("redis://cache:6379")
+runner = _RedisClientRunner(client)
+history = RedisChatHistory(runner=runner)
+lock_factory = redis_session_lock_factory(runner, ttl_s=30)
+
+server = ChatServer(
+    agent_factory=build_agent,
+    history_store=history,
+    session_lock_factory=lock_factory,
+    auth=EnvBearerAuth("API_TOKENS"),
+)
+```
+
+Multiple uvicorn workers behind a load balancer share the
+Redis lock so the same `session_id` never runs concurrently
+across pods. The Lua unlock script avoids releasing someone
+else's lock if the TTL expires unexpectedly.
+
+### How do I wire a provider-aware tokeniser? (v0.2)
+
+```python
+from agentforge_chat import TokenBudget, tiktoken_tokeniser
+
+truncation = TokenBudget(
+    max_tokens=64_000,
+    tokeniser=tiktoken_tokeniser("gpt-4o-mini"),
+)
+session = ChatSession(agent=agent, truncation=truncation, ...)
+```
+
+Or `anthropic_tokeniser()` for Anthropic models. Both lazy-
+import the backing SDK and raise `ModuleError` with pip
+remediation when the SDK is missing. Falls back to the
+4-chars-per-token heuristic when `tokeniser=None`.
+
+### How do I expose this agent on Slack? (v0.2)
+
+```python
+from agentforge_chat import ChatSession
+from agentforge_chat_slack import SlackChatAdapter
+from agentforge_chat_slack._runner import _BoltClientRunner
+from slack_sdk.web.async_client import AsyncWebClient
+
+client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])
+adapter = SlackChatAdapter(
+    session_factory=lambda channel_id: ChatSession(
+        agent=build_agent(),
+        session_id=channel_id,
+    ),
+    runner=_BoltClientRunner(client),
+    batch_window_s=0.5,
+)
+await adapter.start()
+```
+
+One `ChatSession` per Slack channel ID. Streams responses
+back via batched `chat.update` calls every `batch_window_s`
+seconds. Slack rate-limits per channel — true per-token
+isn't practical.
+
+### How do I write a strategy that streams per-token? (v0.2)
+
+Override `ReasoningStrategy.stream()`:
+
+```python
+from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.values.chat import StreamingEvent
+
+class MyStreamingStrategy(ReasoningStrategy):
+    async def run(self, state):
+        # Non-streaming path for callers that use Agent.run.
+        ...
+        return state
+
+    async def stream(self, state):
+        async for token in my_llm.stream(state.task):
+            yield StreamingEvent(kind="text", content=token, cumulative_text=...)
+        yield StreamingEvent(kind="done", content={"run_id": state.run_id})
+```
+
+`ChatSession.stream()` detects the override and forwards each
+event as a `ChatChunk`. Strategies that don't override get the
+ABC's default impl (one `done` after `run()` finishes) and
+`ChatSession` falls back to buffer-then-stream.

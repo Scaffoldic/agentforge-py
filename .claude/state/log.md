@@ -1480,3 +1480,83 @@ Tooling notes:
   developer machine.
 
 Ready to push and raise PR.
+
+
+## 2026-05-13T00:00 — feat-020 v0.2 follow-up — postgres + redis + slack + per-token streaming + lock + tokeniser
+
+Branch `chore/feat-020-v0.2-followup-postgres-redis-slack-streaming-lock-tokeniser`.
+Closes the six v0.1 deferred items in one PR per the user-
+chosen "full v0.2 spec" scope. Eight chunks (4+5 combined
+since the redis lock lives in the redis chat-history
+package).
+
+- chunk 1 (`6f4c258`): `ReasoningStrategy.stream(state)`
+  non-abstract default ABC method (backward-compatible:
+  default wraps `run()` and yields one terminal `done`).
+  New `StreamingEvent` frozen value co-located with
+  `ChatChunk`. New `Agent.stream(task)` mirrors
+  `Agent.run(task)` setup but drives the strategy via
+  `stream()`; final canonical `done` carries the full
+  RunResult shape. `ChatSession._stream_impl` graduates
+  conditionally on `type(strategy).stream is not
+  ReasoningStrategy.stream`; falls back to v0.1 buffer-
+  then-stream otherwise.
+- chunk 2 (`952c024`): Provider-aware tokeniser —
+  `tiktoken_tokeniser` + `anthropic_tokeniser` with lazy
+  SDK imports + `ModuleError` remediation. `TokenBudget`
+  accepts optional `tokeniser:` kwarg; falls back to the
+  4-chars-per-token heuristic when None.
+- chunk 3 (`ee99648`): `agentforge-chat-history-postgres`
+  sister package. asyncpg-backed `ChatHistoryStore` with
+  dual-table schema + composite index + `CREATE TABLE IF
+  NOT EXISTS` bootstrap. `PostgresRunner` Protocol +
+  `_AsyncpgPoolRunner` under `# pragma: no cover`.
+  `PostgresFakeRunner` in src/_inmem_runner.py for unit
+  tests. 100% coverage on the new package via
+  `run_chat_history_conformance` + branch tests.
+- chunk 4+5 (`76f7896`): `agentforge-chat-history-redis`
+  sister package + cross-process `SessionLock`. Redis key
+  layout: turn hash + per-session sorted set + session
+  meta hash + index set. Native TTL via `EXPIRE`.
+  `RedisSessionLock` uses `SET NX PX` + UUID fencing + Lua
+  unlock. `agentforge_chat._locks` extended: `SessionLock`
+  Protocol + `SessionLockFactory` alias +
+  `InMemorySessionLock` wrapping the v0.1 asyncio.Lock +
+  `default_session_lock_factory`. `ChatSession.__init__`
+  accepts optional `session_lock_factory`. Bonus fix in
+  `_stream_per_token`: don't break on agent.stream's `done`
+  — continue so the generator drains naturally and
+  `Agent.stream`'s `finally: reset_run(token)` fires
+  deterministically.
+- chunk 6 (`7e5f19a`): `agentforge-chat-slack` reference
+  channel adapter. One `ChatSession` per Slack channel.
+  Maps `message` + `app_mention` events to `session.send`;
+  batched `chat.update` every `batch_window_s` seconds
+  (Slack rate-limits per channel; per-token impractical).
+  Tests use distinct channel IDs to dodge the shared
+  asyncio.Lock-across-event-loops issue in
+  `_LockRegistry`. Live test scaffold omitted (no free CI
+  Slack workspace).
+- chunk 7 (`1617e9a`): `live` CI job extended with
+  Postgres + Redis services + env-gated tests.
+  `RUN_LIVE_POSTGRES_DSN` + `REDIS_URL` set on Ubuntu;
+  macOS leaves them unset so service-backed tests skip
+  cleanly.
+- chunk 8 (about-to-commit): spec §11 v0.2 follow-up table
+  + §12 runbook (5 new sections: postgres, redis, multi-
+  worker, tokeniser, slack), roadmap flipped to shipped,
+  CHANGELOG `[Unreleased] / Added + Changed` populated.
+
+Tooling notes:
+
+- `dict.setdefault(k, factory())` evaluates the default
+  eagerly even when the key exists — Slack adapter switched
+  to explicit get-or-create.
+- pytest-asyncio mode=auto + function-scoped loops mean
+  shared module-level `asyncio.Lock` objects (via
+  `_LockRegistry`) outlive their loops, causing hangs in
+  cross-test reuse of the same session_id. Workaround for
+  now is distinct session_ids per test; a v0.3 cleanup
+  would lazily create the lock at __aenter__ time.
+
+Ready to push and raise PR.
