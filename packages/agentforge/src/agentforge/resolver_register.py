@@ -21,3 +21,9 @@ T = TypeVar("T", bound=type)
 def register_strategy(name: str) -> Callable[[T], T]:
     """Register a class under `(strategies, name)` in the global resolver."""
     return register("strategies", name)
+
+
+def register_task(name: str) -> Callable[[T], T]:
+    """Register a pipeline `Task` class under `(tasks, name)` in the
+    global resolver. feat-015."""
+    return register("tasks", name)

@@ -33,11 +33,13 @@ FinishReason = Literal[
     "iteration_cap",
     "budget_exceeded",
     "guardrail",
+    "pipeline",
     "error",
     "cancelled",
 ]
 """How a run terminated. Mirrors the runtime's branching of
-`BudgetExceeded` / `GuardrailViolation` / clean completion."""
+`BudgetExceeded` / `GuardrailViolation` / `PipelineFailure` / clean
+completion."""
 
 
 class Step(BaseModel):

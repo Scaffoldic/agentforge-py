@@ -1,10 +1,10 @@
 ---
 feature: none
 state: idle
-branch: main
+branch: feat/015-pipeline-and-tasks
 started_at: null
-last_milestone_at: 2026-05-12T06:30
-last_shipped: feat-013 shipped via PR #24 (awaiting merge)
+last_milestone_at: 2026-05-12
+last_shipped: feat-015 shipped via PR #25 (open for review)
 blocker: null
 flags_for_user: []
 ---
@@ -14,6 +14,39 @@ flags_for_user: []
 *None — awaiting next pick.*
 
 ## Last shipped
+
+[`feat-015 — Pipeline & deterministic tasks`](../../docs/features/feat-015-pipeline-and-tasks.md)
+opened as PR #25 (framework-only feature inside `agentforge`):
+
+- `agentforge_core.contracts.task.Task` ABC +
+  `agentforge_core.values.pipeline.PipelineResult` frozen value.
+- `agentforge.pipeline.Pipeline` engine with DAG validation
+  (cycles / duplicates / missing deps at construction),
+  `asyncio.Semaphore`-bounded parallelism, per-task
+  `asyncio.wait_for(timeout_s)`, `on_task_error` continue/fail
+  modes, `PipelineFailure` exception.
+- `PipelineFindingsTool` built-in tool with category/severity
+  filters; `Agent(pipeline=...)` kwarg; `Agent.run(task, *,
+  context, replay_pipeline)` API; per-run system-prompt
+  addendum.
+- `modules.pipeline:` config block + `build_pipeline_from_config`
+  wired into `build_agent_from_config`.
+- `__pipeline` recording category + `load_pipeline_result`
+  replay so side-effect-bearing tasks don't double-run on
+  `agentforge run --replay`.
+- `FinishReason` literal extended with `"pipeline"`.
+- Public re-exports + renderer-compat sanity test.
+
+Deviations recorded in spec §10:
+
+- `Agent.run` gained both `context=` and `replay_pipeline=`
+  kwargs (spec showed `context=` only).
+- `finish_reason = "pipeline"` is new; the CLI maps it to
+  generic exit 1 to keep the exit-code surface stable.
+- Mid-run pipeline streaming, end-to-end LLM-using task
+  example, and TS port are deferred.
+
+### Previously
 
 [`feat-013 — MCP integration`](../../docs/features/feat-013-mcp-integration.md)
 shipped in PR #24 as the new Tier-3 `agentforge-mcp` module:

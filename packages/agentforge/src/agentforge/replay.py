@@ -25,6 +25,7 @@ module concerns itself with the loop only.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from agentforge_core.contracts.llm import LLMClient
@@ -39,7 +40,7 @@ from agentforge_core.values.messages import (
     ToolSpec,
 )
 
-from agentforge.recording import STEP_CATEGORY
+from agentforge.recording import PIPELINE_CATEGORY, STEP_CATEGORY
 
 
 class ReplayExhausted(RuntimeError):  # noqa: N818 — mirrors stdlib `StopIteration` naming
@@ -212,8 +213,48 @@ def _wrap_replay(real: Tool, observations: list[Any]) -> Tool:
     return _ReplayTool()
 
 
+async def load_pipeline_result(memory: MemoryStore, run_id: str) -> Any | None:
+    """Reconstruct the `PipelineResult` recorded for ``run_id``.
+
+    Returns ``None`` when the run was not recorded with a pipeline.
+    The findings come back as `SimpleFinding` instances when their
+    shape matches; otherwise as plain dicts (the agent's built-in
+    `pipeline_findings` tool tolerates either form).
+    """
+    from agentforge_core.values.pipeline import PipelineResult  # noqa: PLC0415
+
+    from agentforge.findings import SimpleFinding  # noqa: PLC0415
+
+    claims = await memory.query(category=PIPELINE_CATEGORY, run_id=run_id, limit=1)
+    if not claims:
+        return None
+    payload = claims[0].payload
+    raw_findings = payload.get("findings", [])
+    findings: list[Any] = []
+    for fd in raw_findings:
+        if isinstance(fd, dict) and {"severity", "category", "message"} <= fd.keys():
+            try:
+                findings.append(SimpleFinding.model_validate(fd))
+            except Exception as exc:
+                logging.getLogger("agentforge.replay").debug(
+                    "pipeline finding %r failed SimpleFinding validation: %s; keeping raw dict",
+                    fd,
+                    exc,
+                )
+                findings.append(fd)
+        else:
+            findings.append(fd)
+    return PipelineResult(
+        findings=tuple(findings),
+        task_durations_ms=dict(payload.get("task_durations_ms", {})),
+        task_failures=dict(payload.get("task_failures", {})),
+        total_cost_usd=float(payload.get("total_cost_usd", 0.0)),
+    )
+
+
 __all__ = [
     "ReplayExhausted",
     "ReplayLLMClient",
+    "load_pipeline_result",
     "replay_tools",
 ]

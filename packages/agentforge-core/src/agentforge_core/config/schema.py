@@ -158,6 +158,36 @@ class GuardrailEntry(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class PipelineTaskEntry(BaseModel):
+    """One entry inside `modules.pipeline.tasks` (feat-015).
+
+    Mirrors `EvaluatorEntry` / `GuardrailEntry`: a name (resolver
+    lookup under the `"tasks"` category) plus optional kwargs the
+    task class receives at construction.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    name: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class PipelineConfig(BaseModel):
+    """`modules.pipeline:` — deterministic-task DAG (feat-015).
+
+    When ``enabled`` is True and ``tasks`` is non-empty, the runtime
+    resolves each entry against the global resolver's ``tasks``
+    category, builds a `Pipeline`, and wires it into the `Agent`.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    enabled: bool = True
+    max_concurrent: int = Field(default=4, ge=1)
+    on_task_error: Literal["continue", "fail"] = "continue"
+    tasks: list[PipelineTaskEntry] = Field(default_factory=list)
+
+
 class GuardrailsConfig(BaseModel):
     """`modules.guardrails:` — input / output / tool-call validators.
 
@@ -201,6 +231,7 @@ class ModulesConfig(BaseModel):
     tools: list[str | dict[str, Any]] = Field(default_factory=list)
     protocols: list[ObservabilityEntry] = Field(default_factory=list)
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
+    pipeline: PipelineConfig | None = None
 
 
 class ProviderConfig(BaseModel):

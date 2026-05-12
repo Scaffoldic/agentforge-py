@@ -73,7 +73,7 @@
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-015** | Pipeline & deterministic tasks (`Pipeline`, `Task` ABC, parallel/sequential execution) | proposed | 0.2 | both | `agentforge` |
+| **feat-015** | Pipeline & deterministic tasks (`Pipeline`, `Task` ABC, parallel/sequential execution) | shipped (Python) | 0.2 | both | `agentforge` |
 
 ### Developer experience
 

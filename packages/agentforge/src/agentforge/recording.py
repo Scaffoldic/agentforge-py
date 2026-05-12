@@ -27,6 +27,7 @@ from agentforge_core.production.run_context import current_run
 from agentforge_core.values.claim import Claim
 
 if TYPE_CHECKING:
+    from agentforge_core.values.pipeline import PipelineResult
     from agentforge_core.values.state import RunResult, Step
 
 # Public category names. Tests, CLI, and external tooling can rely on
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
 STEP_CATEGORY = "__step"
 EVAL_CATEGORY = "__eval"
 RUN_CATEGORY = "__run"
+PIPELINE_CATEGORY = "__pipeline"
 
 
 class RecordRunHook:
@@ -129,9 +131,59 @@ def _serializable(value: Any) -> Any:
     return str(value)
 
 
+async def record_pipeline_result(
+    *,
+    memory: MemoryStore,
+    run_id: str,
+    project: str,
+    agent_name: str,
+    result: PipelineResult,
+) -> None:
+    """Persist a `PipelineResult` as one ``__pipeline`` claim.
+
+    Replay reads this back and threads it into `Agent.run`'s
+    ``replay_pipeline`` kwarg so the deterministic tasks don't
+    re-execute (side-effect-bearing tasks would double-run).
+    """
+    await memory.put(
+        Claim(
+            run_id=run_id,
+            project=project,
+            agent=agent_name,
+            category=PIPELINE_CATEGORY,
+            payload={
+                "findings": [_finding_payload(f) for f in result.findings],
+                "task_durations_ms": dict(result.task_durations_ms),
+                "task_failures": dict(result.task_failures),
+                "total_cost_usd": result.total_cost_usd,
+            },
+        )
+    )
+
+
+def _finding_payload(f: Any) -> dict[str, Any]:
+    dump = getattr(f, "model_dump", None)
+    if callable(dump):
+        result = dump(mode="json")
+        if isinstance(result, dict):
+            return result
+    to_dict = getattr(f, "to_dict", None)
+    if callable(to_dict):
+        result = to_dict()
+        if isinstance(result, dict):
+            return result
+    return {
+        "severity": getattr(f, "severity", None),
+        "category": getattr(f, "category", None),
+        "message": getattr(f, "message", None),
+    }
+
+
 __all__ = [
     "EVAL_CATEGORY",
+    "PIPELINE_CATEGORY",
     "RUN_CATEGORY",
     "STEP_CATEGORY",
     "RecordRunHook",
+    "record_pipeline_result",
 ]

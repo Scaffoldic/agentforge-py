@@ -36,7 +36,7 @@ from pydantic import ValidationError
 
 from agentforge.agent import Agent
 from agentforge.cli._build import build_agent_from_config, build_memory_from_config
-from agentforge.replay import ReplayLLMClient
+from agentforge.replay import ReplayLLMClient, load_pipeline_result
 
 EXIT_OK = 0
 EXIT_GENERIC = 1
@@ -117,12 +117,12 @@ async def _dispatch(args: argparse.Namespace) -> int:
         return config_or_code
 
     try:
-        agent = await _build_for_run(args, config_or_code)
+        agent, replay_pipeline = await _build_for_run(args, config_or_code)
     except ModuleError as exc:
         sys.stderr.write(f"agentforge run: failed to construct agent: {exc}\n")
         return EXIT_GENERIC
 
-    return await _run_and_emit(agent, task, args.output_format)
+    return await _run_and_emit(agent, task, args.output_format, replay_pipeline=replay_pipeline)
 
 
 def _load_config_or_exit(args: argparse.Namespace) -> Any:
@@ -139,9 +139,15 @@ def _load_config_or_exit(args: argparse.Namespace) -> Any:
         return EXIT_CONFIG_INVALID
 
 
-async def _run_and_emit(agent: Agent, task: str, output_format: str | None) -> int:
+async def _run_and_emit(
+    agent: Agent,
+    task: str,
+    output_format: str | None,
+    *,
+    replay_pipeline: Any | None = None,
+) -> int:
     try:
-        result = await agent.run(task)
+        result = await agent.run(task, replay_pipeline=replay_pipeline)
     except BudgetExceeded as exc:
         sys.stderr.write(f"agentforge run: budget exceeded: {exc}\n")
         return EXIT_BUDGET
@@ -155,18 +161,23 @@ async def _run_and_emit(agent: Agent, task: str, output_format: str | None) -> i
     return EXIT_OK
 
 
-async def _build_for_run(args: argparse.Namespace, config: Any) -> Agent:
-    """Wire an Agent, optionally substituting the LLM with a replay client."""
+async def _build_for_run(args: argparse.Namespace, config: Any) -> tuple[Agent, Any | None]:
+    """Wire an Agent, optionally substituting the LLM with a replay client.
+
+    Returns ``(agent, replay_pipeline)`` — the second tuple item is a
+    previously recorded `PipelineResult` (or ``None``) that the run
+    handler threads into `Agent.run(replay_pipeline=...)` so a
+    side-effect-bearing pipeline doesn't re-execute on replay.
+    """
     if args.replay is not None:
         memory = build_memory_from_config(config)
         if memory is None:
             msg = "--replay requires modules.memory to be configured."
             raise ModuleError(msg)
-        # We deliberately *do not* call init_schema here — replay reads
-        # existing records, never writes.
         replay_llm = await ReplayLLMClient.from_recording(memory, args.replay)
-        return Agent(model=replay_llm, memory=memory)
-    return await build_agent_from_config(config, enable_recording=args.record)
+        replay_pipeline = await load_pipeline_result(memory, args.replay)
+        return Agent(model=replay_llm, memory=memory), replay_pipeline
+    return await build_agent_from_config(config, enable_recording=args.record), None
 
 
 def _resolve_task(args: argparse.Namespace) -> str | None:

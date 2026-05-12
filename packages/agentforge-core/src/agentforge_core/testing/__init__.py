@@ -19,6 +19,7 @@ from agentforge_core.testing.conformance import (
     run_memory_conformance,
     run_output_validator_conformance,
     run_strategy_conformance,
+    run_task_conformance,
     run_tool_gate_conformance,
     run_vector_conformance,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "run_memory_conformance",
     "run_output_validator_conformance",
     "run_strategy_conformance",
+    "run_task_conformance",
     "run_tool_gate_conformance",
     "run_vector_conformance",
 ]
