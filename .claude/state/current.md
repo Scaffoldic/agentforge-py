@@ -1,10 +1,10 @@
 ---
 feature: none
-state: in_progress
-branch: chore/release-v0.1.0
-started_at: 2026-05-12
+state: idle
+branch: main
+started_at: null
 last_milestone_at: 2026-05-12
-last_shipped: v0.1.0 release prep in flight (PR pending)
+last_shipped: v0.1.0 — Foundation (tagged 2026-05-12; PR #30 merged; GitHub Release published)
 blocker: null
 flags_for_user: []
 ---
