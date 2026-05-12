@@ -21,6 +21,75 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-020 — Chat agents (Python v0.2 scope).** Three new
+  workspace members + locked contracts in core. Wraps the
+  one-shot `Agent` into a multi-turn, stateful conversation
+  with multi-tenant isolation, per-turn / per-session budgets,
+  per-turn input/output guardrails, idempotency, and a FastAPI
+  HTTP + WS + SSE server.
+
+  *Contracts (`agentforge-core`):*
+  - `agentforge_core.contracts.chat.{ChatHistoryStore,
+    HistoryTruncationStrategy}` ABCs.
+  - `agentforge_core.values.chat.{ChatTurn, SessionInfo,
+    ChatChunk, ChatResponse}` frozen Pydantic value models.
+  - `run_chat_history_conformance(store)` +
+    `run_truncation_conformance(strategy)` harnesses.
+
+  *Chat runtime (`agentforge-chat`):*
+  - `ChatSession(agent, *, session_id, history_store,
+    system_prompt, truncation, owner, per_turn_budget_usd,
+    per_session_budget_usd, idempotency_window_s, on_turn)`.
+  - `send(message, *, idempotency_key, cancellation)` and
+    `stream(...)` (buffer-then-stream; sentence-segmented text
+    chunks + done/error sentinels).
+  - `history(...)`, `reset()`, `close()`.
+  - `InMemoryChatHistory` (asyncio-lock protected, in-memory
+    TTL sweep) + `SqliteChatHistory` (aiosqlite-backed, mirrors
+    `SqliteMemoryStore`).
+  - Four truncation strategies: `SlidingWindow`, `TokenBudget`,
+    `SummariseOldest`, `Hybrid`. Pair-atomicity invariant
+    enforced.
+  - Per-session `asyncio.Lock` registry +
+    `IdempotencyCache` LRU+TTL.
+  - Entry-points under `agentforge.chat.history` /
+    `agentforge.chat.truncation`; `manifest.yaml` for
+    `agentforge add module chat`.
+
+  *HTTP server (`agentforge-chat-http`):*
+  - `ChatServer(agent_factory, history_store, auth, host, port,
+    cors_origins, rate_limit_per_session_per_minute,
+    truncation)` — FastAPI app with REST + WebSocket + SSE.
+  - `BearerAuthPolicy` ABC + `EnvBearerAuth(token_env_var)`
+    placeholder (refactors to feat-014's `AuthPolicy` when
+    shipped).
+  - Multi-tenant: cross-owner access returns 403; missing /
+    invalid bearer returns 401; rate-limit overflow returns
+    429.
+  - WebSocket cancellation: disconnect aborts the in-flight
+    consume coroutine.
+
+  *Config + wiring:*
+  - `modules.chat:` config block (`ChatHistoryDriverConfig`,
+    `ChatTruncationConfig`, `ChatSessionConfig`, `ChatConfig`).
+  - `validate_module_configs` extension via new
+    `_validate_driver` helper.
+  - `agentforge_chat.build_chat_session_from_config(config,
+    agent)` resolves drivers via the global resolver.
+  - `agentforge.register_chat_history` /
+    `register_chat_truncation` resolver helpers.
+
+  *v0.3 follow-ups (deferred):*
+  - `agentforge-chat-history-postgres`,
+    `agentforge-chat-history-redis`,
+    `agentforge-chat-slack` reference adapter.
+  - Real per-token streaming through the strategy loop.
+  - Cross-process per-session locking (Redis-backed).
+  - Provider-aware tokenisation in `TokenBudget`.
+
+  Shipped via PR #26. See spec
+  `docs/features/feat-020-chat-agents.md` §11–§12.
+
 - **feat-015 — Pipeline & deterministic tasks (full spec).** New
   framework-level subsystem inside `agentforge` for deterministic,
   pre-LLM analysis steps. Findings flow back into the LLM loop two

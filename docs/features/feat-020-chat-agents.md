@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-020 |
 | **Title** | Chat agents — stateful conversation wrapper over `Agent` + history store + HTTP/WebSocket server |
-| **Status** | proposed |
+| **Status** | shipped (Python v0.2 scope) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 (contracts + memory + sqlite drivers + chat-http server), 0.3 (postgres + redis drivers + Slack reference adapter) |
@@ -584,3 +584,174 @@ landings:
 - Prior art: Letta (server-resident chat agents); Pydantic AI
   conversation (similar wrapper pattern); Vercel AI SDK chunk shape;
   OpenAI Assistants threads; Slack Bolt SDK
+
+## 11. Implementation status (Python — v0.2 scope)
+
+Shipped in PR #26. Three workspace members went up together:
+`agentforge-core` extensions, the new `agentforge-chat`, and
+the new `agentforge-chat-http`.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `2bd8f38` | `agentforge_core.contracts.chat.{ChatHistoryStore, HistoryTruncationStrategy}` ABCs + `agentforge_core.values.chat.{ChatTurn, SessionInfo, ChatChunk, ChatResponse}` frozen value models + `run_chat_history_conformance` / `run_truncation_conformance` harnesses. |
+| 2 | `d6d0a73` | `agentforge-chat` workspace member: `InMemoryChatHistory` + `SqliteChatHistory` (mirrors `SqliteMemoryStore`) + four truncation strategies (sliding-window, token-budget, summarise-oldest, hybrid). Entry-points under `agentforge.chat.history` / `agentforge.chat.truncation`. Pair-atomicity helper enforces tool-call/tool-result invariants. |
+| 3 | `e4ff78d` | `ChatSession` (send + stream + history + reset + close + idempotency + budgets) wired through the agent's input/output guardrails. Per-session lock registry (`WeakValueDictionary`); LRU+TTL idempotency cache; sentence-segmenting `stream()` using the spec's `buffer-then-stream` default. |
+| 4 | `200b38e` | `agentforge-chat-http` workspace member: FastAPI `ChatServer` with REST + WS + SSE + bearer-auth + in-process rate limiting + cross-owner 403 enforcement. `BearerAuthPolicy` ABC + `EnvBearerAuth` placeholder (refactors to feat-014's `AuthPolicy` when shipped). |
+| 5 | `1369c95` | `modules.chat:` config block (`ChatHistoryDriverConfig`, `ChatTruncationConfig`, `ChatSessionConfig`, `ChatConfig`) + module-schema validation hook + `build_chat_session_from_config(config, agent)` + `register_chat_history` / `register_chat_truncation` resolver helpers. |
+| 6 | (this PR) | Docs + Runbook + roadmap + CHANGELOG + state. |
+
+### Deviations from the design
+
+- **Streaming is buffer-then-stream only.** The strategy ABC
+  has no `stream()` method yet; v0.2 runs the agent to
+  completion and emits the assistant turn as sentence-segmented
+  `ChatChunk(kind="text")` chunks followed by a `done`
+  chunk. The wire format is correct; real per-token streaming
+  becomes a no-API-break enhancement when the strategy
+  contract grows streaming.
+- **Cancellation is pre-LLM only.** The cancellation event is
+  honoured between `history.load()` and `agent.run()`;
+  mid-LLM cancellation requires the same strategy-streaming
+  work. WS disconnect propagates a `set()` to the in-flight
+  consume coroutine.
+- **Single-process locking only.** Per-session
+  `asyncio.Lock` lives in a `WeakValueDictionary` keyed by
+  `session_id`. Cross-process locking (Redis) is deferred to
+  v0.3 alongside the Redis driver.
+- **`BearerAuthPolicy` is a v0.2-local stub.** feat-014's real
+  `AuthPolicy` contract hasn't shipped yet; the chat-http
+  policy becomes a thin adapter when it does.
+- **Approximate token counting in `TokenBudget`.** Uses a
+  4-chars-per-token heuristic. Provider-aware tokenisation is
+  a v0.3 follow-up.
+- **Postgres / Redis history drivers + Slack reference
+  adapter** — all deferred to separate v0.3 PRs once each
+  driver has a live-service test path.
+- **TypeScript port** deferred (contract is locked).
+
+### Open items
+
+- `agentforge-chat-history-postgres` driver (v0.3).
+- `agentforge-chat-history-redis` driver (v0.3).
+- `agentforge-chat-slack` reference channel adapter (v0.3).
+- Real per-token streaming through the strategy loop.
+- Cross-process per-session locking (Redis-backed).
+- Provider-aware tokenisation in `TokenBudget`.
+
+## 12. Runbook
+
+### How do I wire a chat session in code?
+
+```python
+import asyncio
+from agentforge import Agent
+from agentforge_chat import ChatSession, SqliteChatHistory, SlidingWindow
+
+async def main() -> None:
+    agent = Agent(model="anthropic:claude-sonnet-4-6", strategy="react")
+    history = await SqliteChatHistory.from_path("./chat.db")
+    session = ChatSession(
+        agent=agent,
+        session_id="user-42-thread-1",
+        history_store=history,
+        truncation=SlidingWindow(max_turns=50),
+        system_prompt="You are a careful research assistant.",
+        per_turn_budget_usd=0.50,
+        per_session_budget_usd=10.0,
+        owner="user-42",
+    )
+    print((await session.send("Hi")).content)
+    print((await session.send("What did I just say?")).content)
+    await session.close()
+
+asyncio.run(main())
+```
+
+### How do I serve over HTTP?
+
+```python
+from agentforge import Agent
+from agentforge_chat import SqliteChatHistory
+from agentforge_chat_http import ChatServer, EnvBearerAuth
+
+server = ChatServer(
+    agent_factory=lambda: Agent(model="...", strategy="react"),
+    history_store=await SqliteChatHistory.from_path("./chat.db"),
+    auth=EnvBearerAuth("API_TOKENS"),
+    host="0.0.0.0",
+    port=8080,
+    cors_origins=["https://chat.example.com"],
+)
+await server.serve()
+```
+
+Then call it: `POST /sessions` → `{id}`, `POST
+/sessions/{id}/messages` with `Authorization: Bearer <token>`.
+Set `Accept: text/event-stream` for SSE streaming, or open a
+WebSocket at `/sessions/{id}/ws`.
+
+### How do I wire a chat session from config?
+
+```yaml
+modules:
+  chat:
+    history:
+      driver: sqlite
+      config:
+        path: ./chat.db
+    truncation:
+      strategy: sliding_window
+      config:
+        max_turns: 50
+    session:
+      per_turn_budget_usd: 0.50
+      per_session_budget_usd: 10.0
+```
+
+```python
+from agentforge_core.config import load_config
+from agentforge_chat import build_chat_session_from_config
+from agentforge import Agent
+
+config = load_config()
+agent = Agent(config_path=None)
+session = await build_chat_session_from_config(
+    config, agent, session_id="user-42", owner="user-42"
+)
+```
+
+### How do I swap the history backend?
+
+Change `modules.chat.history.driver` from `sqlite` to one of
+the future v0.3 drivers (`postgres`, `redis`) and adjust the
+`config:` block to the driver's accepted schema. The
+`ChatHistoryStore` ABC is locked, so no application code
+changes are required.
+
+### How do I handle budget exhaustion?
+
+`ChatSession.send()` raises
+`agentforge_core.production.exceptions.BudgetExceeded` when
+either `per_turn_budget_usd` or `per_session_budget_usd` would
+be exceeded. The HTTP layer surfaces this as 200 + the error
+captured in the response body (current behaviour); future v0.3
+work will map to a clean 402-equivalent. In streaming mode,
+the final chunk is `ChatChunk(kind="error",
+content={"reason": "BudgetExceeded", ...})`.
+
+### How do I test against a fake history store?
+
+```python
+from agentforge_chat import ChatSession, InMemoryChatHistory
+from agentforge.testing import agent_factory, MockLLMClient
+
+session = ChatSession(
+    agent=agent_factory(model=MockLLMClient.deterministic("hi back")),
+    history_store=InMemoryChatHistory(),
+)
+assert (await session.send("hi")).content == "hi back"
+```
+
+`run_chat_history_conformance(store)` from
+`agentforge_core.testing` validates any custom store against
+the locked contract.
