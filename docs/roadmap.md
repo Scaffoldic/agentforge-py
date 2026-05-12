@@ -96,13 +96,34 @@ What remains for v0.2.1:
 
 ### feat-014 follow-ups — production A2A runner + discovery + streaming
 
-Three items:
+**Status: shipped on the v0.1 → v0.2 line** (see spec §10 "v0.2
+follow-up"). Three items all landed in one PR:
 
-- **Production HTTP runner against a real A2A peer** —
-  replaces the `# pragma: no cover` stubs in
-  `agentforge_a2a._runner`.
-- **A2A discovery / registry** (spec §9 deferred).
-- **Bi-directional streaming via A2A** (spec §9 deferred).
+- **Production HTTP runner** — `_HTTPXClientRunner` +
+  `_UvicornServerRunner` now wrap `httpx.AsyncClient` /
+  `uvicorn.Server`; v0.1's `# pragma: no cover` stubs are
+  replaced. Bodies stay under `# pragma: no cover`; coverage
+  proven by `@pytest.mark.live` integration tests.
+- **A2A discovery** — `GET /a2a/v1/info` carries the full
+  endpoint catalogue (description + JSON-Schema input
+  shapes); `agentforge_a2a.discover_peer(peer)` +
+  `A2ABridge.discover_all()` + `bridge.peer_info`. Strictly
+  client-side; no central registry.
+- **Bi-directional streaming** — `POST /a2a/v1/calls/stream`
+  returns SSE `A2AChunk` frames; client helper
+  `agent_call_stream(...)` yields them. Step-level
+  granularity for v0.2.
+
+What remains for v0.3:
+
+- Real per-token LLM streaming via `ReasoningStrategy.stream()`
+  (lands alongside feat-020's strategy-level streaming
+  follow-up).
+- Per-run hook kwarg on `Agent.run` (cleanup of the streaming
+  server's transient `agent._on_step.append(...)` dance).
+- Central A2A registry service (still out of v0.x scope).
+- Unifying `A2AChunkKind` with `ChatChunkKind` under a
+  framework-wide `StreamingChunk`.
 
 ### feat-020 follow-ups — chat history + adapters + streaming
 

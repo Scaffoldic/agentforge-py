@@ -17,6 +17,7 @@ stays callable from contexts without a bound budget too.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -31,7 +32,11 @@ from agentforge_core.production.run_context import current_run
 
 from agentforge_a2a._runner import A2AClientRunner
 from agentforge_a2a.auth import ClientAuth, build_outgoing_auth
-from agentforge_a2a.values import A2APeerConfig, A2AResponse
+from agentforge_a2a.values import A2AChunk, A2APeerConfig, A2APeerInfo, A2AResponse
+
+_CALLS_SUFFIX = "/calls"
+_INFO_PATH = "/info"
+_STREAM_PATH = "/calls/stream"
 
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
@@ -133,6 +138,134 @@ async def agent_call(
     return response
 
 
+async def agent_call_stream(
+    target: str,
+    payload: dict[str, Any],
+    *,
+    peers: dict[str, A2APeer],
+    timeout_s: float = 60.0,
+    budget_usd: float | None = None,
+    budget: BudgetPolicy | None = None,
+) -> AsyncIterator[A2AChunk]:
+    """Streaming counterpart to `agent_call`.
+
+    Opens an SSE channel against ``peer.url + "/stream"`` (the
+    stream endpoint is derived from the unary calls URL) and
+    yields each `A2AChunk` frame as it arrives. The terminal
+    ``kind="done"`` frame commits actual cost against the
+    supplied ``budget``; ``kind="error"`` releases the
+    reservation and raises the matching A2A* exception.
+    """
+    peer_name, endpoint = _parse_target(target)
+    peer = peers.get(peer_name)
+    if peer is None:
+        raise ModuleError(f"unknown a2a peer: {peer_name!r}")
+
+    headers = _build_headers(peer.auth, budget_usd)
+    body = {"endpoint": endpoint, "payload": payload, "budget_usd": budget_usd}
+    stream_url = _stream_url_from_calls_url(peer.url)
+
+    if budget is not None and budget_usd is not None:
+        budget.reserve(budget_usd)
+
+    try:
+        stream = peer.runner.post_stream(
+            stream_url,
+            headers=headers,
+            json=body,
+            ssl_context=peer.auth.ssl_context,
+            timeout_s=timeout_s,
+        )
+        async for raw in _wrap_stream_errors(peer_name, timeout_s, stream):
+            chunk = A2AChunk.model_validate(raw)
+            if chunk.kind == "error":
+                _raise_for_error_chunk(peer_name, chunk)
+            if chunk.kind == "done" and budget is not None:
+                content = chunk.content if isinstance(chunk.content, dict) else {}
+                budget.commit(float(content.get("cost_usd", 0.0)))
+            yield chunk
+    finally:
+        if budget is not None and budget_usd is not None:
+            budget.release_reservation(budget_usd)
+
+
+async def _wrap_stream_errors(
+    peer_name: str,
+    timeout_s: float,
+    stream: AsyncIterator[dict[str, Any]],
+) -> AsyncIterator[dict[str, Any]]:
+    """Yield from ``stream`` while mapping transport errors to A2A*."""
+    try:
+        async for raw in stream:
+            yield raw
+    except (A2AAuthError, A2ACallError, A2ATimeout):
+        raise
+    except TimeoutError as exc:
+        raise A2ATimeout(f"a2a stream to {peer_name!r} exceeded {timeout_s:.1f}s") from exc
+    except Exception as exc:
+        raise A2ACallError(f"a2a stream to {peer_name!r} failed: {exc}") from exc
+
+
+def _raise_for_error_chunk(peer_name: str, chunk: A2AChunk) -> None:
+    content = chunk.content if isinstance(chunk.content, dict) else {}
+    code = str(content.get("error", "")) if content else ""
+    message = str(content.get("message", "")) if content else ""
+    if code in ("unauthorized", "forbidden", "A2AAuthError"):
+        raise A2AAuthError(f"a2a peer {peer_name!r} rejected credentials: {message}")
+    raise A2ACallError(f"a2a peer {peer_name!r} streamed error {code!r}: {message}")
+
+
+def _stream_url_from_calls_url(calls_url: str) -> str:
+    if calls_url.endswith(_CALLS_SUFFIX):
+        return calls_url + "/stream"
+    head, sep, _ = calls_url.rpartition(_CALLS_SUFFIX)
+    if sep:
+        return head + _STREAM_PATH
+    return calls_url.rstrip("/") + _STREAM_PATH
+
+
+async def discover_peer(
+    peer: A2APeer,
+    *,
+    timeout_s: float = 10.0,
+) -> A2APeerInfo:
+    """Probe ``peer``'s ``GET /a2a/v1/info`` endpoint and return
+    the parsed `A2APeerInfo`.
+
+    `peer.url` is the unary calls URL (e.g.
+    ``https://x/a2a/v1/calls``); the info URL is derived by
+    swapping the trailing ``/calls`` for ``/info`` so callers
+    only ever configure one URL per peer.
+    """
+    info_url = _info_url_from_calls_url(peer.url)
+    headers = dict(peer.auth.headers)
+    headers.setdefault("Accept", "application/json")
+    try:
+        raw = await peer.runner.get(
+            info_url,
+            headers=headers,
+            ssl_context=peer.auth.ssl_context,
+            timeout_s=timeout_s,
+        )
+    except (A2AAuthError, A2ACallError, A2ATimeout):
+        raise
+    except TimeoutError as exc:
+        raise A2ATimeout(f"a2a discovery of {peer.name!r} exceeded {timeout_s:.1f}s") from exc
+    except Exception as exc:
+        raise A2ACallError(f"a2a discovery of {peer.name!r} failed: {exc}") from exc
+    _raise_for_error_body(peer.name, raw)
+    return A2APeerInfo.model_validate(raw)
+
+
+def _info_url_from_calls_url(calls_url: str) -> str:
+    if calls_url.endswith(_CALLS_SUFFIX):
+        return calls_url[: -len(_CALLS_SUFFIX)] + _INFO_PATH
+    head, sep, _ = calls_url.rpartition(_CALLS_SUFFIX)
+    if sep:
+        return head + _INFO_PATH
+    return calls_url.rstrip("/") + _INFO_PATH
+
+
 def _parse_target(target: str) -> tuple[str, str]:
     if ":" not in target:
         raise ModuleError(f"a2a target must be '<peer>:<endpoint>', got {target!r}")
@@ -171,4 +304,6 @@ def _raise_for_error_body(peer_name: str, raw: dict[str, Any]) -> None:
 __all__ = [
     "A2APeer",
     "agent_call",
+    "agent_call_stream",
+    "discover_peer",
 ]
