@@ -218,8 +218,17 @@ dependencies = [
     { name = "agentforge-core" },
 ]
 
+[package.optional-dependencies]
+mcp = [
+    { name = "mcp" },
+]
+
 [package.metadata]
-requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0,<2" },
+]
+provides-extras = ["mcp"]
 
 [[package]]
 name = "agentforge-memory-neo4j"
