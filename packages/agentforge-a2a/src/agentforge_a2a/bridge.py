@@ -23,9 +23,10 @@ from agentforge.agent import Agent
 from agentforge_core.contracts.auth import AuthPolicy
 
 from agentforge_a2a._runner import A2AClientRunner, A2AServerRunner
-from agentforge_a2a.client import A2APeer
+from agentforge_a2a.client import A2APeer, discover_peer
 from agentforge_a2a.config import A2AConfig
 from agentforge_a2a.server import A2AServer
+from agentforge_a2a.values import A2APeerInfo
 
 
 class A2ABridge:
@@ -50,6 +51,7 @@ class A2ABridge:
         self._peers = dict(peers)
         self._server = server
         self._serve_task: asyncio.Task[None] | None = None
+        self._peer_info: dict[str, A2APeerInfo] = {}
 
     @property
     def peers(self) -> dict[str, A2APeer]:
@@ -58,6 +60,12 @@ class A2ABridge:
     @property
     def server(self) -> A2AServer | None:
         return self._server
+
+    @property
+    def peer_info(self) -> dict[str, A2APeerInfo]:
+        """Cached `A2APeerInfo` keyed by peer name (populated by
+        `discover_all()` — empty until then)."""
+        return dict(self._peer_info)
 
     @classmethod
     def from_config(
@@ -98,11 +106,25 @@ class A2ABridge:
                 agent=agent,
                 auth=auth,
                 endpoints=[e.name for e in validated.expose.endpoints],
+                endpoint_descriptors=list(validated.expose.endpoints),
                 host=validated.expose.host,
                 port=validated.expose.port,
                 runner=server_runner,
             )
         return cls(peers=peers, server=server)
+
+    async def discover_all(self, *, timeout_s: float = 10.0) -> dict[str, A2APeerInfo]:
+        """Probe every configured peer's `/a2a/v1/info` endpoint
+        and cache the result on `self.peer_info`.
+
+        Re-callable — replaces the cached entry per peer. Caller-
+        driven: never invoked automatically by `start()`.
+        """
+        fresh: dict[str, A2APeerInfo] = {}
+        for name, peer in self._peers.items():
+            fresh[name] = await discover_peer(peer, timeout_s=timeout_s)
+        self._peer_info = fresh
+        return dict(self._peer_info)
 
     async def start(self) -> None:
         """Launch the server (if any) in the background. Idempotent."""

@@ -31,7 +31,10 @@ from agentforge_core.production.run_context import current_run
 
 from agentforge_a2a._runner import A2AClientRunner
 from agentforge_a2a.auth import ClientAuth, build_outgoing_auth
-from agentforge_a2a.values import A2APeerConfig, A2AResponse
+from agentforge_a2a.values import A2APeerConfig, A2APeerInfo, A2AResponse
+
+_CALLS_SUFFIX = "/calls"
+_INFO_PATH = "/info"
 
 HTTP_UNAUTHORIZED = 401
 HTTP_FORBIDDEN = 403
@@ -133,6 +136,48 @@ async def agent_call(
     return response
 
 
+async def discover_peer(
+    peer: A2APeer,
+    *,
+    timeout_s: float = 10.0,
+) -> A2APeerInfo:
+    """Probe ``peer``'s ``GET /a2a/v1/info`` endpoint and return
+    the parsed `A2APeerInfo`.
+
+    `peer.url` is the unary calls URL (e.g.
+    ``https://x/a2a/v1/calls``); the info URL is derived by
+    swapping the trailing ``/calls`` for ``/info`` so callers
+    only ever configure one URL per peer.
+    """
+    info_url = _info_url_from_calls_url(peer.url)
+    headers = dict(peer.auth.headers)
+    headers.setdefault("Accept", "application/json")
+    try:
+        raw = await peer.runner.get(
+            info_url,
+            headers=headers,
+            ssl_context=peer.auth.ssl_context,
+            timeout_s=timeout_s,
+        )
+    except (A2AAuthError, A2ACallError, A2ATimeout):
+        raise
+    except TimeoutError as exc:
+        raise A2ATimeout(f"a2a discovery of {peer.name!r} exceeded {timeout_s:.1f}s") from exc
+    except Exception as exc:
+        raise A2ACallError(f"a2a discovery of {peer.name!r} failed: {exc}") from exc
+    _raise_for_error_body(peer.name, raw)
+    return A2APeerInfo.model_validate(raw)
+
+
+def _info_url_from_calls_url(calls_url: str) -> str:
+    if calls_url.endswith(_CALLS_SUFFIX):
+        return calls_url[: -len(_CALLS_SUFFIX)] + _INFO_PATH
+    head, sep, _ = calls_url.rpartition(_CALLS_SUFFIX)
+    if sep:
+        return head + _INFO_PATH
+    return calls_url.rstrip("/") + _INFO_PATH
+
+
 def _parse_target(target: str) -> tuple[str, str]:
     if ":" not in target:
         raise ModuleError(f"a2a target must be '<peer>:<endpoint>', got {target!r}")
@@ -171,4 +216,5 @@ def _raise_for_error_body(peer_name: str, raw: dict[str, Any]) -> None:
 __all__ = [
     "A2APeer",
     "agent_call",
+    "discover_peer",
 ]

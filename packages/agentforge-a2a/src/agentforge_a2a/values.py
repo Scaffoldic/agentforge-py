@@ -6,14 +6,32 @@ are immutable once built.
 
 `A2AResponse` mirrors spec §4.2. The three config models
 (`A2APeerConfig`, `A2AEndpointConfig`, `A2AExposeConfig`) feed
-the YAML side via `A2AConfig` (chunk 5).
+the YAML side via `A2AConfig`.
+
+v0.2 follow-up adds the discovery + streaming wire shapes:
+
+- `A2AEndpointDescriptor` + `A2APeerInfo` — the rich shape
+  returned by `GET /a2a/v1/info` and consumed by
+  `discover_peer(...)`.
+- `A2AChunk` + `A2AChunkKind` — the streaming wire format
+  emitted by `POST /a2a/v1/calls/stream`.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+A2AChunkKind = Literal["step", "tool_call", "tool_result", "done", "error"]
+"""Kinds of frames streamed over `POST /a2a/v1/calls/stream`.
+
+- ``step`` — generic agent step (think + others).
+- ``tool_call`` — agent invoked a tool.
+- ``tool_result`` — observation from a tool call.
+- ``done`` — terminal frame carrying the final output + cost.
+- ``error`` — terminal error frame.
+"""
 
 
 class A2AResponse(BaseModel):
@@ -68,9 +86,47 @@ class A2AExposeConfig(BaseModel):
     endpoints: list[A2AEndpointConfig] = Field(default_factory=list)
 
 
+class A2AEndpointDescriptor(BaseModel):
+    """One endpoint advertised by `GET /a2a/v1/info`."""
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    name: str = Field(min_length=1)
+    description: str = ""
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+
+
+class A2APeerInfo(BaseModel):
+    """Discovery payload returned by `GET /a2a/v1/info`."""
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    version: str
+    server_name: str = ""
+    endpoints: list[A2AEndpointDescriptor] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class A2AChunk(BaseModel):
+    """One frame on the streaming `/a2a/v1/calls/stream` channel."""
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    kind: A2AChunkKind
+    content: dict[str, Any] | str | None = None
+    step: dict[str, Any] | None = None
+    run_id: str | None = None
+    parent_run_id: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 __all__ = [
+    "A2AChunk",
+    "A2AChunkKind",
     "A2AEndpointConfig",
+    "A2AEndpointDescriptor",
     "A2AExposeConfig",
     "A2APeerConfig",
+    "A2APeerInfo",
     "A2AResponse",
 ]
