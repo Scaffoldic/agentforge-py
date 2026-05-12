@@ -27,3 +27,15 @@ def register_task(name: str) -> Callable[[T], T]:
     """Register a pipeline `Task` class under `(tasks, name)` in the
     global resolver. feat-015."""
     return register("tasks", name)
+
+
+def register_chat_history(name: str) -> Callable[[T], T]:
+    """Register a `ChatHistoryStore` driver under
+    `(chat.history, name)`. feat-020."""
+    return register("chat.history", name)
+
+
+def register_chat_truncation(name: str) -> Callable[[T], T]:
+    """Register a `HistoryTruncationStrategy` under
+    `(chat.truncation, name)`. feat-020."""
+    return register("chat.truncation", name)

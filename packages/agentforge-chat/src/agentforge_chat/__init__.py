@@ -8,6 +8,7 @@ strategies (`SlidingWindow`, `TokenBudget`, `SummariseOldest`,
 
 from __future__ import annotations
 
+from agentforge_chat.build import build_chat_session_from_config
 from agentforge_chat.history import InMemoryChatHistory
 from agentforge_chat.session import ChatSession
 from agentforge_chat.sqlite import SqliteChatHistory
@@ -26,4 +27,5 @@ __all__ = [
     "SqliteChatHistory",
     "SummariseOldest",
     "TokenBudget",
+    "build_chat_session_from_config",
 ]
