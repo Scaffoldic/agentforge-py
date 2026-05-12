@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-mcp"
-version = "0.0.0"
+version = "0.1.0"
 description = "Model Context Protocol integration for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"

@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-guard-presidio"
-version = "0.0.0"
+version = "0.1.0"
 description = "Microsoft Presidio PII detector for AgentForge guardrails"
 readme = "README.md"
 requires-python = ">=3.13"

@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-testing"
-version = "0.0.0"
+version = "0.1.0"
 description = "Richer test helpers for AgentForge (golden-set runner, snapshot, recording analysis)"
 readme = "README.md"
 requires-python = ">=3.13"
