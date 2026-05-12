@@ -32,6 +32,7 @@ from agentforge_core.contracts.guardrails import (
 )
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.task import Task
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.claim import Claim
@@ -749,3 +750,52 @@ async def run_tool_gate_conformance(
         assert not denied.passed, (
             f"gate {gate.name!r} must deny {forbidden_tool_name!r}; got passed=True"
         )
+
+
+# ----------------------------------------------------------------------
+# Task conformance — feat-015.
+# ----------------------------------------------------------------------
+
+
+async def run_task_conformance(
+    task: Task,
+    *,
+    context: dict[str, object] | None = None,
+) -> None:
+    """Validate that a Task honours the locked contract.
+
+    Asserts:
+      1. ``name`` is a non-empty string.
+      2. ``cost_estimate_usd`` is a non-negative float.
+      3. ``timeout_s`` is a positive float.
+      4. ``depends_on`` is a tuple of strings (possibly empty).
+      5. ``run(context)`` returns a list (the engine treats an empty
+         list as a valid no-finding result).
+      6. Every emitted finding has the three required ``Finding``
+         attributes (``severity``, ``category``, ``message``).
+    """
+    name = type(task).name
+    assert isinstance(name, str), "Task.name must be a string"
+    assert name, "Task.name must be non-empty"
+    assert isinstance(type(task).cost_estimate_usd, (int, float)), (
+        "Task.cost_estimate_usd must be numeric"
+    )
+    assert float(type(task).cost_estimate_usd) >= 0.0, "Task.cost_estimate_usd must be non-negative"
+    assert isinstance(type(task).timeout_s, (int, float)), "Task.timeout_s must be numeric"
+    assert float(type(task).timeout_s) > 0.0, "Task.timeout_s must be positive"
+    deps = type(task).depends_on
+    assert isinstance(deps, tuple), f"Task.depends_on must be a tuple, got {type(deps).__name__}"
+    for dep in deps:
+        assert isinstance(dep, str), "Task.depends_on entries must be strings"
+
+    findings = await task.run(context if context is not None else {})
+    assert isinstance(findings, list), (
+        f"Task.run must return a list of findings, got {type(findings).__name__}"
+    )
+    for f in findings:
+        assert hasattr(f, "severity"), "finding must have a 'severity' attribute"
+        assert isinstance(f.severity, str), "finding.severity must be a string"
+        assert hasattr(f, "category"), "finding must have a 'category' attribute"
+        assert isinstance(f.category, str), "finding.category must be a string"
+        assert hasattr(f, "message"), "finding must have a 'message' attribute"
+        assert isinstance(f.message, str), "finding.message must be a string"

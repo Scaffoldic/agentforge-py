@@ -1,17 +1,28 @@
 ---
-feature: none
-state: idle
-branch: main
-started_at: null
-last_milestone_at: 2026-05-12T06:30
-last_shipped: feat-013 shipped via PR #24 (awaiting merge)
+feature: feat-015
+state: in_progress
+branch: feat/015-pipeline-and-tasks
+started_at: 2026-05-12
+last_milestone_at: 2026-05-12
+last_shipped: feat-013 shipped via PR #24 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-*None — awaiting next pick.*
+[`feat-015 — Pipeline & deterministic tasks`](../../docs/features/feat-015-pipeline-and-tasks.md)
+
+Full-spec scope. 6 chunks:
+
+1. `Task` ABC + `PipelineResult` value + conformance harness.
+2. `Pipeline` engine + DAG + parallelism + `PipelineFailure`.
+3. `pipeline_findings` built-in tool + `Agent(pipeline=...)`
+   integration + recording/replay.
+4. Config schema (`modules.pipeline:`) + module validation +
+   `build_agent_from_config` wiring.
+5. Public API re-exports + renderer-compat sanity test.
+6. Docs (spec §10/§11) + roadmap + CHANGELOG + state + PR.
 
 ## Last shipped
 
