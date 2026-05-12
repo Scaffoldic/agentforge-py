@@ -90,3 +90,23 @@ class ChatResponse(BaseModel):
     cost_usd: float = Field(default=0.0, ge=0.0)
     duration_ms: int = Field(default=0, ge=0)
     finish_reason: str = "completed"
+
+
+class StreamingEvent(BaseModel):
+    """One event emitted by `ReasoningStrategy.stream()` (feat-020 v0.2).
+
+    Strategies that want per-token streaming override the default
+    `stream()` to yield these events as the LLM emits tokens / step
+    transitions. `ChatSession.stream()` forwards each event to a
+    `ChatChunk` on the wire (kinds map 1:1 with `ChatChunkKind`).
+    The default base-class `stream()` calls `run()` and yields a
+    single `done` event so existing concrete strategies keep
+    working unchanged.
+    """
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    kind: ChatChunkKind
+    content: str | dict[str, Any] | None = None
+    cumulative_text: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
