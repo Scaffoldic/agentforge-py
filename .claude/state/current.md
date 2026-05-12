@@ -1,10 +1,10 @@
 ---
 feature: none
-state: idle
-branch: feat/014-a2a-protocol
-started_at: null
+state: in_progress
+branch: chore/reconcile-spec-status-drift
+started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-014 shipped via PR #27 (open for review)
+last_shipped: feat-014 shipped via PR #27 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
