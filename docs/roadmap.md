@@ -54,18 +54,35 @@ of each spec under [`docs/features/`](./features/).
 
 ---
 
+## Release sequence
+
+We haven't tagged anything yet. The next release is **v0.1.0**
+(every shipped feature with a `Target version: 0.1` is landed).
+After that, releases follow the natural minor sequence: v0.1 →
+v0.2 → v0.3 → v0.4 → 1.0, two-weekly during 0.x per
+[ADR-0015](./adr/0015-coordinated-release-train.md). Spec
+metadata's `Target version` field is **aspirational** (set
+when the spec was written) and may differ from the tag a
+feature actually lands in — when they diverge, the tag wins.
+The `## Shipped` table above is the durable record.
+
 ## Backlog (canonical numbers)
 
 These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
-move into "In flight" when starting.
+move into "In flight" when starting. Tag column is the
+**earliest tag it could land in** — actual cadence depends on
+when the work ships.
 
-- **feat-014 v0.4.1 follow-ups** — production HTTP runner
-  against a real A2A peer (replaces the
+- **feat-014 follow-ups** (tag: v0.2 or later) — production
+  HTTP runner against a real A2A peer (replaces the
   `# pragma: no cover` stubs); A2A discovery / registry;
   bi-directional streaming.
-- **feat-020 v0.3 follow-ups** —
-  `agentforge-chat-history-postgres`,
+- **feat-013 follow-up** (tag: v0.2 or later) — production
+  MCP runner against a real server (also replaces
+  `# pragma: no cover` stubs).
+- **feat-020 follow-ups** (tag: v0.2 or v0.3 per spec metadata)
+  — `agentforge-chat-history-postgres`,
   `agentforge-chat-history-redis`, `agentforge-chat-slack`
   reference adapter, real per-token streaming through the
   strategy loop, cross-process per-session locking

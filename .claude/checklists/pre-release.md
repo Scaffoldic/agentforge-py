@@ -1,0 +1,117 @@
+# Pre-release checklist
+
+Run this checklist top-to-bottom before pushing a `vX.Y.Z` git
+tag and publishing the GitHub Release. Coordinated release train
+per ADR-0015 — every workspace package bumps to the same minor
+in lockstep.
+
+## 1. Branch + state
+
+- [ ] On `main`. Clean working tree (`git status`).
+- [ ] Synced with `origin/main` (`git pull --ff-only`).
+- [ ] Every feature PR for the target minor is merged. Open PRs
+      either ship in this train or move to the next.
+
+## 2. Version bump
+
+- [ ] Every member of `[tool.uv.workspace.members]` has its
+      `pyproject.toml` `[project] version` bumped to `X.Y.Z`.
+- [ ] Root `pyproject.toml` (if it carries a version) is bumped.
+- [ ] No pinned dep on `agentforge-core` (or any in-train
+      package) is left at an earlier minor.
+
+```bash
+# One-shot check:
+rg -n '^version = "' packages/*/pyproject.toml
+```
+
+## 3. Gate
+
+- [ ] `uv sync` succeeds against the bumped versions.
+- [ ] `uv run pre-commit run --all-files` is green
+      (ruff format + ruff check + mypy --strict + bandit +
+      pytest + ≥90 % coverage).
+- [ ] CI on `main` is green for the commit being tagged.
+
+## 4. CHANGELOG
+
+- [ ] `CHANGELOG.md`'s `[Unreleased]` section has every notable
+      change since the last tag. (Per Keep a Changelog v1.1
+      under `Added` / `Changed` / `Deprecated` / `Removed` /
+      `Fixed` / `Security`.)
+- [ ] Rename `## [Unreleased]` → `## [X.Y.Z] — YYYY-MM-DD`.
+- [ ] Append a fresh empty `## [Unreleased]` section above it
+      for the next cycle.
+- [ ] Each entry references the canonical spec
+      (`docs/features/feat-NNN-*.md`) or ADR where applicable.
+
+## 5. Release notes
+
+- [ ] Copy `.claude/templates/release-notes.md` to
+      `docs/releases/vX.Y.Z.md`.
+- [ ] Fill **every** section. Highlights, breaking changes,
+      coordinated release train table, cross-language status,
+      shipped features, acknowledgements. The template's
+      comments call out what each section needs.
+- [ ] No placeholder text (`<feature title>`, `<…>`, etc.)
+      remains.
+- [ ] Migration guide present when there is any breaking change;
+      "**None**" written out when there isn't.
+
+## 6. Docs sync
+
+- [ ] `docs/features/README.md` — every feature shipped in this
+      train shows `shipped` (not `proposed`).
+- [ ] Each shipped spec's metadata Status field reads
+      `shipped (Python — <surface>)` (or equivalent).
+- [ ] `docs/roadmap.md` Shipped table lists the new release row;
+      Backlog reflects what slid to the next train.
+- [ ] `README.md` install snippets pin the new version (if they
+      pin at all).
+
+## 7. State
+
+- [ ] `.claude/state/current.md` `last_shipped` updated.
+- [ ] `.claude/state/log.md` has a `## YYYY-MM-DDTHH:MM —
+      vX.Y.Z released` entry summarising what landed.
+
+## 8. Tag + publish
+
+- [ ] `git tag -a vX.Y.Z -m "AgentForge vX.Y.Z — <codename>"`.
+- [ ] `git push origin vX.Y.Z`.
+- [ ] `gh release create vX.Y.Z --notes-file docs/releases/vX.Y.Z.md`.
+- [ ] Verify the GitHub Release page renders the notes
+      correctly; attach any binary artefacts if applicable.
+
+## 9. Post-release
+
+- [ ] PyPI: each workspace package built and uploaded
+      (`uv build` + `twine upload` per package; or the
+      automation that will replace this once CI publishing
+      lands).
+- [ ] Announcement drafted (README / discussions / blog).
+- [ ] Bump the `[Unreleased]` section of CHANGELOG.md back to
+      empty for the next cycle (covered in §4 — verify).
+- [ ] Open a `chore/post-release-cleanup` PR if any drift was
+      surfaced during the train (rare but possible).
+
+---
+
+## Cadence reference
+
+Per ADR-0015:
+
+- During 0.x — release train every 2 weeks.
+- Patch releases (0.x.y → 0.x.(y+1)) between trains are bug
+  fixes only.
+- Breaking changes ship at minor bumps and **require** a
+  migration guide in the release notes.
+
+## References
+
+- [`.claude/templates/release-notes.md`](../templates/release-notes.md)
+- [`.claude/standards/git.md`](../standards/git.md) §Tagging &
+  releases
+- [ADR-0015 — Coordinated release train](../../docs/adr/0015-coordinated-release-train.md)
+- [Keep a Changelog v1.1](https://keepachangelog.com/en/1.1.0/)
+- [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
