@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-013 |
 | **Title** | Model Context Protocol — consume MCP tool servers and expose AgentForge tools as MCP |
-| **Status** | proposed |
+| **Status** | shipped (Python — consume + expose, stdio + HTTP/SSE) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
 | **Target version** | 0.2 |
@@ -231,7 +231,132 @@ Configuration identical.
 - Cross-MCP-server orchestration (call server A, pipe output to server B).
   Tools call tools — no new orchestration primitive.
 
-## 10. References
+## 10. Implementation status (Python)
+
+Shipped in PR #24 as the new Tier-3 `agentforge-mcp` workspace
+member.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `93ba261` | Package skeleton (pyproject + LICENSE + README) + `MCPClientRunner` / `MCPServerRunner` protocols + `MCPToolDescriptor` value + `MCPToolAdapter` + `build_adapter(runner, descriptor, server_name)` factory. Tool name prefixing (`<server>.<tool>`) + permissive Pydantic input schema generation from JSON-Schema dicts. |
+| 2 | `c1099ab` | `MCPServerClient` consumer with `from_stdio` / `from_http` / `from_sse` factories that lazy-import `mcp`. `discover_tools` + `tool_filter` subset. ModuleError surfaces pip remediation when SDK is missing. |
+| 3 | `8b7fb56` | `MCPServer` exposer with `from_stdio` / `from_http` factories. `register_tools()` walks the agent's tools and registers each whitelisted one with the runner using `Tool.input_schema.model_json_schema()`. `allowed` is an allowlist (skip silently outside it). |
+| 4 | `8a48bb0` | `MCPBridge` orchestrator. `from_config(config)` parses `modules.protocols.mcp.config`; `start()` opens every client + schedules the optional server's `serve()` task; `close()` cancels the task cleanly + closes every client. |
+| 5 | (this PR) | Docs + Runbook + roadmap + CHANGELOG + state. |
+
+### Deviations from the design
+
+- **Production runner stubs are `# pragma: no cover`.** The SDK
+  wrapper classes (`_SDKClientRunner`, `_SDKServerRunner`)
+  exist as skeletons that raise `ModuleError("Production MCP
+  runner not implemented yet")` until the framework's first
+  integration test against a live MCP server lands. Every unit
+  test injects a mock runner; the SDK wiring + transport
+  context-manager dance is well-defined but unimplemented.
+- **`MCPBridge.from_config` runs `asyncio.run_until_complete`
+  to drive the async client factories from a synchronous code
+  path.** This is the pragmatic shape so the resolver-instantiated
+  bridge fits the `build_agent_from_config` flow; a fully-async
+  resolver hook is a v0.3 cleanup.
+- **`Agent.tools` integration is opt-in via the bridge.** A
+  follow-up commit can teach `build_agent_from_config` to call
+  `MCPBridge.from_config(...)`, `await bridge.start()`, and
+  merge `bridge.tools` into the agent's tool list. Today the
+  package ships the primitive; wiring into the Agent
+  construction path waits for a real live-test scenario.
+- **TypeScript port deferred.** The protocol contract is
+  language-neutral; TS port lands when the framework's TS
+  scaffolding does.
+
+### Module shape
+
+`packages/agentforge-mcp/`:
+
+- `_runner.py` — `MCPClientRunner` / `MCPServerRunner`
+  Protocols + `MCPToolDescriptor` value.
+- `adapter.py` — `MCPToolAdapter` + `build_adapter` factory.
+- `client.py` — `MCPServerClient` (stdio / http / sse).
+- `server.py` — `MCPServer` (stdio / http expose).
+- `bridge.py` — `MCPBridge.from_config` orchestrator.
+- `manifest.yaml` — feat-010 manifest so `agentforge add module
+  mcp` registers the protocol entry.
+
+## 11. Runbook
+
+### Add MCP support to an agent
+
+```bash
+agentforge add module mcp
+```
+
+then edit `agentforge.yaml`:
+
+```yaml
+modules:
+  protocols:
+    - name: mcp
+      config:
+        servers:
+          - name: filesystem
+            transport: stdio
+            command: "npx -y @modelcontextprotocol/server-filesystem /work"
+          - name: github
+            transport: stdio
+            command: "uvx mcp-server-github"
+            env:
+              GITHUB_TOKEN: "${GITHUB_TOKEN}"
+        expose:
+          enabled: true
+          transport: stdio
+          tools: ["lookup_user", "create_ticket"]
+```
+
+After the next `agentforge run`, the agent's tool catalogue
+will include MCP-server tools prefixed by their server name
+(`filesystem.read_file`, `github.create_issue`). When
+`expose.enabled` is set, the agent also runs an MCP server so
+Claude Desktop / Cursor / another AgentForge agent can call
+into `lookup_user` and `create_ticket` over MCP.
+
+### Filter what's imported from a server
+
+```yaml
+- name: filesystem
+  transport: stdio
+  command: "..."
+  tool_filter: ["read_file", "list_directory"]   # subset
+```
+
+### Test against a fake MCP runner
+
+```python
+from dataclasses import dataclass, field
+from agentforge_mcp import MCPServerClient
+from agentforge_mcp._runner import MCPToolDescriptor
+
+@dataclass
+class FakeRunner:
+    tools: list[MCPToolDescriptor] = field(default_factory=list)
+    async def list_tools(self):
+        return self.tools
+    async def call_tool(self, name, args):
+        return "ok"
+    async def close(self): ...
+
+client = MCPServerClient(name="fs", runner=FakeRunner(tools=[...]))
+tools = await client.discover_tools()
+```
+
+### Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `ModuleError: mcp SDK is not installed` | upstream missing | `pip install mcp` (or `agentforge add module mcp` to install both) |
+| `Production MCP runner not implemented yet` | live transport stub | inject a fake runner via the bare constructor in tests; live wiring lands in a follow-up |
+| Tool name collision | two servers expose the same name | both arrive prefixed with their server name (`fs.read_file` vs `s3.read_file`) — collision avoided |
+| Subprocess won't terminate on agent close | `bridge.close` not called | use `async with Agent(...)` so the framework's `__aexit__` invokes the bridge close path |
+
+## 12. References
 
 - [`architecture.md`](../design/architecture.md) §5
 - feat-001, feat-004, feat-010

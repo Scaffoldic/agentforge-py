@@ -1,0 +1,27 @@
+# agentforge-mcp module manifest (feat-010).
+#
+# `agentforge add module mcp` reads this and applies the listed
+# env-var additions + template files + config block.
+
+category: protocols
+name: mcp
+
+env_vars: []
+templates: []
+
+config_block:
+  modules:
+    protocols:
+      - name: mcp
+        config:
+          servers: []
+          expose:
+            enabled: false
+            transport: stdio
+            tools: []
+
+next_steps: |
+  Configure your MCP servers under `modules.protocols[0].config.servers`.
+  Each entry needs a `name`, `transport` (stdio | http | sse), and the
+  appropriate connection field (`command` for stdio, `url` for http/sse).
+  See `docs/runbooks/09-add-mcp.md` for the full pattern.

@@ -35,6 +35,7 @@ dependencies = [
     "agentforge-guard-presidio",
     "agentforge-guard-nemo",
     "agentforge-guard-llamaguard",
+    "agentforge-mcp",
 ]
 
 [tool.uv.workspace]
@@ -55,6 +56,7 @@ agentforge-guard-llmguard = { workspace = true }
 agentforge-guard-presidio = { workspace = true }
 agentforge-guard-nemo = { workspace = true }
 agentforge-guard-llamaguard = { workspace = true }
+agentforge-mcp = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -213,6 +215,8 @@ module = [
     "presidio_anonymizer.*",
     "nemoguardrails",
     "nemoguardrails.*",
+    "mcp",
+    "mcp.*",
 ]
 ignore_missing_imports = true
 follow_imports = "skip"
@@ -254,6 +258,7 @@ testpaths = [
     "packages/agentforge-guard-presidio/tests",
     "packages/agentforge-guard-nemo/tests",
     "packages/agentforge-guard-llamaguard/tests",
+    "packages/agentforge-mcp/tests",
     "tests",
 ]
 markers = [
@@ -297,6 +302,7 @@ source = [
     "packages/agentforge-guard-presidio/src",
     "packages/agentforge-guard-nemo/src",
     "packages/agentforge-guard-llamaguard/src",
+    "packages/agentforge-mcp/src",
 ]
 branch = true
 parallel = true
