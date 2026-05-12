@@ -356,14 +356,16 @@ class ChatSession:
         run_summary: dict[str, Any] | None = None
         start = time.monotonic()
         async for event in self._agent.stream(task):
-            chunk = self._chunk_from_event(event, assistant_turn_id)
             if event.kind == "done":
                 if isinstance(event.content, dict):
                     run_summary = event.content
-                break
+                # Don't break — let the generator yield its terminal
+                # event and complete naturally so `Agent.stream`'s
+                # `finally: reset_run(token)` fires deterministically.
+                continue
             if event.kind == "text" and isinstance(event.content, str):
                 cumulative += event.content
-            yield chunk
+            yield self._chunk_from_event(event, assistant_turn_id)
         duration_ms = int((time.monotonic() - start) * 1000)
         if run_summary is None:
             run_summary = {

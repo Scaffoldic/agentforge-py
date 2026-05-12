@@ -40,6 +40,7 @@ dependencies = [
     "agentforge-chat-http",
     "agentforge-chat-history-postgres",
     "agentforge-chat-history-redis",
+    "agentforge-chat-slack",
     "agentforge-a2a",
 ]
 
@@ -66,6 +67,7 @@ agentforge-chat = { workspace = true }
 agentforge-chat-http = { workspace = true }
 agentforge-chat-history-postgres = { workspace = true }
 agentforge-chat-history-redis = { workspace = true }
+agentforge-chat-slack = { workspace = true }
 agentforge-a2a = { workspace = true }
 
 [tool.uv]
@@ -234,6 +236,18 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_chat_history_redis.*"
 disable_error_code = ["no-any-unimported"]
 
+# slack-bolt + slack-sdk don't ship py.typed; agentforge-chat-slack
+# lazy-imports them inside `start()` so they're optional at runtime.
+[[tool.mypy.overrides]]
+module = ["slack_bolt", "slack_bolt.*", "slack_sdk", "slack_sdk.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_chat_slack.*"
+disable_error_code = ["no-any-unimported"]
+
 # feat-018: llm-guard / presidio / nemoguardrails / Llama Guard SDKs
 # either ship without py.typed or aren't installed by default
 # (vendor modules import them lazily). Skip strict typechecks for
@@ -305,6 +319,7 @@ testpaths = [
     "packages/agentforge-chat-http/tests",
     "packages/agentforge-chat-history-postgres/tests",
     "packages/agentforge-chat-history-redis/tests",
+    "packages/agentforge-chat-slack/tests",
     "packages/agentforge-a2a/tests",
     "tests",
 ]
@@ -359,6 +374,7 @@ source = [
     "packages/agentforge-chat-http/src",
     "packages/agentforge-chat-history-postgres/src",
     "packages/agentforge-chat-history-redis/src",
+    "packages/agentforge-chat-slack/src",
     "packages/agentforge-a2a/src",
 ]
 branch = true
