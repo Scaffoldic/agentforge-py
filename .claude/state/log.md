@@ -1101,3 +1101,52 @@ Tooling notes:
   bandit B404/B603 noqa'd.
 
 Ready to push and raise PR #23.
+
+---
+
+## 2026-05-12T06:30 — feat-013 chunk 5 done, PR pending
+
+All five chunks of feat-013 landed on
+`feat/013-mcp-integration`:
+
+- `93ba261` — chunk 1: package skeleton + Runner protocols
+  + MCPToolDescriptor + MCPToolAdapter + build_adapter.
+  Server-name tool prefixing; permissive Pydantic input
+  schema from JSON-Schema dict; pyproject entry-point under
+  `agentforge.protocols/mcp`.
+- `c1099ab` — chunk 2: MCPServerClient (stdio + HTTP + SSE)
+  with lazy `mcp` SDK imports. tool_filter + close
+  propagation. Three SDK-missing → ModuleError test cases.
+- `8b7fb56` — chunk 3: MCPServer exposer with stdio + http
+  factories. register_tools using `Tool.input_schema.
+  model_json_schema()`. Allowlist semantics (no error on
+  unknown).
+- `8a48bb0` — chunk 4: MCPBridge orchestrator.
+  `from_config(config)` parses `modules.protocols.mcp.config`;
+  `start` aggregates tools across clients; serve task
+  scheduled; `close` cancels with `_Suppress(CancelledError)`
+  and tears down everything.
+- (about-to-commit) chunk 5: spec status → shipped + §10
+  Implementation Status + §11 Runbook; features README;
+  roadmap; CHANGELOG; state refreshed; manifest.yaml shipped
+  for `agentforge add module mcp`.
+
+Deviations captured in spec §10:
+
+- Production transport runners (`_SDKClientRunner`,
+  `_SDKServerRunner`) scaffolded but `# pragma: no cover` —
+  they raise `Production MCP runner not implemented yet`
+  until the first live integration test.
+- `build_agent_from_config` auto-merging `bridge.tools` is a
+  follow-up; today the bridge is opt-in.
+- TS port deferred.
+
+Tooling notes:
+- mypy override added for `mcp.*` (no py.typed upstream).
+- `MCPBridge.from_config` uses `asyncio.get_event_loop().
+  run_until_complete` to drive async factories from sync code;
+  this is pragmatic now, fully-async resolver hook is v0.3.
+- `_Suppress(CancelledError)` is a small CapWords class
+  mirroring `contextlib.suppress` (mypy-friendly).
+
+Ready to push and raise PR #24.
