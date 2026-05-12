@@ -1355,3 +1355,16 @@ Branch `chore/release-v0.1.0` opens the first tag PR.
 
 Pending: PR merge, then `git tag -a v0.1.0` + push + `gh
 release create v0.1.0 --notes-file docs/releases/v0.1.0.md`.
+
+
+## 2026-05-12T19:00 — v0.1.0 tagged + published
+
+`git tag -a v0.1.0` annotated and pushed; `gh release create
+v0.1.0 --notes-file docs/releases/v0.1.0.md` published.
+
+Release page:
+https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.1.0
+
+First AgentForge release. All 18 workspace packages at 0.1.0.
+20 canonical specs (feat-001 through feat-020) shipped. The
+v0.2.0 backlog is in docs/roadmap.md "v0.2.0 backlog" section.
