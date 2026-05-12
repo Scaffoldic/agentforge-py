@@ -21,8 +21,8 @@
 ## Versioning targets
 
 - **0.1** — minimum viable framework: hello-world in 3 lines, **all four reasoning loops (ReAct + Plan-Execute + ToT + Multi-Agent) shipped stable**, in-memory state, one provider, basic tools, scaffolding `new`, basic safety defaults (prompt-injection regex + PII redaction + tool capability gate), runbooks + `AGENTS.md` shipped in every scaffold.
-- **0.2** — modules: `add module`, persistence drivers (SQLite + Postgres), MCP, evaluators (deterministic + LLM-judge), full safety guardrail module ecosystem (LLM Guard, Presidio, NeMo, Llama Guard), chat agents (`ChatSession` + memory/sqlite history + HTTP/WebSocket/SSE server).
-- **0.3** — upgrade: `agentforge upgrade` with three-way merge; remaining persistence drivers (SurrealDB + Neo4j); remaining chat history drivers (Postgres + Redis); reference channel adapter (Slack).
+- **0.2** — modules + ecosystem: `add module`, persistence drivers (SQLite + Postgres + SurrealDB + Neo4j), MCP (incl. production runner), A2A (incl. production runner + discovery + bi-directional streaming), evaluators (deterministic + LLM-judge), full safety guardrail module ecosystem (LLM Guard, Presidio, NeMo, Llama Guard), chat agents full stack (memory + sqlite + postgres + redis history drivers + chat-http + slack reference adapter + real per-token streaming + cross-process locking), vendor observability backends (Langfuse, Phoenix, Evidently, StatsD), advanced retrieval (GraphRAG hybrid, BM25 + vector fusion, `Reranker` ABC, schema migrations).
+- **0.3** — reserved for the next round of community / ecosystem feedback; intentionally empty at v0.1.0 cut. Use this slot when 0.2 starts to overflow.
 - **0.4** — TypeScript reaches parity with Python 0.2 surface.
 - **1.0** — stability bar: contracts frozen, semver enforced, full evaluator + observability + safety stack.
 
@@ -34,53 +34,53 @@
 |---|---|---|---|---|---|
 | **feat-001** | Core contracts & `Agent` orchestrator | shipped (Python; TS pending) | 0.1 | both | `agentforge-core`, `agentforge` |
 | **feat-002** | Reasoning strategies (ReAct + Plan-Execute + ToT + Multi-Agent — all stable from v0.1) | shipped (Python) | 0.1 | both | `agentforge` (all four loops in-runtime) |
-| **feat-003** | LLM & embedding providers — `LLMClient` + `EmbeddingClient`, named-provider registry (multi-LLM agents: reasoning + judge + embedding), capability negotiation | shipped (Python — ABCs + registry + `agentforge-bedrock`) | 0.1 | both | `agentforge-core` + provider modules (`agentforge-bedrock` shipped; `agentforge-anthropic`, `-openai`, `-voyage`, ... deferred to v0.3) |
+| **feat-003** | LLM & embedding providers — `LLMClient` + `EmbeddingClient`, named-provider registry (multi-LLM agents: reasoning + judge + embedding), capability negotiation | shipped (Python — ABCs + registry + `agentforge-bedrock`) | 0.1 | both | `agentforge-core` + provider modules (`agentforge-bedrock` shipped; `agentforge-anthropic`, `-openai`, `-voyage`, ... deferred to v0.2) |
 | **feat-004** | Tools system (`@tool` decorator, `Tool` ABC, default tool set, `FakeTool`) | shipped (Python) | 0.1 | both | `agentforge` |
-| **feat-005** | Persistence — `MemoryStore` ABC + drivers (sqlite, postgres, surrealdb, neo4j) + `VectorStore` + `GraphStore` + RAG | shipped (Python — full surface; PRs #5/#7/#8 mis-labelled per spec §10) | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) | both | `agentforge-memory-sqlite`, `-postgres`, `-neo4j`, `-surrealdb` |
-| **feat-006** | Evaluators (deterministic + LLM-judge: correctness, faithfulness, groundedness, hallucination, relevance, helpfulness, coverage, format compliance, regression, consistency) | shipped (Python) | 0.2 | both | `agentforge`, `agentforge-eval-geval`, optional `-ragas`, `-deepeval`, `-toxicity`, `-codeexec` |
+| **feat-005** | Persistence — `MemoryStore` ABC + drivers (sqlite, postgres, surrealdb, neo4j) + `VectorStore` + `GraphStore` + RAG | shipped (Python — full surface; PRs #5/#7/#8 mis-labelled per spec §10) | 0.1 | both | `agentforge-memory-sqlite`, `-postgres`, `-neo4j`, `-surrealdb` |
+| **feat-006** | Evaluators (deterministic + LLM-judge: correctness, faithfulness, groundedness, hallucination, relevance, helpfulness, coverage, format compliance, regression, consistency) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-eval-geval`, optional `-ragas`, `-deepeval`, `-toxicity`, `-codeexec` |
 | **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | shipped (Python) | 0.1 | both | `agentforge-core`, `agentforge` |
 | **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-core` |
-| **feat-009** | Observability — structured logging (JSON) + distributed tracing (OTel) + hook fan-out; vendor backends (Langfuse / Phoenix / Evidently / StatsD) deferred to follow-up sub-feats | shipped (Python, OTel only) | 0.2 | both | `agentforge`, `agentforge-otel`, future `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd` |
+| **feat-009** | Observability — structured logging (JSON) + distributed tracing (OTel) + hook fan-out; vendor backends (Langfuse / Phoenix / Evidently / StatsD) slated for v0.2 | shipped (Python, OTel only) | 0.1 (framework + OTel — shipped), 0.2 (vendor backends) | both | `agentforge`, `agentforge-otel`, future `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd` |
 
 ### Safety & security
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-018** | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs; built-in prompt-injection + PII + capability gates; modules for LLM Guard, Presidio, NeMo Guardrails, Llama Guard | shipped (Python) | 0.1 (basics), 0.2 (full ecosystem) | both | `agentforge-core` (ABCs + values + conformance), `agentforge` (built-ins + engine), `agentforge-guard-llmguard`, `agentforge-guard-presidio`, `agentforge-guard-nemo`, `agentforge-guard-llamaguard` |
+| **feat-018** | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs; built-in prompt-injection + PII + capability gates; modules for LLM Guard, Presidio, NeMo Guardrails, Llama Guard | shipped (Python — ABCs + built-ins + 4 vendor packages) | 0.1 | both | `agentforge-core` (ABCs + values + conformance), `agentforge` (built-ins + engine), `agentforge-guard-llmguard`, `agentforge-guard-presidio`, `agentforge-guard-nemo`, `agentforge-guard-llamaguard` |
 
 ### Module system
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-010** | Module discovery & resolution — entry-point auto-load + `Resolver.list_installed` + full `agentforge list/add/remove/swap module` CLI + manifest-driven module wiring | shipped (Python) | 0.2 | both | `agentforge` (CLI), `agentforge-core` (resolver + manifest) |
-| **feat-011** | Scaffolding & upgrade (`agentforge new`, `agentforge upgrade`, `agentforge fork`, six starter templates, marker-header file ownership) | shipped (Python) | 0.1 (new), 0.3 (upgrade) | both | `agentforge` (CLI; templates ship in-wheel) |
+| **feat-010** | Module discovery & resolution — entry-point auto-load + `Resolver.list_installed` + full `agentforge list/add/remove/swap module` CLI + manifest-driven module wiring | shipped (Python) | 0.1 | both | `agentforge` (CLI), `agentforge-core` (resolver + manifest) |
+| **feat-011** | Scaffolding & upgrade (`agentforge new`, `agentforge upgrade`, `agentforge fork`, six starter templates, marker-header file ownership) | shipped (Python) | 0.1 | both | `agentforge` (CLI; templates ship in-wheel) |
 | **feat-012** | Configuration system (`agentforge.yaml` schema, env var interpolation, validation, dotted-path overrides, layered env files, module-side schema integration, `agentforge config` CLI) | shipped (Python) | 0.1 | both | `agentforge-core`, `agentforge` |
 
 ### Protocols & interop
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-013** | MCP integration — `MCPServerClient` (stdio + HTTP/SSE) consumes upstream tool servers via `MCPToolAdapter`; `MCPServer` exposes local tools; `MCPBridge.from_config` orchestrates from `modules.protocols.mcp` | shipped (Python) | 0.2 | both | `agentforge-mcp` |
-| **feat-014** | A2A (agent-to-agent) protocol support — for cross-framework agent calls | shipped (Python) | 0.4 | both | `agentforge-a2a` |
+| **feat-013** | MCP integration — `MCPServerClient` (stdio + HTTP/SSE) consumes upstream tool servers via `MCPToolAdapter`; `MCPServer` exposes local tools; `MCPBridge.from_config` orchestrates from `modules.protocols.mcp` | shipped (Python — contracts + adapter + client + server + bridge; production runner slated for v0.2) | 0.1 (shipped scope), 0.2 (production runner) | both | `agentforge-mcp` |
+| **feat-014** | A2A (agent-to-agent) protocol support — for cross-framework agent calls | shipped (Python — contracts + client + server + bridge; production runner + discovery + bi-directional streaming slated for v0.2) | 0.1 (shipped scope), 0.2 (production runner + discovery + streaming) | both | `agentforge-a2a` |
 
 ### Deployment shapes
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-020** | Chat agents — `ChatSession` wrapper, `ChatHistoryStore` (memory/sqlite/postgres/redis drivers), streaming, HTTP/WebSocket/SSE server, multi-tenant isolation, per-turn cost/guardrails, idempotency, cancellation | shipped (Python v0.2 scope) | 0.2 (contracts + memory + sqlite + chat-http — shipped), 0.3 (postgres + redis + reference channel adapter + real per-token streaming) | both | `agentforge-chat`, `agentforge-chat-history-postgres`, `agentforge-chat-history-redis`, `agentforge-chat-http`, optional `agentforge-chat-slack` |
+| **feat-020** | Chat agents — `ChatSession` wrapper, `ChatHistoryStore` (memory/sqlite/postgres/redis drivers), streaming, HTTP/WebSocket/SSE server, multi-tenant isolation, per-turn cost/guardrails, idempotency, cancellation | shipped (Python v0.1 scope: contracts + memory + sqlite + chat-http); v0.2 follow-up scope tracked in spec §10 | 0.2 (full stack: postgres + redis history + slack adapter + real streaming + cross-process lock + tokeniser) | both | `agentforge-chat`, `agentforge-chat-history-postgres`, `agentforge-chat-history-redis`, `agentforge-chat-http`, optional `agentforge-chat-slack` |
 
 ### Pipeline
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-015** | Pipeline & deterministic tasks (`Pipeline`, `Task` ABC, parallel/sequential execution) | shipped (Python) | 0.2 | both | `agentforge` |
+| **feat-015** | Pipeline & deterministic tasks (`Pipeline`, `Task` ABC, parallel/sequential execution) | shipped (Python) | 0.1 | both | `agentforge` |
 
 ### Developer experience
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
 | **feat-016** | Testing framework — `agentforge.testing` namespace (MockLLMClient + FakeTool + agent_factory + pytest fixtures + record_llm/replay + conformance re-exports) + `agentforge-testing` package (GoldenSetRunner + assert_snapshot + analyze_recording) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-testing` |
-| **feat-017** | CLI runtime — `agentforge run` (+ `--replay`), `agentforge eval`, `agentforge debug`, `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight) | shipped (Python) | 0.1 (run), 0.2 (rest) | both | `agentforge` (CLI), `agentforge-core` (`MemoryStore.delete` ABC addition) |
+| **feat-017** | CLI runtime — `agentforge run` (+ `--replay`), `agentforge eval`, `agentforge debug`, `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight) | shipped (Python) | 0.1 | both | `agentforge` (CLI), `agentforge-core` (`MemoryStore.delete` ABC addition) |
 | **feat-019** | Developer experience — 16 runbooks + `AGENTS.md` / `CLAUDE.md` / `.cursorrules` rules shipped with every scaffolded agent; `agentforge docs` CLI (list / open / drift-check / serve); three-section managed/custom file format with upgrade-safe custom preservation | shipped (Python) | 0.1 (initial set) | both | `agentforge` (CLI + templates._shared) |
 
 ---

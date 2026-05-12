@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — ABCs + 4 built-ins + Agent integration + 4 vendor modules) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.2 |
+| **Target version** | 0.1 (ABCs + 4 built-in basics + 4 vendor sister packages — all shipped) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-core` (ABCs), `agentforge` (basic built-ins), `agentforge-guard-llmguard`, `agentforge-guard-presidio`, `agentforge-guard-nemo`, `agentforge-guard-llamaguard` |
 | **Depends on** | feat-001, feat-004 (Tool capabilities), feat-009 (audit through hooks), feat-010 |

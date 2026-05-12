@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — OTel only; vendor backends deferred) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.2 |
+| **Target version** | 0.1 (framework side: OTel root span + hook fan-out + JSON logs — shipped); 0.2 (vendor backends: Langfuse, Phoenix, Evidently, StatsD) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge` (built-in stdlib filter), `agentforge-otel`, `agentforge-langfuse`, `agentforge-phoenix` |
 | **Depends on** | feat-001, feat-007 (run_id) |

@@ -123,6 +123,22 @@ Don't reference anything outside this repo.
 - CI runs the same checks plus a multi-OS test matrix (Linux,
   macOS, Windows) on Python 3.13.
 
+### Tagging + releases
+
+- Every `vX.Y.Z` tag **requires release notes** at
+  `docs/releases/vX.Y.Z.md`, generated from the template in
+  [`.claude/templates/release-notes.md`](./.claude/templates/release-notes.md)
+  and walked through [`.claude/checklists/pre-release.md`](./.claude/checklists/pre-release.md).
+  The GitHub Release body is the rendered file. Full rules in
+  [`.claude/standards/git.md`](./.claude/standards/git.md)
+  §Tagging & releases.
+- Coordinated release train per
+  [ADR-0015](./docs/adr/0015-coordinated-release-train.md):
+  every framework release bumps every in-scope workspace
+  package to the same minor.
+- No skipping versions. Spec metadata's `Target version` is
+  aspirational; the actual tag a feature lands in wins.
+
 ## How to add a new module package
 
 1. Create `packages/agentforge-<X>/` with the structure used by
