@@ -1,0 +1,56 @@
+# agentforge-chat-http — FastAPI server for agentforge-chat.
+
+[project]
+name = "agentforge-chat-http"
+version = "0.0.0"
+description = "FastAPI HTTP + WebSocket + SSE server for AgentForge chat sessions"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "chat", "fastapi", "websocket", "sse"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Framework :: FastAPI",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "agentforge",
+    "agentforge-chat",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "httpx>=0.27",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+
+[project.entry-points."agentforge.protocols"]
+chat_http = "agentforge_chat_http.server:ChatServer"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_chat_http"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_chat_http",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

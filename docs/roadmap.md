@@ -45,6 +45,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-019](./features/feat-019-developer-experience-and-ai-rules.md) | Developer experience + AI rules — three-section managed/custom markdown format (`<!-- agentforge:end-managed -->`); `inject_shared_scaffold` post-render hook copies `_shared/` into every new scaffold; 16 runbooks + `AGENTS.md` + `CLAUDE.md` + `.cursorrules` ship Day-1; `agentforge docs` CLI (list / open by stem/number/alias / `--check` drift / `--serve` local HTTP). | [#23](https://github.com/Scaffoldic/agentforge-py/pull/23) |
 | [feat-013](./features/feat-013-mcp-integration.md) | MCP integration — `agentforge-mcp` module: `MCPServerClient` (stdio + HTTP/SSE) consumes upstream MCP tool servers via `MCPToolAdapter`s (server-name prefixed); `MCPServer` exposes local tools as MCP; `MCPBridge.from_config` orchestrates from `modules.protocols.mcp`. Production runners scaffolded behind `MCPClientRunner` / `MCPServerRunner` protocols pending live integration tests. | [#24](https://github.com/Scaffoldic/agentforge-py/pull/24) |
 | [feat-015](./features/feat-015-pipeline-and-tasks.md) | Pipeline & deterministic tasks — `Task` ABC + `PipelineResult` value in `agentforge-core`; `Pipeline` engine (DAG validation, `asyncio.Semaphore`-bounded parallelism, per-task timeouts, continue/fail error mode) + `PipelineFailure` + `PipelineFindingsTool` built-in; `Agent(pipeline=...)` kwarg + `Agent.run(task, *, context, replay_pipeline)` API; system-prompt addendum; `modules.pipeline:` config block + `build_pipeline_from_config`; `__pipeline` recording category + `load_pipeline_result` replay; `FinishReason` literal extended with `"pipeline"`. | [#25](https://github.com/Scaffoldic/agentforge-py/pull/25) |
+| [feat-020 (v0.2 scope)](./features/feat-020-chat-agents.md) | Chat agents v0.2 — `ChatHistoryStore` / `HistoryTruncationStrategy` ABCs + `ChatTurn` / `SessionInfo` / `ChatChunk` / `ChatResponse` value models in `agentforge-core`; `agentforge-chat` package with `ChatSession` (send + stream + idempotency + per-turn/per-session budgets + input/output guardrails + sentence-segmenting buffer-then-stream) and `InMemoryChatHistory` / `SqliteChatHistory` drivers + four truncation strategies (sliding-window, token-budget, summarise-oldest, hybrid); `agentforge-chat-http` package with FastAPI REST + WS + SSE + bearer auth + cross-owner 403 + token-bucket rate limiting; `modules.chat:` config block + `build_chat_session_from_config`. Postgres / Redis drivers, Slack adapter, and real per-token streaming deferred to v0.3 follow-up PRs. | [#26](https://github.com/Scaffoldic/agentforge-py/pull/26) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -58,8 +59,14 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **feat-014, feat-020** — see specs under
+- **feat-014** — A2A protocol. See spec under
   [`docs/features/`](./features/).
+- **feat-020 v0.3 follow-ups** —
+  `agentforge-chat-history-postgres`,
+  `agentforge-chat-history-redis`, `agentforge-chat-slack`
+  reference adapter, real per-token streaming through the
+  strategy loop, cross-process per-session locking
+  (Redis-backed), provider-aware tokeniser in `TokenBudget`.
 
 ### feat-009 vendor-package sub-feats (deferred)
 

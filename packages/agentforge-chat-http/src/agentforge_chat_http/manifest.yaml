@@ -1,0 +1,23 @@
+# Module manifest for `agentforge add module chat-http` (feat-010).
+name: chat-http
+description: |
+  FastAPI HTTP + WebSocket + SSE server for AgentForge chat sessions
+  (feat-020 v0.2). Wraps `agentforge_chat.ChatSession`.
+
+distribution:
+  pip_name: agentforge-chat-http
+
+config_block:
+  modules.chat_http:
+    host: "0.0.0.0"
+    port: 8080
+    cors_origins: []
+    auth:
+      type: bearer
+      tokens_env: API_TOKENS
+    rate_limit:
+      per_session_per_minute: 60
+
+entry_points:
+  agentforge.protocols:
+    chat_http: agentforge_chat_http.server:ChatServer

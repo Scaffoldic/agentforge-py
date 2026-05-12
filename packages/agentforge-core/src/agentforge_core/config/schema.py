@@ -158,6 +158,51 @@ class GuardrailEntry(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class ChatHistoryDriverConfig(BaseModel):
+    """`modules.chat.history:` — driver + config for a chat history
+    store (feat-020)."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    driver: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatTruncationConfig(BaseModel):
+    """`modules.chat.truncation:` — strategy + config (feat-020)."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    strategy: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class ChatSessionConfig(BaseModel):
+    """`modules.chat.session:` — per-session policy knobs (feat-020)."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    per_turn_budget_usd: float | None = Field(default=None, ge=0.0)
+    per_session_budget_usd: float | None = Field(default=None, ge=0.0)
+    idempotency_window_s: float = Field(default=60.0, ge=0.0)
+    concurrency: Literal["queue", "reject", "replace"] = "queue"
+    safety_mode: Literal["buffer-then-stream", "stream-then-redact"] = "buffer-then-stream"
+
+
+class ChatConfig(BaseModel):
+    """`modules.chat:` — chat layer config (feat-020).
+
+    `history` may be ``None`` (defaults to in-memory). `truncation`
+    similarly defaults to `SlidingWindow(50)` when absent.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    history: ChatHistoryDriverConfig | None = None
+    truncation: ChatTruncationConfig | None = None
+    session: ChatSessionConfig = Field(default_factory=ChatSessionConfig)
+
+
 class PipelineTaskEntry(BaseModel):
     """One entry inside `modules.pipeline.tasks` (feat-015).
 
@@ -232,6 +277,7 @@ class ModulesConfig(BaseModel):
     protocols: list[ObservabilityEntry] = Field(default_factory=list)
     guardrails: GuardrailsConfig = Field(default_factory=GuardrailsConfig)
     pipeline: PipelineConfig | None = None
+    chat: ChatConfig | None = None
 
 
 class ProviderConfig(BaseModel):

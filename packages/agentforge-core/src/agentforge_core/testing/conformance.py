@@ -22,7 +22,9 @@ import itertools
 import math
 import typing
 from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any
 
+from agentforge_core.contracts.chat import ChatHistoryStore, HistoryTruncationStrategy
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.guardrails import (
@@ -73,6 +75,12 @@ async def _collect(it: AsyncIterator[Claim]) -> list[Claim]:
 
 _EXPECTED_DELETE_COUNT = 2
 """Magic-number constant for the `delete()` conformance cases."""
+
+_EXPECTED_CHAT_TURNS_SID = 2
+"""Magic-number constant for the chat-history conformance cases."""
+
+_EXPECTED_CHAT_TURNS_SID_B = 1
+"""Magic-number constant for the chat-history conformance cases."""
 
 
 async def _run_delete_conformance(store: MemoryStore) -> None:
@@ -799,3 +807,158 @@ async def run_task_conformance(
         assert isinstance(f.category, str), "finding.category must be a string"
         assert hasattr(f, "message"), "finding must have a 'message' attribute"
         assert isinstance(f.message, str), "finding.message must be a string"
+
+
+# ----------------------------------------------------------------------
+# Chat conformance — feat-020.
+# ----------------------------------------------------------------------
+
+
+async def run_chat_history_conformance(store: ChatHistoryStore) -> None:
+    """Validate that a `ChatHistoryStore` honours the locked contract.
+
+    The store must be empty when this is called and is left empty
+    when the function returns.
+    """
+    from datetime import UTC, datetime  # noqa: PLC0415
+    from uuid import uuid4  # noqa: PLC0415
+
+    from agentforge_core.values.chat import ChatTurn  # noqa: PLC0415
+
+    sid = f"conf-{uuid4().hex[:8]}"
+    sid_b = f"conf-{uuid4().hex[:8]}"
+
+    def _turn(session: str, role: str, content: str, **kw: Any) -> ChatTurn:
+        return ChatTurn(
+            id=uuid4().hex,
+            session_id=session,
+            role=role,  # type: ignore[arg-type]
+            content=content,
+            timestamp=datetime.now(UTC),
+            **kw,
+        )
+
+    # 1. append + load round-trip.
+    t1 = _turn(sid, "user", "hello")
+    t2 = _turn(sid, "assistant", "hi there", run_id="run-1")
+    await store.append(t1)
+    await store.append(t2)
+    loaded = await store.load(sid)
+    assert len(loaded) == _EXPECTED_CHAT_TURNS_SID, (
+        f"load() must return both turns; got {len(loaded)}"
+    )
+    assert loaded[0].id == t1.id, "load() must return turns in chronological order"
+    assert loaded[1].id == t2.id
+
+    # 2. count.
+    n = await store.count(sid)
+    assert n == _EXPECTED_CHAT_TURNS_SID, f"count() must reflect appended turns; got {n}"
+
+    # 3. session isolation — a different session_id sees nothing.
+    other_turn = _turn(sid_b, "user", "different session")
+    await store.append(other_turn)
+    only_a = await store.load(sid)
+    assert all(t.session_id == sid for t in only_a), (
+        "load(session_id) must not bleed across sessions"
+    )
+    assert await store.count(sid_b) == _EXPECTED_CHAT_TURNS_SID_B
+
+    # 4. role filter.
+    only_assistant = await store.load(sid, roles=["assistant"])
+    assert all(t.role == "assistant" for t in only_assistant), (
+        "load(roles=...) must filter to those roles"
+    )
+
+    # 5. limit.
+    limited = await store.load(sid, limit=1)
+    assert len(limited) == 1, "load(limit=N) must return at most N turns"
+
+    # 6. list_sessions returns info for every active session.
+    sessions = await store.list_sessions()
+    ids = {s.id for s in sessions}
+    assert sid in ids, "list_sessions() must include the first session"
+    assert sid_b in ids, "list_sessions() must include the second session"
+
+    # 7. update_session_metadata merges keys.
+    await store.update_session_metadata(sid, {"owner": "alice", "tag": "x"})
+    after = await store.list_sessions()
+    matched = [s for s in after if s.id == sid]
+    assert matched, "session must still appear after update_session_metadata()"
+
+    # 8. owner filter on list_sessions.
+    owned = await store.list_sessions(owner="alice")
+    assert all(s.owner == "alice" for s in owned), (
+        "list_sessions(owner=X) must filter to that owner"
+    )
+
+    # 9. delete_session removes turns + returns count.
+    removed = await store.delete_session(sid)
+    assert removed == _EXPECTED_CHAT_TURNS_SID, (
+        f"delete_session must return turns removed; got {removed}"
+    )
+    assert await store.count(sid) == 0
+    after_other = await store.count(sid_b)
+    assert after_other == _EXPECTED_CHAT_TURNS_SID_B, "delete_session must not touch other sessions"
+
+    # 10. expire_before — drivers without TTL may return 0.
+    far_future = datetime(2099, 1, 1, tzinfo=UTC)
+    removed_b = await store.expire_before(far_future)
+    assert isinstance(removed_b, int), "expire_before must return an int"
+
+    # 11. capabilities is a set.
+    caps = store.capabilities()
+    assert isinstance(caps, set)
+    assert store.supports("definitely-not-a-real-capability") is False
+
+    # Clean up remaining session.
+    await store.delete_session(sid_b)
+    await store.expire_before(far_future)
+
+
+async def run_truncation_conformance(strategy: HistoryTruncationStrategy) -> None:
+    """Validate that a `HistoryTruncationStrategy` honours the
+    locked invariants.
+
+    Asserts:
+      1. Output is a subsequence of input (order preserved, no
+         injection).
+      2. Empty input → empty output.
+    """
+    from datetime import UTC, datetime  # noqa: PLC0415
+    from uuid import uuid4  # noqa: PLC0415
+
+    from agentforge_core.values.chat import ChatTurn  # noqa: PLC0415
+
+    def _turn(role: str, content: str) -> ChatTurn:
+        return ChatTurn(
+            id=uuid4().hex,
+            session_id="conf",
+            role=role,  # type: ignore[arg-type]
+            content=content,
+            timestamp=datetime.now(UTC),
+        )
+
+    empty: list[ChatTurn] = []
+    out = await strategy.select(empty, "msg", {})
+    assert out == [], "empty input must yield empty output"
+
+    seq = [
+        _turn("user", "a"),
+        _turn("assistant", "b"),
+        _turn("user", "c"),
+        _turn("assistant", "d"),
+    ]
+    picked = await strategy.select(seq, "next msg", {})
+    ids = [t.id for t in seq]
+    # Output must preserve order: original turns appear in the same
+    # relative order as in `seq`. Synthesised summary turns marked
+    # `metadata["agentforge_chat.summary"] == True` are allowed
+    # (`SummariseOldest`) and skipped from the subsequence check.
+    iter_ids = iter(ids)
+    for t in picked:
+        if t.metadata.get("agentforge_chat.summary") is True:
+            continue
+        assert t.id in iter_ids, (
+            "truncation output must preserve input order "
+            "(no reordered or inserted non-summary turns)"
+        )
