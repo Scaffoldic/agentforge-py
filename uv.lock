@@ -13,6 +13,7 @@ members = [
     "agentforge-a2a",
     "agentforge-bedrock",
     "agentforge-chat",
+    "agentforge-chat-history-postgres",
     "agentforge-chat-http",
     "agentforge-core",
     "agentforge-eval-geval",
@@ -110,6 +111,21 @@ requires-dist = [
     { name = "aiosqlite", marker = "extra == 'sqlite'", specifier = ">=0.20" },
 ]
 provides-extras = ["sqlite"]
+
+[[package]]
+name = "agentforge-chat-history-postgres"
+version = "0.1.0"
+source = { editable = "packages/agentforge-chat-history-postgres" }
+dependencies = [
+    { name = "agentforge-core" },
+    { name = "asyncpg" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "asyncpg", specifier = ">=0.30" },
+]
 
 [[package]]
 name = "agentforge-chat-http"
@@ -333,6 +349,7 @@ dependencies = [
     { name = "agentforge-a2a" },
     { name = "agentforge-bedrock" },
     { name = "agentforge-chat" },
+    { name = "agentforge-chat-history-postgres" },
     { name = "agentforge-chat-http" },
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
@@ -370,6 +387,7 @@ requires-dist = [
     { name = "agentforge-a2a", editable = "packages/agentforge-a2a" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-chat", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat-history-postgres", editable = "packages/agentforge-chat-history-postgres" },
     { name = "agentforge-chat-http", editable = "packages/agentforge-chat-http" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },

@@ -38,6 +38,7 @@ dependencies = [
     "agentforge-mcp",
     "agentforge-chat",
     "agentforge-chat-http",
+    "agentforge-chat-history-postgres",
     "agentforge-a2a",
 ]
 
@@ -62,6 +63,7 @@ agentforge-guard-llamaguard = { workspace = true }
 agentforge-mcp = { workspace = true }
 agentforge-chat = { workspace = true }
 agentforge-chat-http = { workspace = true }
+agentforge-chat-history-postgres = { workspace = true }
 agentforge-a2a = { workspace = true }
 
 [tool.uv]
@@ -211,6 +213,11 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_memory_postgres.*"
 disable_error_code = ["no-any-unimported"]
 
+# Same for the chat-history postgres sister package (feat-020 v0.2).
+[[tool.mypy.overrides]]
+module = "agentforge_chat_history_postgres.*"
+disable_error_code = ["no-any-unimported"]
+
 # feat-018: llm-guard / presidio / nemoguardrails / Llama Guard SDKs
 # either ship without py.typed or aren't installed by default
 # (vendor modules import them lazily). Skip strict typechecks for
@@ -280,6 +287,7 @@ testpaths = [
     "packages/agentforge-mcp/tests",
     "packages/agentforge-chat/tests",
     "packages/agentforge-chat-http/tests",
+    "packages/agentforge-chat-history-postgres/tests",
     "packages/agentforge-a2a/tests",
     "tests",
 ]
@@ -332,6 +340,7 @@ source = [
     "packages/agentforge-mcp/src",
     "packages/agentforge-chat/src",
     "packages/agentforge-chat-http/src",
+    "packages/agentforge-chat-history-postgres/src",
     "packages/agentforge-a2a/src",
 ]
 branch = true
