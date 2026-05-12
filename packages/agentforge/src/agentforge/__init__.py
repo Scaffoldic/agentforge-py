@@ -39,6 +39,13 @@ from agentforge.findings import (
     Span,
 )
 from agentforge.memory import InMemoryGraphStore, InMemoryStore, InMemoryVectorStore
+from agentforge.pipeline import (
+    Pipeline,
+    PipelineFailure,
+    PipelineFindingsTool,
+    PipelineResult,
+    Task,
+)
 from agentforge.renderers import (
     MarkdownRenderer,
     MissingRendererError,
@@ -47,6 +54,7 @@ from agentforge.renderers import (
     ScorecardRenderer,
     SpanTableRenderer,
 )
+from agentforge.resolver_register import register_task
 from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 from agentforge.strategies import (
@@ -78,6 +86,10 @@ __all__ = [
     "Patch",
     "PatchApplierRenderer",
     "PatchFinding",
+    "Pipeline",
+    "PipelineFailure",
+    "PipelineFindingsTool",
+    "PipelineResult",
     "Plan",
     "PlanExecuteLoop",
     "PlanStep",
@@ -90,9 +102,11 @@ __all__ = [
     "Span",
     "SpanTableRenderer",
     "StrategyBase",
+    "Task",
     "TreeOfThoughts",
     "__version__",
     "get_runtime",
     "load_config",
+    "register_task",
     "tool",
 ]
