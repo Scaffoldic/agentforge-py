@@ -7,6 +7,14 @@ requires a major bump.
 
 from __future__ import annotations
 
+from agentforge_core.values.chat import (
+    ChatChunk,
+    ChatChunkKind,
+    ChatResponse,
+    ChatRole,
+    ChatTurn,
+    SessionInfo,
+)
 from agentforge_core.values.claim import Claim
 from agentforge_core.values.graph import (
     GraphEdge,
@@ -51,6 +59,11 @@ __all__ = [
     "AppliedEnvVar",
     "AppliedManifest",
     "AppliedTemplate",
+    "ChatChunk",
+    "ChatChunkKind",
+    "ChatResponse",
+    "ChatRole",
+    "ChatTurn",
     "Claim",
     "EmbeddingResponse",
     "EnvVarEntry",
@@ -67,6 +80,7 @@ __all__ = [
     "Path",
     "PipelineResult",
     "RunResult",
+    "SessionInfo",
     "Step",
     "StepKind",
     "StopReason",

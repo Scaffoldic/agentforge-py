@@ -1,17 +1,37 @@
 ---
-feature: none
-state: idle
-branch: feat/015-pipeline-and-tasks
-started_at: null
+feature: feat-020
+state: in_progress
+branch: feat/020-chat-agents-v02
+started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-015 shipped via PR #25 (open for review)
+last_shipped: feat-015 shipped via PR #25 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-*None — awaiting next pick.*
+[`feat-020 — Chat agents`](../../docs/features/feat-020-chat-agents.md)
+
+**v0.2 scope only**: contracts in `agentforge-core`,
+`agentforge-chat` package (`ChatSession` + in-memory +
+sqlite + 4 truncation strategies), `agentforge-chat-http`
+package (FastAPI REST + WS + SSE + bearer auth).
+
+**Deferred to v0.3 follow-ups** (per
+`feedback_scope_preferences.md` "one half clearly riskier"
+exception): `agentforge-chat-history-postgres`,
+`agentforge-chat-history-redis`, `agentforge-chat-slack`,
+real per-token streaming, cross-process locking.
+
+6 chunks:
+
+1. Chat contracts + value models + conformance harness.
+2. `agentforge-chat` package: drivers + truncation strategies.
+3. `ChatSession` (send + stream + idempotency + budgets).
+4. `agentforge-chat-http`: FastAPI REST + WS + SSE + bearer auth.
+5. `modules.chat:` config schema + `build_chat_session_from_config`.
+6. Docs (spec §10/§11) + roadmap + CHANGELOG + state + PR.
 
 ## Last shipped
 
