@@ -29,6 +29,14 @@ dependencies = [
     "agentforge-core",
 ]
 
+# feat-013 v0.2: the `mcp` SDK is required only for the production
+# transports (`_SDKClientRunner` / `_SDKServerRunner`). Unit tests
+# inject fake runners; the SDK is loaded lazily inside the
+# `from_stdio` / `from_http` / `from_sse` factories. Install with
+# `pip install agentforge-mcp[mcp]` to bring it in.
+[project.optional-dependencies]
+mcp = ["mcp>=1.0,<2"]
+
 [project.urls]
 Homepage = "https://github.com/Scaffoldic/agentforge-py"
 Repository = "https://github.com/Scaffoldic/agentforge-py"

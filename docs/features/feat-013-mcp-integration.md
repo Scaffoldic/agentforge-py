@@ -281,6 +281,43 @@ member.
 - `manifest.yaml` — feat-010 manifest so `agentforge add module
   mcp` registers the protocol entry.
 
+### v0.2 follow-up — production runner against a real MCP server
+
+Shipped on the v0.1 → v0.2 line. The
+`# pragma: no cover` stubs are now backed by real
+implementations and gated by the framework's first
+`@pytest.mark.live` integration test.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `eadcf66` | `_SDKClientRunner` real implementation: `AsyncExitStack`-managed session + transport open on first method call; `list_tools` normalises every `mcp.types.Tool` to `MCPToolDescriptor`; `call_tool` concatenates every `TextContent` block (non-text content ignored for v0.2); `close()` tears down the full stack. Root `pyproject.toml` adds `mcp>=1.0,<2` to `[dependency-groups] dev`. |
+| 2 | `03bfba9` | `_SDKServerRunner` real implementation: `register_tool(...)` accumulates registrations into an in-memory registry; `serve()` applies the SDK's decorator pattern (`@server.list_tools()` returns all descriptors; `@server.call_tool()` dispatches by name into the per-tool handler), opens `mcp.server.stdio.stdio_server()`, awaits `server.run(...)`. `stop()` cancels via `contextlib.suppress`. |
+| 3 | `339753e` | `agentforge-mcp` declares `[project.optional-dependencies] mcp = ["mcp>=1.0,<2"]`. `pip install agentforge-mcp[mcp]` (or transitively via `agentforge add module mcp`) brings the SDK. |
+| 4 | `175fdfa` | Live integration test: `tests/integration/_echo_server.py` exposes one tool; `tests/integration/test_mcp_live.py` (`@pytest.mark.live`, `@pytest.mark.asyncio`) spawns the echo server as a subprocess, calls `discover_tools()` (asserts `echo.echo`), invokes the adapter's `run(text="hello mcp")`, asserts the response, closes the client. The default pre-commit / CI gate skips this via `-m "not live"`; run explicitly with `uv run pytest -m live packages/agentforge-mcp/tests/integration/`. |
+
+### Out-of-scope (deferred to a later v0.x follow-up)
+
+- **HTTP/SSE server transport for `_SDKServerRunner`.** The stdio
+  path is wired; HTTP / SSE expose still raises
+  `ModuleError("transport='http' not yet implemented")`. Needs
+  `mcp.server.streamable_http` wiring + uvicorn integration.
+  Tracked as a v0.2.1 chore.
+- **Non-text content handling** (`ImageContent`,
+  `EmbeddedResource`). `_SDKClientRunner.call_tool` returns only
+  the concatenated text content blocks; the adapter signs the
+  tool as `-> str` so binary content has no callable return
+  path. Plumbed when a real use case justifies the wire format
+  change.
+- **`run_mcp_runner_conformance(runner)`** in
+  `agentforge_core.testing.conformance`. The contract is
+  exercised by injected fakes + the live test; a formal
+  conformance harness lands when a second concrete runner
+  (third-party) exists.
+- **Dedicated "live" CI job** that runs `-m live` across every
+  package shipping such tests. Lands when feat-014 A2A's matching
+  production runner adds the second one; until then, live tests
+  are run on developer machines on demand.
+
 ## 11. Runbook
 
 ### Add MCP support to an agent
@@ -351,10 +388,11 @@ tools = await client.discover_tools()
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `ModuleError: mcp SDK is not installed` | upstream missing | `pip install mcp` (or `agentforge add module mcp` to install both) |
-| `Production MCP runner not implemented yet` | live transport stub | inject a fake runner via the bare constructor in tests; live wiring lands in a follow-up |
+| `ModuleError: mcp SDK is not installed` | upstream missing | `pip install agentforge-mcp[mcp]` (or `agentforge add module mcp` to install both) |
+| `MCP server transport 'http' is not yet implemented` | v0.2.1 polish gap | use `transport: stdio` in `modules.protocols.mcp.expose` for now; HTTP server transport lands as a v0.2.1 chore |
 | Tool name collision | two servers expose the same name | both arrive prefixed with their server name (`fs.read_file` vs `s3.read_file`) — collision avoided |
 | Subprocess won't terminate on agent close | `bridge.close` not called | use `async with Agent(...)` so the framework's `__aexit__` invokes the bridge close path |
+| Non-text content blocks dropped from `call_tool` result | `_SDKClientRunner` concatenates `TextContent` blocks and ignores `ImageContent` / `EmbeddedResource` for v0.2 | follow-up when a real use case justifies the wire-format change; meanwhile route binary tools through a different adapter shape |
 
 ## 12. References
 
