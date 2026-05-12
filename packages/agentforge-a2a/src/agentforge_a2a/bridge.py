@@ -24,6 +24,7 @@ from agentforge_core.contracts.auth import AuthPolicy
 
 from agentforge_a2a._runner import A2AClientRunner, A2AServerRunner
 from agentforge_a2a.client import A2APeer
+from agentforge_a2a.config import A2AConfig
 from agentforge_a2a.server import A2AServer
 
 
@@ -36,9 +37,9 @@ class A2ABridge:
     available; `server is None`).
     """
 
-    # Populated by chunk 5 to wire `A2AConfig` validation
-    # through `validate_module_configs`.
-    config_schema: ClassVar[type | None] = None
+    config_schema: ClassVar[type[A2AConfig]] = A2AConfig
+    """Picked up by feat-012's `validate_module_configs` so
+    `agentforge config validate` enforces the A2A schema."""
 
     def __init__(
         self,
@@ -83,10 +84,6 @@ class A2ABridge:
             server_runner: Optional `A2AServerRunner` injected
                 into the server's lifecycle.
         """
-        # Lazy import so the package can be loaded without a2a
-        # config models on `import agentforge_a2a`.
-        from agentforge_a2a.config import A2AConfig  # noqa: PLC0415
-
         validated = A2AConfig.model_validate(config)
         peers = {pc.name: A2APeer.from_config(pc, runner=client_runner) for pc in validated.peers}
         server: A2AServer | None = None
