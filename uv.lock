@@ -10,6 +10,7 @@ resolution-markers = [
 [manifest]
 members = [
     "agentforge",
+    "agentforge-a2a",
     "agentforge-bedrock",
     "agentforge-chat",
     "agentforge-chat-http",
@@ -48,6 +49,27 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typer", specifier = ">=0.15" },
+]
+
+[[package]]
+name = "agentforge-a2a"
+version = "0.0.0"
+source = { editable = "packages/agentforge-a2a" }
+dependencies = [
+    { name = "agentforge" },
+    { name = "agentforge-core" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge", editable = "packages/agentforge" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "uvicorn", specifier = ">=0.32" },
 ]
 
 [[package]]
@@ -299,6 +321,7 @@ version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
     { name = "agentforge" },
+    { name = "agentforge-a2a" },
     { name = "agentforge-bedrock" },
     { name = "agentforge-chat" },
     { name = "agentforge-chat-http" },
@@ -334,6 +357,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "agentforge", editable = "packages/agentforge" },
+    { name = "agentforge-a2a", editable = "packages/agentforge-a2a" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-chat", editable = "packages/agentforge-chat" },
     { name = "agentforge-chat-http", editable = "packages/agentforge-chat-http" },

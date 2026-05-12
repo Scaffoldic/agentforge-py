@@ -21,6 +21,70 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-014 — A2A protocol (full spec).** Cross-framework
+  agent calls over HTTP. Lifts feat-020's `BearerAuthPolicy`
+  stub into a canonical `AuthPolicy` ABC shared by chat-http
+  and the new `agentforge-a2a` package.
+
+  *Canonical auth contracts (`agentforge-core`):*
+  - `agentforge_core.contracts.auth.AuthPolicy` ABC.
+  - `agentforge_core.values.auth.Principal` frozen dataclass.
+  - `A2ACallError`, `A2AAuthError`, `A2ATimeout` exception
+    subclasses of `AgentForgeError`.
+
+  *Concrete bearer impl (`agentforge`):*
+  - `agentforge.auth.EnvBearerAuth(token_env_var)` — top-level
+    re-export at `agentforge.EnvBearerAuth`.
+
+  *chat-http refactor:*
+  - `agentforge_chat_http.BearerAuthPolicy` is now an alias
+    for the canonical `AuthPolicy`; `Principal` +
+    `EnvBearerAuth` re-exported from the new locations. v0.2
+    consumers see no break.
+
+  *New `agentforge-a2a` package:*
+  - `agent_call(target, payload, *, peers, timeout_s,
+    budget_usd, budget)` — outgoing A2A client. Wire format
+    is `POST /a2a/v1/calls` with JSON body + bearer / mTLS
+    auth headers. `X-AgentForge-Run-Id` propagates the
+    caller's `RunContext.run_id` for parent_run_id chains;
+    `X-AgentForge-Budget-Usd` caps the callee's budget.
+  - `A2APeer.from_config(...)` resolves a per-peer config dict
+    (bearer or mTLS) into a runner-ready peer.
+  - `agentforge_a2a.auth.{BearerAuth, MutualTLSAuth,
+    build_outgoing_auth, ClientAuth}` — client-side
+    credentials. mTLS builds an `ssl.SSLContext` from
+    cert/key (+ optional CA) paths.
+  - `A2AServer(agent, *, auth, endpoints, task_builder, host,
+    port, runner)` — FastAPI app exposing the agent.
+    Endpoints: `POST /a2a/v1/calls`, `GET /a2a/v1/info`.
+    Bearer auth via the canonical `AuthPolicy`. Per-call
+    budget cap is applied + restored.
+  - `A2ABridge.from_config(config, *, agent, auth,
+    client_runner, server_runner)` orchestrator with
+    `start()` / `close()` lifecycle.
+  - `A2AConfig` Pydantic schema (`A2ABridge.config_schema =
+    A2AConfig`) for `agentforge config validate`.
+  - Production runners (`_HTTPXClientRunner`,
+    `_UvicornServerRunner`) scaffolded with
+    `# pragma: no cover` until live integration tests land —
+    same pattern as feat-013 MCP.
+  - `FakeA2AClientRunner` / `FakeA2AServerRunner` in
+    `src/_inmem_runner.py` for tests + downstream integration
+    reuse.
+  - Entry point `agentforge.protocols.a2a =
+    agentforge_a2a.bridge:A2ABridge`; `manifest.yaml` so
+    `agentforge add module a2a` lights it up.
+
+  *v0.4.1 follow-ups (deferred):*
+  - Production HTTP runner against a real A2A peer.
+  - A2A discovery / registry (spec §9).
+  - Bi-directional streaming (spec §9).
+  - TypeScript port.
+
+  Shipped via PR #27. See spec
+  `docs/features/feat-014-a2a-protocol.md` §10–§11.
+
 - **feat-020 — Chat agents (Python v0.2 scope).** Three new
   workspace members + locked contracts in core. Wraps the
   one-shot `Agent` into a multi-turn, stateful conversation
