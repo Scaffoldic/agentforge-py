@@ -240,10 +240,65 @@ auth contract into a canonical core ABC.
 
 ### Open items
 
-- Production runner against a real A2A peer (live
-  integration test).
-- A2A discovery / registry (spec §9).
-- Bi-directional streaming (spec §9).
+- Real per-token streaming through the strategy ABC (deferred
+  to v0.3 alongside feat-020's strategy-level streaming
+  follow-up). v0.2 ships step-level streaming.
+- A central A2A registry service (out of scope for v0.2 —
+  discovery is strictly client-side caching of well-known
+  endpoints).
+- Per-run hook kwarg on `Agent.run` (cleanup of the streaming
+  server's `agent._on_step.append(...)` / remove dance).
+- TS port.
+
+### v0.2 follow-up — production runner + discovery + bi-directional streaming
+
+Shipped on the v0.1 → v0.2 line. Closes the three open items
+that v0.1 deferred: real HTTP transport, peer discovery, and
+streaming. Coverage of the production runner is proven by
+`@pytest.mark.live` integration tests (`tests/integration/`),
+the framework's second live suite after feat-013.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `149dbac` | `_HTTPXClientRunner` real body wrapping `httpx.AsyncClient` (lazy allocation; `verify=ssl_context or True`; HTTP 401/403 → `A2AAuthError`, ≥ 400 → `A2ACallError`); `_UvicornServerRunner` real body wrapping `uvicorn.Server` (lazy build in `serve()`; `stop()` sets `should_exit`). `A2AClientRunner` Protocol gains `get(...)` + `post_stream(...) -> AsyncIterator[dict]`. `FakeA2AClientRunner` mirrors the new surface with `set_get_response` / `set_stream` test knobs. Bodies remain `# pragma: no cover` (covered by chunk 6 live tests). |
+| 2 | `397999e` | Discovery: `A2APeerInfo` + `A2AEndpointDescriptor` frozen values; `GET /a2a/v1/info` now returns the full rich shape (version, server_name, list-of-descriptors with description + JSON-Schema input shapes); `agentforge_a2a.discover_peer(peer)` probes a peer; `A2ABridge.discover_all()` caches results on `bridge.peer_info`. Info URL is derived from the unary calls URL by swapping `/calls` for `/info` so callers configure only one URL per peer. `A2AServer.__init__` accepts `endpoint_descriptors:` + `server_name:`. |
+| 3 | `39cdeaf` | Streaming wire format: `A2AChunk` + `A2AChunkKind` (`step` / `tool_call` / `tool_result` / `done` / `error`). Public re-exports + unit tests against the fake's `responses_stream` knob. |
+| 4 | `5aa57bf` | Streaming server: `POST /a2a/v1/calls/stream` returns `text/event-stream` `data: <json>\n\n` frames. Installs a one-off `on_step` hook on the agent for the duration of one call; each `Step` becomes an `A2AChunk` (mapping `think→step`, `act→tool_call`, `observe→tool_result`); a backgrounded `agent.run(...)` task pushes a final `kind="done"` (or `kind="error"`) frame and a sentinel. The 404 path emits a single `kind="error"` chunk so the contract stays "always SSE once authenticated." Unary `/v1/calls` refactored to share the budget-cap path via `_run_with_budget_cap`. |
+| 5 | `d633033` | Streaming client: `agent_call_stream(target, payload, *, peers, ...) -> AsyncIterator[A2AChunk]`. Same target / peer / header / budget shape as `agent_call`; commits actual cost on the terminal `done` frame and releases the reservation in `finally`. `kind="error"` frames raise `A2AAuthError` / `A2ACallError` based on the embedded `content.error` code. Transport errors funnel through a `_wrap_stream_errors` helper that maps `TimeoutError → A2ATimeout`. |
+| 6 | `10b0d1b` | Live integration tests: `tests/integration/test_a2a_live.py` spins up a real `uvicorn.Server` on a random localhost port, points a real `_HTTPXClientRunner` at it, and round-trips three flows (unary `agent_call`, `discover_peer`, `agent_call_stream`). Helpers (deterministic three-step strategy, `_StaticBearerAuth`, `_spawn_server` async context manager) live in the test file itself — no extra importable module + no `__init__.py` collision with `agentforge-mcp/tests/integration/`. Two small framework adjustments: `A2AResponse` drops `strict=True` (so list↔tuple JSON coercion on `findings` round-trips cleanly), and root `pyproject.toml` ignores `websockets.legacy` / `uvicorn.protocols.websockets` `DeprecationWarning`s (uvicorn imports the legacy module at startup). |
+| 7 | `a810583` | New `live` job in `.github/workflows/ci.yml` running `pytest -m live` against every package shipping a `tests/integration/test_*_live.py` suite (mcp + a2a as of v0.2). Runs on every PR + push but does NOT gate merge (`continue-on-error: true`); branch protection stays on the main `test` job. Threshold for adding the job was ≥ 2 packages with live tests. |
+| 8 | (this PR) | Docs + Runbook + roadmap + CHANGELOG + state. |
+
+### v0.2 deviations from the v0.1 spec
+
+- **Step-level streaming, not per-token.** The streaming
+  endpoint emits one `A2AChunk` per agent `Step` plus a
+  terminal `done`. True per-token LLM streaming blocks on
+  `ReasoningStrategy.stream()` and lands alongside feat-020's
+  strategy-level streaming follow-up in v0.3.
+- **`peer.url` semantics unchanged.** `peer.url` is the full
+  unary calls URL (`https://x/a2a/v1/calls`); the streaming +
+  info URLs are derived by `_stream_url_from_calls_url(...)` /
+  `_info_url_from_calls_url(...)`. Callers still configure one
+  URL per peer.
+- **No central A2A registry server.** Discovery is strictly
+  client-side caching via `A2ABridge.discover_all()`.
+- **Hook installation on `agent._on_step`.** The streaming
+  server appends a one-off hook to the agent's hook list for
+  the duration of a single call and removes it in a `finally`
+  block. A cleaner per-run-hook surface on `Agent.run` is a
+  v0.3 cleanup.
+- **`A2AChunkKind` is distinct from `ChatChunkKind`.** A2A
+  streams agent-level steps; chat streams text. A
+  framework-wide `StreamingChunk` unification is a v0.3 polish.
+
+### Out-of-scope (deferred to v0.3+)
+
+- Real per-token LLM streaming via the strategy ABC.
+- Central A2A registry service.
+- Per-run hook kwarg on `Agent.run`.
+- Unifying `A2AChunkKind` and `ChatChunkKind`.
+- Hardening the `live` CI job to gate merge.
 - TS port.
 
 ## 11. Runbook
@@ -345,6 +400,68 @@ await bridge.start()
 `agentforge config validate` enforces the schema
 automatically — `A2ABridge.config_schema` points at
 `A2AConfig`, so feat-012's module-schema walker picks it up.
+
+### How do I discover what a peer exposes? (v0.2)
+
+```python
+from agentforge_a2a import A2APeer, BearerAuth, discover_peer
+from agentforge_a2a._runner import _HTTPXClientRunner
+
+runner = _HTTPXClientRunner()
+peer = A2APeer(
+    name="fact-checker",
+    url="https://internal.fact-checker.example/a2a/v1/calls",
+    auth=BearerAuth(os.environ["FACT_CHECKER_TOKEN"]),
+    runner=runner,
+)
+info = await discover_peer(peer, timeout_s=10.0)
+for ep in info.endpoints:
+    print(ep.name, "—", ep.description, ep.input_schema)
+```
+
+When you have multiple peers wired through `A2ABridge`,
+`await bridge.discover_all()` probes them all and caches the
+results on `bridge.peer_info`.
+
+### How do I stream a long-running agent call? (v0.2)
+
+```python
+from agentforge_a2a import agent_call_stream
+
+async for chunk in agent_call_stream(
+    "fact-checker:verify",
+    {"claim": "x"},
+    peers={"fact-checker": peer},
+    timeout_s=60.0,
+    budget_usd=0.25,
+):
+    if chunk.kind in {"step", "tool_call", "tool_result"}:
+        print(chunk.kind, chunk.step)
+    elif chunk.kind == "done":
+        print("done →", chunk.content)
+    elif chunk.kind == "error":
+        # agent_call_stream raises A2AAuthError / A2ACallError
+        # on error frames — this branch is for completeness.
+        raise RuntimeError(chunk.content)
+```
+
+Step-level granularity for v0.2: one chunk per agent `Step`
+(mapped from `Step.kind`) plus a final `done`. Real per-token
+streaming through the strategy ABC lands in v0.3 alongside
+feat-020's strategy-level streaming follow-up.
+
+### How do I run the live A2A tests?
+
+```bash
+uv run pytest -m live packages/agentforge-a2a/tests/integration/
+```
+
+Each test spins up a real `uvicorn.Server` on a random
+localhost port, points a real `_HTTPXClientRunner` at it,
+round-trips the three flows (`agent_call` / `discover_peer` /
+`agent_call_stream`), and tears down. The default
+pre-commit + CI gate skips this suite via `-m "not live"`; CI
+runs it in a dedicated non-gating `live` job.
 
 ## 12. References
 

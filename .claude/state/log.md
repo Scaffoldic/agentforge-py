@@ -1408,3 +1408,75 @@ Tooling notes:
   production runner (i.e. ≥ 2 live tests justify the job).
 
 Ready to push and raise PR.
+
+
+## 2026-05-12T22:00 — feat-014 v0.2 production A2A runner + discovery + streaming
+
+Branch `chore/feat-014-production-runner-discovery-streaming`
+opens the next v0.2 cycle PR. Closes three v0.1 deferred items
+in one bundle. Eight chunks:
+
+- chunk 1 (`149dbac`): `_HTTPXClientRunner` real body wrapping
+  `httpx.AsyncClient` (lazy client; HTTP 401/403 → `A2AAuthError`,
+  ≥ 400 → `A2ACallError`). `_UvicornServerRunner` real body
+  wrapping `uvicorn.Server` (lazy build in `serve()`; `stop()`
+  sets `should_exit`). `A2AClientRunner` Protocol gains `get(...)`
+  + `post_stream(...) -> AsyncIterator[dict]`. Fake mirrors the
+  new surface.
+- chunk 2 (`397999e`): Discovery — `A2APeerInfo` +
+  `A2AEndpointDescriptor` frozen values. `/a2a/v1/info` returns
+  full rich shape with description + JSON-Schema input shapes.
+  `discover_peer(peer)` helper + `A2ABridge.discover_all()` +
+  `bridge.peer_info` cache. Info URL derived from
+  `peer.url.swap("/calls" → "/info")`.
+- chunk 3 (`39cdeaf`): Streaming wire format — `A2AChunk` +
+  `A2AChunkKind` (step / tool_call / tool_result / done / error).
+- chunk 4 (`5aa57bf`): Streaming server `POST /a2a/v1/calls/stream`
+  returns SSE `data:` frames. Installs a one-off `on_step` hook
+  on the agent; each `Step` → `A2AChunk`. Background `agent.run`
+  task pushes terminal `done` / `error` + sentinel. 404 emits a
+  single `error` chunk (stream stays "always SSE once
+  authenticated").
+- chunk 5 (`d633033`): Streaming client `agent_call_stream(...)`
+  yields `A2AChunk`. Budget reserve on entry, commit on `done`,
+  release in `finally`. Error frames raise A2AAuthError /
+  A2ACallError; transport errors funnel through
+  `_wrap_stream_errors` helper.
+- chunk 6 (`10b0d1b`): Live integration tests (3) under
+  `packages/agentforge-a2a/tests/integration/test_a2a_live.py`.
+  Each spins up a real `uvicorn.Server` on a random free port +
+  real `_HTTPXClientRunner`; round-trips unary / discover /
+  stream; tears down. Helpers (deterministic strategy, static
+  bearer, `_spawn_server` context manager) live in the test file
+  — no extra importable module + no `__init__.py` collision with
+  agentforge-mcp's integration dir. Side adjustments:
+  `A2AResponse` drops `strict=True` (JSON round-trip
+  list↔tuple coercion); pyproject filterwarnings ignores
+  `websockets.legacy` / `uvicorn.protocols.websockets`
+  DeprecationWarnings.
+- chunk 7 (`a810583`): New `live` job in
+  `.github/workflows/ci.yml`. Runs `pytest -m live` against
+  every package shipping a `tests/integration/test_*_live.py`
+  suite (mcp + a2a as of v0.2). Ubuntu + macOS matrix on
+  Python 3.13. `continue-on-error: true` — branch protection
+  still gates on the main `test` job. Threshold for adding the
+  job was ≥ 2 packages with live tests.
+- chunk 8 (about-to-commit): spec §10 v0.2 follow-up addendum;
+  three new runbook sections (discover, stream, run live);
+  roadmap entry flipped to shipped; CHANGELOG `[Unreleased] /
+  Added + Changed` populated.
+
+Tooling notes:
+
+- uvicorn's `install_signal_handlers` needs the main thread;
+  pytest-asyncio's worker loop may not be on the main thread.
+  Live tests no-op the method on the `Server` instance so
+  startup proceeds to the socket bind.
+- `lifespan="off"` skips FastAPI's lifespan event setup for
+  the test server.
+- The `_free_port` helper picks a port via a transient
+  socket.bind on `127.0.0.1:0`; cross-platform; the small race
+  window between close + uvicorn bind has held green on
+  developer machine.
+
+Ready to push and raise PR.
