@@ -13,11 +13,14 @@ from agentforge_core.values.pipeline import PipelineResult
 
 from agentforge.pipeline.engine import OnTaskError, Pipeline
 from agentforge.pipeline.errors import PipelineFailure
+from agentforge.pipeline.tool import PipelineFindingsInput, PipelineFindingsTool
 
 __all__ = [
     "OnTaskError",
     "Pipeline",
     "PipelineFailure",
+    "PipelineFindingsInput",
+    "PipelineFindingsTool",
     "PipelineResult",
     "Task",
 ]
