@@ -61,7 +61,7 @@
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
 | **feat-013** | MCP integration — `MCPServerClient` (stdio + HTTP/SSE) consumes upstream tool servers via `MCPToolAdapter`; `MCPServer` exposes local tools; `MCPBridge.from_config` orchestrates from `modules.protocols.mcp` | shipped (Python) | 0.2 | both | `agentforge-mcp` |
-| **feat-014** | A2A (agent-to-agent) protocol support — for cross-framework agent calls | proposed | 0.4 (after stability) | both | `agentforge-a2a` |
+| **feat-014** | A2A (agent-to-agent) protocol support — for cross-framework agent calls | shipped (Python) | 0.4 | both | `agentforge-a2a` |
 
 ### Deployment shapes
 

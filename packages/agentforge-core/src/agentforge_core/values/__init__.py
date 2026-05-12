@@ -7,6 +7,7 @@ requires a major bump.
 
 from __future__ import annotations
 
+from agentforge_core.values.auth import Principal
 from agentforge_core.values.chat import (
     ChatChunk,
     ChatChunkKind,
@@ -79,6 +80,7 @@ __all__ = [
     "ModuleInfo",
     "Path",
     "PipelineResult",
+    "Principal",
     "RunResult",
     "SessionInfo",
     "Step",

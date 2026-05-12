@@ -38,6 +38,7 @@ dependencies = [
     "agentforge-mcp",
     "agentforge-chat",
     "agentforge-chat-http",
+    "agentforge-a2a",
 ]
 
 [tool.uv.workspace]
@@ -61,6 +62,7 @@ agentforge-guard-llamaguard = { workspace = true }
 agentforge-mcp = { workspace = true }
 agentforge-chat = { workspace = true }
 agentforge-chat-http = { workspace = true }
+agentforge-a2a = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -265,6 +267,7 @@ testpaths = [
     "packages/agentforge-mcp/tests",
     "packages/agentforge-chat/tests",
     "packages/agentforge-chat-http/tests",
+    "packages/agentforge-a2a/tests",
     "tests",
 ]
 markers = [
@@ -311,6 +314,7 @@ source = [
     "packages/agentforge-mcp/src",
     "packages/agentforge-chat/src",
     "packages/agentforge-chat-http/src",
+    "packages/agentforge-a2a/src",
 ]
 branch = true
 parallel = true

@@ -29,6 +29,7 @@ from agentforge_core import FallbackChain
 import agentforge.guardrails  # noqa: F401
 from agentforge._tools import tool
 from agentforge.agent import Agent
+from agentforge.auth import EnvBearerAuth
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.findings import (
     MultiSpanFinding,
@@ -74,6 +75,7 @@ __all__ = [
     "RUNTIME_KEY",
     "Agent",
     "AgentForgeConfig",
+    "EnvBearerAuth",
     "FallbackChain",
     "InMemoryGraphStore",
     "InMemoryStore",
