@@ -44,6 +44,7 @@ onward every feature uses the canonical feat-NNN number.
 | [feat-018](./features/feat-018-safety-and-security-guardrails.md) | Safety guardrails — `InputValidator` / `OutputValidator` / `ToolCallGate` ABCs + `ValidationResult` + `GuardrailPolicy` + audit channel; built-in basics (`prompt_injection_basic`, `pii_redact_basic`, `capability_check`, `allowlist`); `GuardrailEngine` wired into `Agent.run`; conformance harnesses; four vendor sister packages (LLM Guard, Presidio, NeMo, Llama Guard); `RunResult.guardrail_events`. | [#22](https://github.com/Scaffoldic/agentforge-py/pull/22) |
 | [feat-019](./features/feat-019-developer-experience-and-ai-rules.md) | Developer experience + AI rules — three-section managed/custom markdown format (`<!-- agentforge:end-managed -->`); `inject_shared_scaffold` post-render hook copies `_shared/` into every new scaffold; 16 runbooks + `AGENTS.md` + `CLAUDE.md` + `.cursorrules` ship Day-1; `agentforge docs` CLI (list / open by stem/number/alias / `--check` drift / `--serve` local HTTP). | [#23](https://github.com/Scaffoldic/agentforge-py/pull/23) |
 | [feat-013](./features/feat-013-mcp-integration.md) | MCP integration — `agentforge-mcp` module: `MCPServerClient` (stdio + HTTP/SSE) consumes upstream MCP tool servers via `MCPToolAdapter`s (server-name prefixed); `MCPServer` exposes local tools as MCP; `MCPBridge.from_config` orchestrates from `modules.protocols.mcp`. Production runners scaffolded behind `MCPClientRunner` / `MCPServerRunner` protocols pending live integration tests. | [#24](https://github.com/Scaffoldic/agentforge-py/pull/24) |
+| [feat-015](./features/feat-015-pipeline-and-tasks.md) | Pipeline & deterministic tasks — `Task` ABC + `PipelineResult` value in `agentforge-core`; `Pipeline` engine (DAG validation, `asyncio.Semaphore`-bounded parallelism, per-task timeouts, continue/fail error mode) + `PipelineFailure` + `PipelineFindingsTool` built-in; `Agent(pipeline=...)` kwarg + `Agent.run(task, *, context, replay_pipeline)` API; system-prompt addendum; `modules.pipeline:` config block + `build_pipeline_from_config`; `__pipeline` recording category + `load_pipeline_result` replay; `FinishReason` literal extended with `"pipeline"`. | [#25](https://github.com/Scaffoldic/agentforge-py/pull/25) |
 
 For details on what each shipped feature delivered vs. what was
 deferred, read the **Implementation status** section at the bottom
@@ -57,7 +58,7 @@ These are tracked here so they don't get lost. Full design specs
 already exist under [`docs/features/`](./features/); pick one to
 move into "In flight" when starting.
 
-- **feat-014, feat-015, feat-020** — see specs under
+- **feat-014, feat-020** — see specs under
   [`docs/features/`](./features/).
 
 ### feat-009 vendor-package sub-feats (deferred)

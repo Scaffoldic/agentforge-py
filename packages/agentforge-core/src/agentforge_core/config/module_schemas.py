@@ -29,6 +29,7 @@ from agentforge_core.config.schema import (
     EvaluatorEntry,
     ModuleEntry,
     ObservabilityEntry,
+    PipelineTaskEntry,
 )
 from agentforge_core.production.exceptions import ModuleError
 
@@ -76,6 +77,9 @@ def validate_module_configs(
         _validate_named(r, "hooks", obs_entry, strict=strict)
     for proto_entry in cfg.modules.protocols:
         _validate_named(r, "protocols", proto_entry, strict=strict)
+    if cfg.modules.pipeline is not None:
+        for task_entry in cfg.modules.pipeline.tasks:
+            _validate_named(r, "tasks", task_entry, strict=strict)
 
 
 def _validate_one(
@@ -107,7 +111,7 @@ def _validate_one(
 def _validate_named(
     resolver: Resolver,
     category: str,
-    entry: EvaluatorEntry | ObservabilityEntry,
+    entry: EvaluatorEntry | ObservabilityEntry | PipelineTaskEntry,
     *,
     strict: bool,
 ) -> None:

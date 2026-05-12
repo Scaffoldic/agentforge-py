@@ -36,6 +36,7 @@ from agentforge_core.values.messages import (
     ToolSpec,
 )
 from agentforge_core.values.module import ModuleInfo
+from agentforge_core.values.pipeline import PipelineResult
 from agentforge_core.values.state import (
     AgentState,
     FinishReason,
@@ -64,6 +65,7 @@ __all__ = [
     "MessageRole",
     "ModuleInfo",
     "Path",
+    "PipelineResult",
     "RunResult",
     "Step",
     "StepKind",

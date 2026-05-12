@@ -21,6 +21,75 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-015 — Pipeline & deterministic tasks (full spec).** New
+  framework-level subsystem inside `agentforge` for deterministic,
+  pre-LLM analysis steps. Findings flow back into the LLM loop two
+  ways: as a per-run system-prompt addendum and via a built-in
+  `pipeline_findings` tool.
+
+  *Contracts (`agentforge_core`):*
+  - `agentforge_core.contracts.task.Task` ABC — `name`,
+    `cost_estimate_usd`, `timeout_s`, `depends_on` ClassVars;
+    `async run(context) -> list[Finding]`.
+  - `agentforge_core.values.pipeline.PipelineResult` frozen
+    Pydantic value with `findings`, `task_durations_ms`,
+    `task_failures`, `total_cost_usd`.
+  - `FinishReason` literal extended with `"pipeline"`.
+  - `run_task_conformance(task)` harness in
+    `agentforge_core.testing`.
+
+  *Engine (`agentforge.pipeline`):*
+  - `Pipeline(tasks, *, max_concurrent, on_task_error)` —
+    constructs once (DAG validation: duplicates / missing deps /
+    cycles), runs once per agent invocation. `asyncio.Semaphore`
+    caps in-flight tasks; `asyncio.wait_for(timeout_s)` per task.
+  - `on_task_error="continue"` (default) emits a
+    `SimpleFinding(category="pipeline.task_failure", rule_id=
+    <task_name>)` on failure; dependents still run. `"fail"`
+    raises `PipelineFailure` after cancelling outstanding
+    runners.
+  - `PipelineFindingsTool` built-in tool — `name="pipeline_findings"`,
+    filters by `category` / `severity`, returns JSON-friendly
+    dicts.
+  - `register_task(name)` resolver helper.
+
+  *Agent integration (`agentforge.agent`):*
+  - `Agent(pipeline=Pipeline(...))` kwarg.
+  - `Agent.run(task, *, context=None, replay_pipeline=None)` —
+    runs the pipeline before the strategy loop; appends a
+    markdown addendum to the per-run system prompt (the
+    configured prompt is not mutated); commits pipeline cost
+    against the run budget (over-budget raises `BudgetExceeded`
+    pre-LLM).
+  - `PipelineFailure` propagates with `finish_reason =
+    "pipeline"`.
+
+  *Config + CLI (`agentforge_core.config`, `agentforge.cli`):*
+  - `modules.pipeline:` block with `enabled`, `max_concurrent`,
+    `on_task_error`, `tasks: [{name, config}]`.
+  - `validate_module_configs` walks each task entry against its
+    `config_schema` (if declared).
+  - `build_pipeline_from_config(cfg)` wired into
+    `build_agent_from_config`.
+  - `agentforge run --replay <id>` reads the recorded
+    `__pipeline` claim and threads it via
+    `Agent.run(replay_pipeline=...)` so side-effect-bearing
+    tasks don't double-run.
+
+  *Recording + replay (`agentforge.recording`, `agentforge.replay`):*
+  - `PIPELINE_CATEGORY = "__pipeline"` reserved claim category +
+    `record_pipeline_result(...)` helper.
+  - `load_pipeline_result(memory, run_id) -> PipelineResult |
+    None`.
+
+  *Public re-exports (`agentforge`):*
+  - `Pipeline`, `Task`, `PipelineResult`, `PipelineFailure`,
+    `PipelineFindingsTool`, `register_task`.
+  - `agentforge.testing.run_task_conformance`.
+
+  Shipped via PR #25. See spec
+  `docs/features/feat-015-pipeline-and-tasks.md` §10–§11.
+
 - **feat-013 — MCP integration (full spec).** New Tier-3 sister
   package `agentforge-mcp`. Two halves: consume upstream MCP
   tool servers (stdio + HTTP + SSE) and (optionally) expose

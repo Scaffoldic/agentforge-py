@@ -66,6 +66,7 @@ from agentforge_core.values.state import AgentState, FinishReason, RunResult, St
 
 from agentforge.config import AgentForgeConfig, load_config
 from agentforge.memory import InMemoryStore
+from agentforge.pipeline import Pipeline, PipelineFailure, PipelineFindingsTool, PipelineResult
 from agentforge.retrieval import Retriever
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
 
@@ -116,6 +117,7 @@ class Agent:
         output_validators: list[OutputValidator] | None = None,
         tool_gates: list[ToolCallGate] | None = None,
         guardrail_policy: GuardrailPolicy | None = None,
+        pipeline: Pipeline | None = None,
     ) -> None:
         self._config: AgentForgeConfig = load_config(config_path)
 
@@ -182,6 +184,18 @@ class Agent:
             )
             self._on_step.append(recorder.on_step)
             self._on_finish.append(recorder.on_finish)
+        self._record_runs: MemoryStore | None = record_runs
+
+        # feat-015: optional pre-LLM pipeline. When set, runs to
+        # completion before the strategy loop; findings are exposed
+        # via a built-in `pipeline_findings` tool and a system-prompt
+        # addendum. Replay short-circuits actual execution by reading
+        # the recorded `__pipeline` claim.
+        self._pipeline: Pipeline | None = pipeline
+        self._pipeline_tool: PipelineFindingsTool | None = None
+        if pipeline is not None:
+            self._pipeline_tool = PipelineFindingsTool()
+            self._tools.append(self._pipeline_tool)
 
         self._closed = False
 
@@ -258,15 +272,26 @@ class Agent:
     def budget(self) -> BudgetPolicy:
         return self._budget
 
+    @property
+    def pipeline(self) -> Pipeline | None:
+        return self._pipeline
+
     def _build_runtime_metadata(
         self,
         run_budget: BudgetPolicy,
         guard_ctx: dict[str, Any],
+        *,
+        system_prompt: str | None = None,
     ) -> dict[str, object]:
         """Build the `state.metadata` mapping that carries the
         per-run `RuntimeContext`. Wraps the LLM + tools with the
         guardrail engine so output validation and tool-call gating
         happen inside the strategy loop transparently.
+
+        `system_prompt`, when provided, overrides `self._system_prompt`
+        for this single run only (feat-015 uses this to append the
+        pipeline-findings addendum without mutating the configured
+        prompt).
         """
         metadata: dict[str, object] = {}
         if self._llm is None:
@@ -280,14 +305,81 @@ class Agent:
             tools=tuple(self._guardrails.wrap_tool(t, _ctx_factory) for t in self._tools),
             memory=self._memory,
             budget=run_budget,
-            system_prompt=self._system_prompt,
+            system_prompt=system_prompt if system_prompt is not None else self._system_prompt,
             retriever=self._retriever,
             graph_store=self._graph_store,
         )
         return metadata
 
-    async def run(self, task: str) -> RunResult:
+    async def _maybe_run_pipeline(
+        self,
+        *,
+        context: dict[str, Any] | None,
+        run_budget: BudgetPolicy,
+        run_id: str,
+        replay_pipeline: PipelineResult | None,
+    ) -> PipelineResult | None:
+        """Run the configured pipeline (or load it from a replay), apply
+        cost accounting, and bind the findings to the built-in tool.
+
+        Returns ``None`` when the agent has no pipeline configured.
+        Raises `BudgetExceeded` if the pipeline alone exhausts the run
+        budget. Raises `PipelineFailure` if `on_task_error="fail"`
+        and a task errors.
+        """
+        if self._pipeline is None and replay_pipeline is None:
+            return None
+        if replay_pipeline is not None:
+            result = replay_pipeline
+        else:
+            assert self._pipeline is not None  # narrowing for mypy
+            result = await self._pipeline.run(context or {})
+        # Charge declared pipeline cost against the budget.
+        if result.total_cost_usd > 0.0:
+            run_budget.commit(result.total_cost_usd)
+            run_budget.check()
+        if self._pipeline_tool is not None:
+            self._pipeline_tool._set_cache(list(result.findings))
+        # Persist as a `__pipeline` claim when recording.
+        if self._record_runs is not None and replay_pipeline is None:
+            from agentforge.recording import record_pipeline_result  # noqa: PLC0415
+
+            await record_pipeline_result(
+                memory=self._record_runs,
+                run_id=run_id,
+                project="default",
+                agent_name=self._config.agent.name or "agent",
+                result=result,
+            )
+        return result
+
+    def _compose_system_prompt(self, pipeline_result: PipelineResult | None) -> str | None:
+        """Produce the per-run system prompt: the configured prompt
+        with the optional pipeline-findings addendum appended."""
+        if pipeline_result is None or not pipeline_result.findings:
+            return self._system_prompt
+        addendum = _format_pipeline_addendum(pipeline_result)
+        if self._system_prompt is None:
+            return addendum
+        return f"{self._system_prompt}\n\n{addendum}"
+
+    async def run(
+        self,
+        task: str,
+        *,
+        context: dict[str, Any] | None = None,
+        replay_pipeline: PipelineResult | None = None,
+    ) -> RunResult:
         """Execute the agent's reasoning loop on `task`.
+
+        Args:
+            task: The task text the agent should reason about.
+            context: Extra key-value context passed to a configured
+                pipeline (feat-015). Ignored when no pipeline is set.
+            replay_pipeline: When replaying a recorded run, the
+                previously recorded `PipelineResult` is threaded in
+                here so the pipeline doesn't re-execute. Set by the
+                replay CLI; user code rarely passes it directly.
 
         Returns:
             A `RunResult` with the agent's output, full trace, and cost.
@@ -298,11 +390,6 @@ class Agent:
         token = bind_run(ctx)
         started_ms = time.monotonic()
         finish_reason: FinishReason = "completed"
-        # Root span for the whole run. When no OTel SDK is installed
-        # this is a no-op `NonRecordingSpan` — near-zero cost. With
-        # `agentforge-otel` installed, this becomes the parent of
-        # every strategy.iteration / llm.call / tool.<name> span the
-        # framework emits.
         tracer = get_tracer()
         try:
             with tracer.start_as_current_span(
@@ -312,9 +399,6 @@ class Agent:
                     "agentforge.task": task,
                 },
             ) as run_span:
-                # Construct a fresh BudgetPolicy per run so per-run mutable
-                # state (spent_usd, iteration, error_streak) doesn't leak
-                # across runs of the same Agent instance.
                 run_budget = BudgetPolicy(
                     usd=self._budget.usd,
                     max_tokens=self._budget.max_tokens,
@@ -325,12 +409,22 @@ class Agent:
                     "run_id": ctx.run_id,
                     "project": self._config.agent.name or "default",
                 }
-                metadata = self._build_runtime_metadata(run_budget, guard_ctx)
-                # Input validation runs once at the start of the run.
-                # Wrap so a GuardrailViolation at the input boundary
-                # still sets finish_reason = "guardrail" before
-                # propagating.
+                pipeline_result: PipelineResult | None = None
                 state: AgentState | None = None
+                try:
+                    pipeline_result = await self._maybe_run_pipeline(
+                        context=context,
+                        run_budget=run_budget,
+                        run_id=ctx.run_id,
+                        replay_pipeline=replay_pipeline,
+                    )
+                except PipelineFailure:
+                    finish_reason = "pipeline"
+                    raise
+                run_system_prompt = self._compose_system_prompt(pipeline_result)
+                metadata = self._build_runtime_metadata(
+                    run_budget, guard_ctx, system_prompt=run_system_prompt
+                )
                 try:
                     validated_task = await self._guardrails.check_input(task, guard_ctx)
                     state = AgentState(
@@ -354,36 +448,47 @@ class Agent:
                     # trace is just as important as the happy path.
                     if state is not None:
                         await self._fire_steps(list(state.steps))
-                duration_ms = int((time.monotonic() - started_ms) * 1000)
-                output = self._extract_output(state)
-                tokens_in = sum(s.tokens_in for s in state.steps)
-                tokens_out = sum(s.tokens_out for s in state.steps)
-                interim = RunResult(
-                    output=output,
-                    steps=tuple(state.steps),
-                    cost_usd=run_budget.spent_usd,
-                    tokens_in=tokens_in,
-                    tokens_out=tokens_out,
+                result = await self._finalize_result(
+                    state=state,
+                    task=task,
+                    run_budget=run_budget,
                     run_id=ctx.run_id,
-                    duration_ms=duration_ms,
+                    started_ms=started_ms,
                     finish_reason=finish_reason,
-                    guardrail_events=tuple(self._guardrails.events),
                 )
-                eval_scores = await self._run_evaluators(
-                    interim, task=task, state=state, budget=run_budget
-                )
-                result = interim.model_copy(update={"eval_scores": eval_scores})
-                # Tag the root span with the run summary before it closes.
-                run_span.set_attribute("agentforge.finish_reason", finish_reason)
-                run_span.set_attribute("agentforge.cost_usd", result.cost_usd)
-                run_span.set_attribute("agentforge.tokens_in", result.tokens_in)
-                run_span.set_attribute("agentforge.tokens_out", result.tokens_out)
-                run_span.set_attribute("agentforge.duration_ms", result.duration_ms)
-                run_span.set_attribute("agentforge.n_steps", len(result.steps))
+                _tag_run_span(run_span, result, finish_reason)
                 await self._fire_finish(result)
                 return result
         finally:
             reset_run(token)
+
+    async def _finalize_result(
+        self,
+        *,
+        state: AgentState,
+        task: str,
+        run_budget: BudgetPolicy,
+        run_id: str,
+        started_ms: float,
+        finish_reason: FinishReason,
+    ) -> RunResult:
+        duration_ms = int((time.monotonic() - started_ms) * 1000)
+        output = self._extract_output(state)
+        tokens_in = sum(s.tokens_in for s in state.steps)
+        tokens_out = sum(s.tokens_out for s in state.steps)
+        interim = RunResult(
+            output=output,
+            steps=tuple(state.steps),
+            cost_usd=run_budget.spent_usd,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            run_id=run_id,
+            duration_ms=duration_ms,
+            finish_reason=finish_reason,
+            guardrail_events=tuple(self._guardrails.events),
+        )
+        eval_scores = await self._run_evaluators(interim, task=task, state=state, budget=run_budget)
+        return interim.model_copy(update={"eval_scores": eval_scores})
 
     async def _run_evaluators(
         self,
@@ -521,6 +626,38 @@ def _normalise_hooks(hooks: Any) -> list[Any]:
     if isinstance(hooks, list):
         return list(hooks)
     return [hooks]
+
+
+def _tag_run_span(span: Any, result: RunResult, finish_reason: FinishReason) -> None:
+    """Stamp the run span with the run summary before it closes."""
+    span.set_attribute("agentforge.finish_reason", finish_reason)
+    span.set_attribute("agentforge.cost_usd", result.cost_usd)
+    span.set_attribute("agentforge.tokens_in", result.tokens_in)
+    span.set_attribute("agentforge.tokens_out", result.tokens_out)
+    span.set_attribute("agentforge.duration_ms", result.duration_ms)
+    span.set_attribute("agentforge.n_steps", len(result.steps))
+
+
+def _format_pipeline_addendum(result: PipelineResult) -> str:
+    """Render `PipelineResult.findings` as a markdown section the LLM
+    sees in the per-run system prompt (feat-015 §4.3).
+
+    Format:
+
+        ## Pipeline findings
+
+        - [severity] category: message
+
+    Empty findings short-circuit at the caller, so this is only
+    invoked when there's at least one finding to render.
+    """
+    lines = ["## Pipeline findings", ""]
+    for f in result.findings:
+        sev = getattr(f, "severity", "info")
+        cat = getattr(f, "category", "")
+        msg = getattr(f, "message", "")
+        lines.append(f"- [{sev}] {cat}: {msg}")
+    return "\n".join(lines)
 
 
 async def _safe_call_hook(hook: Any, payload: Any, *, kind: str) -> None:
