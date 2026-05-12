@@ -1,0 +1,26 @@
+# Module manifest for `agentforge add module a2a` (feat-010 / feat-014).
+name: a2a
+description: |
+  A2A (Agent-to-Agent) protocol support. Adds `agent_call(...)` for
+  reaching out to other-framework agents, plus `A2AServer` for
+  exposing this agent over the A2A wire format. Bearer and mTLS
+  auth backends ship in v0.4.
+
+distribution:
+  pip_name: agentforge-a2a
+
+config_block:
+  modules.protocols:
+    - name: a2a
+      config:
+        peers: []
+        expose:
+          enabled: false
+          host: "0.0.0.0"
+          port: 8080
+          auth: {type: "bearer", expected_tokens_env: "A2A_TOKENS"}
+          endpoints: []
+
+entry_points:
+  agentforge.protocols:
+    a2a: agentforge_a2a.bridge:A2ABridge
