@@ -242,6 +242,15 @@ ignore_missing_imports = true
 follow_imports = "skip"
 disable_error_code = ["no-any-unimported"]
 
+# feat-020 v0.2: tiktoken + anthropic SDK ship without py.typed
+# markers (or aren't installed by default — agentforge_chat lazy-
+# imports them only when the provider-aware tokeniser is requested).
+[[tool.mypy.overrides]]
+module = ["tiktoken", "tiktoken.*", "anthropic", "anthropic.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
 [[tool.mypy.overrides]]
 module = "agentforge_otel.*"
 disable_error_code = ["no-any-unimported"]
