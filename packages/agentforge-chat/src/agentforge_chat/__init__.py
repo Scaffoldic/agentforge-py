@@ -9,6 +9,7 @@ strategies (`SlidingWindow`, `TokenBudget`, `SummariseOldest`,
 from __future__ import annotations
 
 from agentforge_chat.history import InMemoryChatHistory
+from agentforge_chat.session import ChatSession
 from agentforge_chat.sqlite import SqliteChatHistory
 from agentforge_chat.truncation import (
     Hybrid,
@@ -18,6 +19,7 @@ from agentforge_chat.truncation import (
 )
 
 __all__ = [
+    "ChatSession",
     "Hybrid",
     "InMemoryChatHistory",
     "SlidingWindow",
