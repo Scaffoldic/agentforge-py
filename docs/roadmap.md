@@ -57,54 +57,79 @@ of each spec under [`docs/features/`](./features/).
 ## Release sequence
 
 We haven't tagged anything yet. The next release is **v0.1.0**
-(every shipped feature with a `Target version: 0.1` is landed).
-After that, releases follow the natural minor sequence: v0.1 →
-v0.2 → v0.3 → v0.4 → 1.0, two-weekly during 0.x per
-[ADR-0015](./adr/0015-coordinated-release-train.md). Spec
-metadata's `Target version` field is **aspirational** (set
-when the spec was written) and may differ from the tag a
-feature actually lands in — when they diverge, the tag wins.
-The `## Shipped` table above is the durable record.
+(everything in the `## Shipped` table above lands in that
+tag). The release immediately after is **v0.2.0**, which
+contains every Backlog item listed below. After 0.2 the
+natural minor sequence continues — v0.3, v0.4, 1.0 —
+two-weekly during 0.x per
+[ADR-0015](./adr/0015-coordinated-release-train.md).
+Spec metadata's `Target version` field is **aspirational**
+(set when the spec was written) and may differ from the tag
+a feature actually lands in — when they diverge, the tag
+wins. The Shipped table above is the durable record.
 
-## Backlog (canonical numbers)
+## v0.2.0 backlog (everything below ships in 0.2)
 
-These are tracked here so they don't get lost. Full design specs
-already exist under [`docs/features/`](./features/); pick one to
-move into "In flight" when starting. Tag column is the
-**earliest tag it could land in** — actual cadence depends on
-when the work ships.
+All remaining work between v0.1.0 and v0.2.0 is in this list.
+Each item references its canonical spec under
+[`docs/features/`](./features/) or the sub-feat row at the
+bottom. Pick one to move into "In flight" when starting; mark
+`shipped` here on merge.
 
-- **feat-014 follow-ups** (tag: v0.2 or later) — production
-  HTTP runner against a real A2A peer (replaces the
-  `# pragma: no cover` stubs); A2A discovery / registry;
-  bi-directional streaming.
-- **feat-013 follow-up** (tag: v0.2 or later) — production
-  MCP runner against a real server (also replaces
-  `# pragma: no cover` stubs).
-- **feat-020 follow-ups** (tag: v0.2 or v0.3 per spec metadata)
-  — `agentforge-chat-history-postgres`,
-  `agentforge-chat-history-redis`, `agentforge-chat-slack`
-  reference adapter, real per-token streaming through the
-  strategy loop, cross-process per-session locking
-  (Redis-backed), provider-aware tokeniser in `TokenBudget`.
+### feat-013 follow-up — production MCP runner
 
-### feat-009 vendor-package sub-feats (deferred)
+The shipped MCP package scopes its production runner behind
+`MCPClientRunner` / `MCPServerRunner` protocols with
+`# pragma: no cover`. v0.2 replaces those stubs with a real
+runner against stdio + HTTP/SSE MCP servers, gated by a live
+integration test.
 
-feat-009 shipped the framework-side observability (hook fan-out,
-JSON logs, OTel root span via `agentforge-otel`). The four vendor-
-specific dashboard packages from the original spec are deferred —
-they each become a small follow-up:
+### feat-014 follow-ups — production A2A runner + discovery + streaming
 
-- **`agentforge-langfuse`** — Langfuse trace dashboard (LLM-focused).
+Three items:
+
+- **Production HTTP runner against a real A2A peer** —
+  replaces the `# pragma: no cover` stubs in
+  `agentforge_a2a._runner`.
+- **A2A discovery / registry** (spec §9 deferred).
+- **Bi-directional streaming via A2A** (spec §9 deferred).
+
+### feat-020 follow-ups — chat history + adapters + streaming
+
+Six items rolled up:
+
+- **`agentforge-chat-history-postgres`** — asyncpg-backed
+  driver.
+- **`agentforge-chat-history-redis`** — Redis-backed driver
+  with native TTL.
+- **`agentforge-chat-slack`** — reference channel adapter.
+- **Real per-token streaming through the strategy loop** —
+  graduates `ChatSession.stream()` from buffer-then-stream
+  to real per-token streaming once the strategy ABC grows a
+  `stream()` method.
+- **Cross-process per-session locking** (Redis-backed) —
+  replaces the v0.1 `WeakValueDictionary` single-process
+  lock.
+- **Provider-aware tokeniser in `TokenBudget`** — replaces
+  the 4-chars-per-token heuristic.
+
+### feat-009 vendor observability sub-feats
+
+Four small packages, each wrapping its SDK behind the same
+hook contract feat-009 locked in. OTel coverage covers the
+major bases until then.
+
+- **`agentforge-langfuse`** — Langfuse trace dashboard
+  (LLM-focused).
 - **`agentforge-phoenix`** — Phoenix / Arize dashboard.
-- **`agentforge-evidently`** — Evidently AI metrics + drift monitoring.
+- **`agentforge-evidently`** — Evidently AI metrics + drift
+  monitoring.
 - **`agentforge-statsd`** — StatsD metrics emitter.
 
-Each wraps its respective SDK behind the same hook contract feat-009
-locked in. OTel coverage (every collector that ingests OTLP) covers
-the major bases until then.
-
 ### Sub-feat backlog (no canonical number yet)
+
+Each becomes its own short spec when picked up; all
+targeted for v0.2:
 
 - **GraphRAG-style hybrid retrieval** — combines vector retrieval
   with graph expansion (pull top-k vector matches, then traverse

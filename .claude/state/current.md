@@ -58,33 +58,47 @@ shipped in PR #26 (merged 2026-05-12).
 
 ## Next pick candidates
 
-We haven't tagged anything yet. The next release is **v0.1.0**
-— every 0.1-target spec is shipped. After that the natural
-minor sequence is v0.2, v0.3, v0.4, 1.0 per
+We haven't tagged anything yet. The next two releases are
+**v0.1.0** (everything shipped to date) and **v0.2.0** (the
+entire current backlog). Sequence continues v0.3 → v0.4 →
+1.0 per
 [ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
 
 **Release prep (recommended first):**
-- Run [`.claude/checklists/pre-release.md`](../checklists/pre-release.md);
-  fill `docs/releases/v0.1.0.md` from
-  [`.claude/templates/release-notes.md`](../templates/release-notes.md);
-  tag and publish.
 
-**Post-0.1 feature backlog:**
+1. Run [`.claude/checklists/pre-release.md`](../checklists/pre-release.md).
+2. Fill `docs/releases/v0.1.0.md` from
+   [`.claude/templates/release-notes.md`](../templates/release-notes.md).
+3. Bump every workspace `pyproject.toml` to `0.1.0`.
+4. PR, merge, tag, publish via
+   `gh release create v0.1.0 --notes-file docs/releases/v0.1.0.md`.
+
+**v0.2.0 backlog (everything below ships in the next tag):**
+
+- **feat-013 follow-up** — production MCP runner against a
+  real server (replaces `# pragma: no cover` stubs).
 - **feat-014 follow-ups** — production HTTP A2A runner; A2A
   discovery / registry; bi-directional streaming.
-- **feat-013 follow-up** — production MCP runner against a real
-  server.
-- **feat-020 follow-ups** — `agentforge-chat-history-postgres`,
-  `-redis`, `-slack` adapter, real per-token streaming,
-  cross-process locking, provider-aware tokeniser.
-- **Vendor observability sub-feats** —
-  `agentforge-langfuse`, `-phoenix`, `-evidently`, `-statsd`.
-- **Sub-feat backlog** — GraphRAG hybrid retrieval, BM25 +
-  vector hybrid search, `Reranker` ABC, schema migrations.
+- **feat-020 follow-ups** —
+  `agentforge-chat-history-postgres`,
+  `agentforge-chat-history-redis`, `agentforge-chat-slack`
+  adapter, real per-token streaming through the strategy
+  loop, cross-process locking, provider-aware tokeniser.
+- **feat-009 vendor backends** — `agentforge-langfuse`,
+  `-phoenix`, `-evidently`, `-statsd`.
+- **Sub-feat backlog** (no canonical numbers yet) — GraphRAG
+  hybrid retrieval, BM25 + vector hybrid search, `Reranker`
+  ABC, schema migrations.
 
-Spec `Target version` metadata is aspirational and predates any
-release. When a feature lands earlier or later than its declared
-target, the tag wins.
+After v0.2.0 lands, v0.3.0 is reserved for the next round of
+community / ecosystem feedback (intentionally empty at v0.1.0
+cut). v0.4.0 brings TypeScript to parity with the Python
+v0.2 surface per
+[ADR-0002](../../docs/adr/0002-multi-language-python-typescript.md).
+
+Spec `Target version` metadata is aspirational and predates
+any release. When a feature lands earlier or later than its
+declared target, the tag wins.
 
 User selects on session resume.
 

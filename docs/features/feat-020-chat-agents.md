@@ -9,7 +9,7 @@
 | **Status** | shipped (Python v0.2 scope) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.2 (contracts + memory + sqlite drivers + chat-http server), 0.3 (postgres + redis drivers + Slack reference adapter) |
+| **Target version** | 0.1 (contracts + memory + sqlite drivers + chat-http server — shipped); 0.2 (postgres + redis drivers + Slack reference adapter + real per-token streaming + cross-process locking + provider-aware tokeniser) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-chat` (core + in-memory + sqlite drivers), `agentforge-chat-history-postgres`, `agentforge-chat-history-redis`, `agentforge-chat-http`, optional channel adapters |
 | **Depends on** | feat-001, feat-003 (streaming capability), feat-005, feat-007 (run_id, budget, idempotency), feat-009 (session-level traces), feat-014 (auth backends reused), feat-018 (per-turn guardrails) |

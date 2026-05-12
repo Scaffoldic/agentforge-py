@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — `MemoryStore` + sqlite/postgres/neo4j/surrealdb + `VectorStore` + `GraphStore` + RAG; PRs #5/#7/#8 mis-labelled — see §10) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.2 (sqlite, postgres), 0.3 (surrealdb, neo4j) |
+| **Target version** | 0.1 (all four drivers + VectorStore + GraphStore + RAG — shipped) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-core` (ABC), `agentforge` (InMemory), `agentforge-memory-sqlite`, `agentforge-memory-postgres`, `agentforge-memory-surrealdb`, `agentforge-memory-neo4j` |
 | **Depends on** | feat-001, feat-008 (Finding shape), feat-010 (module system) |

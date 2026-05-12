@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — `run` + `eval` + `debug` + `db {migrate,backup,restore,purge,query}` + `health`) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.1 (`run`), 0.2 (rest) |
+| **Target version** | 0.1 (`run` + `eval` + `debug` + `db {migrate,backup,restore,purge,query}` + `health` — all shipped) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge` |
 | **Depends on** | feat-001, feat-005, feat-006, feat-010, feat-012 |

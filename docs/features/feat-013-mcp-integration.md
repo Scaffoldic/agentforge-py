@@ -9,7 +9,7 @@
 | **Status** | shipped (Python — consume + expose, stdio + HTTP/SSE) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-09 |
-| **Target version** | 0.2 |
+| **Target version** | 0.1 (contracts + adapter + client + server + bridge — shipped); 0.2 (production HTTP/stdio runner against a real MCP server) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-mcp` |
 | **Depends on** | feat-001, feat-004, feat-010 |
