@@ -109,3 +109,28 @@ class CapabilityNotSupported(AgentForgeError):
     their supported set and this exception fires if a consumer skipped
     the `supports(...)` check.
     """
+
+
+class A2ACallError(AgentForgeError):
+    """Raised when an A2A call to a remote peer fails (feat-014).
+
+    Wraps the underlying HTTP / transport error; carries the peer
+    URL and the error code from the response body when available.
+    """
+
+
+class A2AAuthError(A2ACallError):
+    """The peer rejected the supplied credentials (HTTP 401/403).
+
+    Distinct from `A2ACallError` so callers can branch on retry
+    semantics — auth errors are not retryable without rotating
+    the credential.
+    """
+
+
+class A2ATimeout(A2ACallError):
+    """The A2A call exceeded its configured timeout.
+
+    Retryable with backoff. Subclasses `A2ACallError` so generic
+    A2A handlers catch all transport failures at one level.
+    """
