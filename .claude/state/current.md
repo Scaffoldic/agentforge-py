@@ -1,7 +1,7 @@
 ---
 feature: none
 state: in_progress
-branch: chore/reconcile-spec-status-drift
+branch: chore/release-notes-template-and-version-cleanup
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
 last_shipped: feat-014 shipped via PR #27 (merged 2026-05-12)
@@ -56,17 +56,49 @@ Deviations recorded in spec §10:
 [`feat-020 — Chat agents (v0.2 scope)`](../../docs/features/feat-020-chat-agents.md)
 shipped in PR #26 (merged 2026-05-12).
 
-## Next pick candidates (canonical numbering)
+## Next pick candidates
 
-- **feat-014 v0.4.1 follow-ups** — production HTTP runner
-  against a real A2A peer; A2A discovery / registry;
-  bi-directional streaming.
-- **feat-020 v0.3 follow-ups** — postgres / redis / slack
-  drivers, real per-token streaming, cross-process locking,
-  provider-aware tokeniser.
-- Vendor observability sub-feats
-  (langfuse/phoenix/evidently/statsd).
-- Backfill chore PRs (Runbooks for feat-001–005).
+We haven't tagged anything yet. The next two releases are
+**v0.1.0** (everything shipped to date) and **v0.2.0** (the
+entire current backlog). Sequence continues v0.3 → v0.4 →
+1.0 per
+[ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
+
+**Release prep (recommended first):**
+
+1. Run [`.claude/checklists/pre-release.md`](../checklists/pre-release.md).
+2. Fill `docs/releases/v0.1.0.md` from
+   [`.claude/templates/release-notes.md`](../templates/release-notes.md).
+3. Bump every workspace `pyproject.toml` to `0.1.0`.
+4. PR, merge, tag, publish via
+   `gh release create v0.1.0 --notes-file docs/releases/v0.1.0.md`.
+
+**v0.2.0 backlog (everything below ships in the next tag):**
+
+- **feat-013 follow-up** — production MCP runner against a
+  real server (replaces `# pragma: no cover` stubs).
+- **feat-014 follow-ups** — production HTTP A2A runner; A2A
+  discovery / registry; bi-directional streaming.
+- **feat-020 follow-ups** —
+  `agentforge-chat-history-postgres`,
+  `agentforge-chat-history-redis`, `agentforge-chat-slack`
+  adapter, real per-token streaming through the strategy
+  loop, cross-process locking, provider-aware tokeniser.
+- **feat-009 vendor backends** — `agentforge-langfuse`,
+  `-phoenix`, `-evidently`, `-statsd`.
+- **Sub-feat backlog** (no canonical numbers yet) — GraphRAG
+  hybrid retrieval, BM25 + vector hybrid search, `Reranker`
+  ABC, schema migrations.
+
+After v0.2.0 lands, v0.3.0 is reserved for the next round of
+community / ecosystem feedback (intentionally empty at v0.1.0
+cut). v0.4.0 brings TypeScript to parity with the Python
+v0.2 surface per
+[ADR-0002](../../docs/adr/0002-multi-language-python-typescript.md).
+
+Spec `Target version` metadata is aspirational and predates
+any release. When a feature lands earlier or later than its
+declared target, the tag wins.
 
 User selects on session resume.
 
