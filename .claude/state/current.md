@@ -1,7 +1,7 @@
 ---
 feature: none
 state: in_progress
-branch: chore/reconcile-spec-status-drift
+branch: chore/release-notes-template-and-version-cleanup
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
 last_shipped: feat-014 shipped via PR #27 (merged 2026-05-12)
@@ -56,17 +56,35 @@ Deviations recorded in spec §10:
 [`feat-020 — Chat agents (v0.2 scope)`](../../docs/features/feat-020-chat-agents.md)
 shipped in PR #26 (merged 2026-05-12).
 
-## Next pick candidates (canonical numbering)
+## Next pick candidates
 
-- **feat-014 v0.4.1 follow-ups** — production HTTP runner
-  against a real A2A peer; A2A discovery / registry;
-  bi-directional streaming.
-- **feat-020 v0.3 follow-ups** — postgres / redis / slack
-  drivers, real per-token streaming, cross-process locking,
-  provider-aware tokeniser.
-- Vendor observability sub-feats
-  (langfuse/phoenix/evidently/statsd).
-- Backfill chore PRs (Runbooks for feat-001–005).
+We haven't tagged anything yet. The next release is **v0.1.0**
+— every 0.1-target spec is shipped. After that the natural
+minor sequence is v0.2, v0.3, v0.4, 1.0 per
+[ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
+
+**Release prep (recommended first):**
+- Run [`.claude/checklists/pre-release.md`](../checklists/pre-release.md);
+  fill `docs/releases/v0.1.0.md` from
+  [`.claude/templates/release-notes.md`](../templates/release-notes.md);
+  tag and publish.
+
+**Post-0.1 feature backlog:**
+- **feat-014 follow-ups** — production HTTP A2A runner; A2A
+  discovery / registry; bi-directional streaming.
+- **feat-013 follow-up** — production MCP runner against a real
+  server.
+- **feat-020 follow-ups** — `agentforge-chat-history-postgres`,
+  `-redis`, `-slack` adapter, real per-token streaming,
+  cross-process locking, provider-aware tokeniser.
+- **Vendor observability sub-feats** —
+  `agentforge-langfuse`, `-phoenix`, `-evidently`, `-statsd`.
+- **Sub-feat backlog** — GraphRAG hybrid retrieval, BM25 +
+  vector hybrid search, `Reranker` ABC, schema migrations.
+
+Spec `Target version` metadata is aspirational and predates any
+release. When a feature lands earlier or later than its declared
+target, the tag wins.
 
 User selects on session resume.
 
