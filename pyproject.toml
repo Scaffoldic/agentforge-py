@@ -79,6 +79,10 @@ dev = [
     "mypy>=1.13",
     "bandit>=1.8",
     "pre-commit>=4.0",
+    # feat-013 v0.2: live MCP integration test needs the SDK in the
+    # venv. The package itself keeps `mcp` as an optional extra
+    # (`agentforge-mcp[mcp]`); see packages/agentforge-mcp/pyproject.toml.
+    "mcp>=1.0,<2",
 ]
 
 # ----------------------------------------------------------------------
