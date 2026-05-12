@@ -9,6 +9,40 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Added
+
+_None yet — v0.2.0 cycle begins here._
+
+### Changed
+
+_None yet._
+
+### Deprecated
+
+_None yet._
+
+### Removed
+
+_None yet._
+
+### Fixed
+
+_None yet._
+
+### Security
+
+_None yet._
+
+---
+
+## [0.1.0] — 2026-05-12
+
+**First tagged release of AgentForge.** Coordinated release
+train per ADR-0015: every workspace package ships at `0.1.0`.
+Full release notes (highlights, train table, cross-language
+status, full shipped-feature mapping, what's-next) at
+[`docs/releases/v0.1.0.md`](docs/releases/v0.1.0.md).
+
 > **Numbering note**: PRs #5, #7, #8 shipped under labels `feat-007`,
 > `feat-009`, `feat-008` respectively, but **all three actually
 > implement portions of canonical feat-005 (Persistence — `MemoryStore`

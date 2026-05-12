@@ -10,7 +10,7 @@
 
 [project]
 name = "agentforge-memory-sqlite"
-version = "0.0.0"
+version = "0.1.0"
 description = "SQLite-backed MemoryStore and VectorStore for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"

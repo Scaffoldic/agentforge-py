@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-chat"
-version = "0.0.0"
+version = "0.1.0"
 description = "Chat-agent runtime (ChatSession + history drivers + truncation) for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
