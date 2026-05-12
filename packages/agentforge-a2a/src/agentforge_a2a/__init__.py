@@ -10,6 +10,8 @@ Public surface (chunks 3-4):
 
 from __future__ import annotations
 
+from agentforge_a2a.auth import BearerAuth, ClientAuth, MutualTLSAuth, build_outgoing_auth
+from agentforge_a2a.client import A2APeer, agent_call
 from agentforge_a2a.values import (
     A2AEndpointConfig,
     A2AExposeConfig,
@@ -20,6 +22,12 @@ from agentforge_a2a.values import (
 __all__ = [
     "A2AEndpointConfig",
     "A2AExposeConfig",
+    "A2APeer",
     "A2APeerConfig",
     "A2AResponse",
+    "BearerAuth",
+    "ClientAuth",
+    "MutualTLSAuth",
+    "agent_call",
+    "build_outgoing_auth",
 ]
