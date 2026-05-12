@@ -42,7 +42,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict
 
 from agentforge_a2a._runner import A2AServerRunner
-from agentforge_a2a.values import A2AResponse
+from agentforge_a2a.values import (
+    A2AEndpointConfig,
+    A2AEndpointDescriptor,
+    A2APeerInfo,
+    A2AResponse,
+)
 
 _log = logging.getLogger("agentforge_a2a.server")
 _VERSION = "0.1"
@@ -83,6 +88,8 @@ class A2AServer:
         host: str = "0.0.0.0",  # noqa: S104  # nosec B104
         port: int = 8080,
         runner: A2AServerRunner | None = None,
+        endpoint_descriptors: list[A2AEndpointConfig] | None = None,
+        server_name: str = "agentforge",
     ) -> None:
         self._agent = agent
         self._auth = auth
@@ -91,6 +98,8 @@ class A2AServer:
         self._host = host
         self._port = port
         self._runner = runner
+        self._endpoint_descriptors = list(endpoint_descriptors or [])
+        self._server_name = server_name
         self.app = self._build_app()
 
     @property
@@ -112,10 +121,7 @@ class A2AServer:
 
         @app.get("/a2a/v1/info")
         async def info(_p: Any = Depends(require_principal)) -> dict[str, Any]:  # noqa: B008
-            return {
-                "version": _VERSION,
-                "endpoints": list(self._endpoints),
-            }
+            return self._build_info().model_dump(mode="json")
 
         @app.post("/a2a/v1/calls")
         async def call(
@@ -126,6 +132,23 @@ class A2AServer:
             return await self._handle_call(body, request)
 
         return app
+
+    def _build_info(self) -> A2APeerInfo:
+        """Render the discovery payload returned by `/a2a/v1/info`."""
+        by_name = {d.name: d for d in self._endpoint_descriptors}
+        descriptors = [
+            A2AEndpointDescriptor(
+                name=name,
+                description=(by_name[name].description if name in by_name else ""),
+                input_schema=(dict(by_name[name].accepts) if name in by_name else {}),
+            )
+            for name in self._endpoints
+        ]
+        return A2APeerInfo(
+            version=_VERSION,
+            server_name=self._server_name,
+            endpoints=descriptors,
+        )
 
     async def _handle_call(self, body: CallRequest, request: Request) -> dict[str, Any]:
         if body.endpoint not in self._endpoints:

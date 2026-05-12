@@ -79,7 +79,11 @@ def test_info_endpoint_lists_whitelist(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.json()
     assert "version" in body
-    assert set(body["endpoints"]) == {"review-pr", "verify"}
+    names = {ep["name"] for ep in body["endpoints"]}
+    assert names == {"review-pr", "verify"}
+    # v0.2 shape: each entry has description + input_schema fields.
+    for ep in body["endpoints"]:
+        assert set(ep.keys()) >= {"name", "description", "input_schema"}
 
 
 def test_missing_bearer_returns_401(client: TestClient) -> None:
