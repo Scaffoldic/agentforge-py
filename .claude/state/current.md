@@ -1,10 +1,10 @@
 ---
-feature: none
-state: idle
-branch: main
-started_at: null
+feature: feat-013 v0.2 follow-up
+state: in_progress
+branch: chore/feat-013-production-mcp-runner
+started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: v0.1.0 — Foundation (tagged 2026-05-12; PR #30 merged; GitHub Release published)
+last_shipped: v0.1.0 — Foundation (tagged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---

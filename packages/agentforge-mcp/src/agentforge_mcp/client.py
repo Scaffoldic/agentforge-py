@@ -9,6 +9,10 @@ protocol so tests don't need it installed.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import AsyncExitStack
+from typing import Any
+
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.production.exceptions import ModuleError
 
@@ -182,46 +186,83 @@ async def _build_http_runner(
     )
 
 
-class _SDKClientRunner:  # pragma: no cover — exercised only with `mcp` installed (live tests)
-    """Wraps the upstream `mcp.ClientSession`. Live integration
-    only; unit tests inject a fake runner.
+class _SDKClientRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
+    """Wraps the upstream `mcp.ClientSession`.
 
-    Holds the session and the transport context manager open for
-    the lifetime of the runner; `close()` releases both. Live
-    transport wiring is deferred until the framework's first
-    integration test against a real MCP server; until then this
-    raises an actionable error from each contract method.
+    Opens the transport + session lazily on first method call and
+    stashes both inside an `AsyncExitStack` so `close()` tears the
+    full chain down. The transport context manager comes from the
+    injected `session_factory` (one of `mcp.client.stdio.stdio_client`,
+    `mcp.client.sse.sse_client`, or
+    `mcp.client.streamable_http.streamablehttp_client`); we wrap
+    its `(read, write[, *_])` yield in a `ClientSession` (also a
+    context manager) and call `initialize()` once before any
+    tool-level operation.
+
+    Tool-call results are flattened to a single string: every
+    `TextContent` block's text is concatenated, in order, and
+    non-text content (image, resource) is ignored for v0.2.
+    Non-text handling lands when a real use case justifies it.
     """
 
     def __init__(
         self,
         *,
-        session_factory: object,
-        session_cls: object,
+        session_factory: Callable[[], Any],
+        session_cls: type[Any],
         timeout_s: float,
     ) -> None:
         self._session_factory = session_factory
         self._session_cls = session_cls
         self._timeout_s = timeout_s
-        self._session: object | None = None
+        self._stack: AsyncExitStack | None = None
+        self._session: Any | None = None
+
+    async def _ensure_session(self) -> Any:
+        if self._session is not None:
+            return self._session
+        stack = AsyncExitStack()
+        await stack.__aenter__()
+        try:
+            streams = await stack.enter_async_context(self._session_factory())
+            # stdio_client / sse_client yield (read, write); the
+            # streamable-http client yields (read, write, _aux)
+            # — pluck the first two consistently.
+            read, write = streams[0], streams[1]
+            session = await stack.enter_async_context(self._session_cls(read, write))
+            await session.initialize()
+        except BaseException:
+            await stack.aclose()
+            raise
+        self._stack = stack
+        self._session = session
+        return session
 
     async def list_tools(self) -> list[MCPToolDescriptor]:
-        msg = (
-            "Production MCP runner not implemented yet. Inject a "
-            "fake `MCPClientRunner` via `MCPServerClient(runner=...)`."
-        )
-        raise ModuleError(msg)
+        session = await self._ensure_session()
+        result = await session.list_tools()
+        return [
+            MCPToolDescriptor(
+                name=tool.name,
+                description=tool.description or "",
+                input_schema=dict(tool.inputSchema or {}),
+            )
+            for tool in result.tools
+        ]
 
-    async def call_tool(self, name: str, arguments: dict[str, object]) -> str:
-        del name, arguments
-        msg = (
-            "Production MCP runner not implemented yet. Inject a "
-            "fake `MCPClientRunner` via `MCPServerClient(runner=...)`."
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        session = await self._ensure_session()
+        result = await session.call_tool(name, arguments)
+        return "".join(
+            block.text for block in result.content if getattr(block, "type", None) == "text"
         )
-        raise ModuleError(msg)
 
     async def close(self) -> None:
-        return
+        if self._stack is None:
+            return
+        stack, self._stack = self._stack, None
+        self._session = None
+        await stack.aclose()
 
 
 __all__ = ["MCPServerClient"]
