@@ -1276,3 +1276,65 @@ Tooling notes:
   uvicorn / httpx into the shared venv.
 
 Ready to push and raise PR #26.
+
+
+## 2026-05-12T16:00 — feat-014 (A2A protocol) shipped
+
+Branch `feat/014-a2a-protocol` opens PR #27. Full-spec scope:
+canonical `AuthPolicy` ABC lifted from feat-020's chat-http stub
+into `agentforge-core`, plus a new `agentforge-a2a` workspace
+member shipping client + server + bridge.
+
+Chunks landed:
+
+- chunk 1 (`76e2373`): `agentforge_core.contracts.auth.AuthPolicy`
+  + `Principal` + `A2ACallError` / `A2AAuthError` /
+  `A2ATimeout` exceptions + `agentforge.auth.EnvBearerAuth` +
+  chat-http `BearerAuthPolicy` aliased to the canonical contract.
+- chunk 2 (`b09915b`): new `agentforge-a2a` workspace member;
+  `A2AResponse` / `A2APeerConfig` / `A2AEndpointConfig` /
+  `A2AExposeConfig` values; `A2AClientRunner` /
+  `A2AServerRunner` Protocols with `# pragma: no cover`
+  production stubs (mirrors feat-013 MCP); manifest.yaml +
+  entry-point.
+- chunk 3 (`06f4ba6`): `agent_call` client + `BearerAuth`,
+  `MutualTLSAuth`, `build_outgoing_auth` credentials;
+  `FakeA2AClientRunner` / `FakeA2AServerRunner` in src/
+  for tests + downstream reuse; run_id + budget header
+  propagation; 19 unit tests.
+- chunk 4 (`4197535`): `A2AServer` FastAPI app with
+  `POST /a2a/v1/calls` + `GET /a2a/v1/info`, bearer auth
+  via canonical `AuthPolicy`, parent_run_id chain, budget cap;
+  `A2ABridge.from_config` orchestrator with start/close
+  lifecycle; 15 unit tests (server + bridge).
+- chunk 5 (`f925e0b`): `A2AConfig` Pydantic schema +
+  `A2ABridge.config_schema = A2AConfig` so feat-012's
+  module-schema validator enforces shape; 6 config tests.
+- chunk 6 (about-to-commit): spec status → shipped + §10
+  Implementation Status + §11 Runbook; features README;
+  roadmap; CHANGELOG; state refreshed.
+
+Deviations captured in spec §10:
+
+- Production HTTP runner scoped to `# pragma: no cover`
+  until live integration test lands.
+- FastAPI used for server (matches chat-http precedent;
+  spec §4.4 hinted at Starlette).
+- Outgoing auth is dict-driven (no policy abstraction).
+- A2A discovery, bi-directional streaming, TS port deferred.
+
+Tooling notes:
+
+- mTLS test fixture uses openssl via subprocess to generate
+  a fresh self-signed cert at test time (avoids hardcoded
+  PEM blobs that LibreSSL vs OpenSSL parse differently).
+- Filename collision avoided: a2a's server test is
+  `test_a2a_server.py` (mcp + chat-http already own
+  `test_server.py` / `test_chat_server.py`).
+- B008 (`Depends` in defaults) noqa'd on every FastAPI
+  route function; standard FastAPI idiom.
+- B025 caught a duplicate `except TimeoutError` block —
+  Python 3.11+ aliases asyncio.TimeoutError to the builtin
+  TimeoutError, so a single except clause catches both.
+
+Ready to push and raise PR #27.
