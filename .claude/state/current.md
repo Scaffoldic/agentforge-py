@@ -1,8 +1,8 @@
 ---
-feature: none
-state: idle
-branch: main
-started_at: null
+feature: feat-020 v0.2 follow-up
+state: in_review
+branch: chore/feat-020-v0.2-followup-postgres-redis-slack-streaming-lock-tokeniser
+started_at: 2026-05-12
 last_milestone_at: 2026-05-12
 last_shipped: feat-014 v0.2 production A2A runner + discovery + streaming shipped via PR #33 (merged 2026-05-12)
 blocker: null
@@ -11,7 +11,15 @@ flags_for_user: []
 
 ## Active feature
 
-*None — awaiting next pick.*
+[`feat-020 — Chat agents`](../../docs/features/feat-020-chat-agents.md)
+v0.2 follow-up: closes the six v0.1 deferred items in one PR
+per user-chosen "full v0.2 spec" scope. Postgres + redis chat-
+history packages, slack reference adapter,
+`ReasoningStrategy.stream()` ABC + `Agent.stream(task)` +
+`ChatSession` per-token graduation, `SessionLock` Protocol +
+`RedisSessionLock`, provider-aware tokeniser
+(`tiktoken_tokeniser` / `anthropic_tokeniser`). Live CI job
+extended with Postgres + Redis services.
 
 ## Last shipped
 
