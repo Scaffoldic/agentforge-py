@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-guard-llmguard"
-version = "0.0.0"
+version = "0.1.0"
 description = "LLM Guard scanners for AgentForge guardrails"
 readme = "README.md"
 requires-python = ">=3.13"

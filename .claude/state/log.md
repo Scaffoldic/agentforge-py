@@ -1338,3 +1338,20 @@ Tooling notes:
   TimeoutError, so a single except clause catches both.
 
 Ready to push and raise PR #27.
+
+
+## 2026-05-12T18:00 — v0.1.0 release prep
+
+Branch `chore/release-v0.1.0` opens the first tag PR.
+
+- Bumped every workspace package (18 total) from `0.0.0` to
+  `0.1.0`.
+- Filled `docs/releases/v0.1.0.md` from
+  `.claude/templates/release-notes.md` (Codename:
+  Foundation).
+- CHANGELOG.md renamed `[Unreleased]` → `[0.1.0] —
+  2026-05-12` and added fresh empty `[Unreleased]` above.
+- Followed `.claude/checklists/pre-release.md` end-to-end.
+
+Pending: PR merge, then `git tag -a v0.1.0` + push + `gh
+release create v0.1.0 --notes-file docs/releases/v0.1.0.md`.
