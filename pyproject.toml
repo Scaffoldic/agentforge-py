@@ -46,6 +46,7 @@ dependencies = [
     "agentforge-langfuse",
     "agentforge-phoenix",
     "agentforge-evidently",
+    "agentforge-reranker-sentence-transformers",
 ]
 
 [tool.uv.workspace]
@@ -77,6 +78,7 @@ agentforge-statsd = { workspace = true }
 agentforge-langfuse = { workspace = true }
 agentforge-phoenix = { workspace = true }
 agentforge-evidently = { workspace = true }
+agentforge-reranker-sentence-transformers = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -347,6 +349,17 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_evidently.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-021: sentence-transformers SDK has loose typing; isolate.
+[[tool.mypy.overrides]]
+module = ["sentence_transformers", "sentence_transformers.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_reranker_sentence_transformers.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -380,6 +393,7 @@ testpaths = [
     "packages/agentforge-langfuse/tests",
     "packages/agentforge-phoenix/tests",
     "packages/agentforge-evidently/tests",
+    "packages/agentforge-reranker-sentence-transformers/tests",
     "tests",
 ]
 markers = [
@@ -439,6 +453,7 @@ source = [
     "packages/agentforge-langfuse/src",
     "packages/agentforge-phoenix/src",
     "packages/agentforge-evidently/src",
+    "packages/agentforge-reranker-sentence-transformers/src",
 ]
 branch = true
 parallel = true

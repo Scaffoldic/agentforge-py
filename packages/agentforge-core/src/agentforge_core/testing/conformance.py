@@ -33,6 +33,7 @@ from agentforge_core.contracts.guardrails import (
     ToolCallGate,
 )
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.task import Task
 from agentforge_core.contracts.tool import Tool
@@ -46,7 +47,7 @@ from agentforge_core.values.graph import (
 )
 from agentforge_core.values.guardrails import ValidationResult
 from agentforge_core.values.state import AgentState, StepKind
-from agentforge_core.values.vector import VectorItem
+from agentforge_core.values.vector import VectorItem, VectorMatch
 
 _VALID_STEP_KINDS: frozenset[str] = frozenset(typing.get_args(StepKind))
 """Closed enum mirror of `StepKind`. Used by `run_strategy_conformance`."""
@@ -962,3 +963,83 @@ async def run_truncation_conformance(strategy: HistoryTruncationStrategy) -> Non
             "truncation output must preserve input order "
             "(no reordered or inserted non-summary turns)"
         )
+
+
+async def run_reranker_conformance(reranker: Reranker) -> None:
+    """Run the shared `Reranker` conformance suite (feat-021).
+
+    The reranker must be ready to call when this is passed in and is
+    not touched after the function returns (callers manage the
+    reranker's lifecycle).
+
+    Verifies the locked invariants of `Reranker`:
+
+      1. Empty candidate list returns an empty list, no calls to any
+         backing model.
+      2. ``top_k < 1`` (when not None) raises `ValueError`.
+      3. ``rerank(query, candidates, top_k=None)`` returns a list of
+         the same length as `candidates`.
+      4. ``rerank(query, candidates, top_k=K)`` returns at most
+         `K` items.
+      5. Returned scores are in `[0, 1]`.
+      6. Results are sorted descending by score.
+      7. Returned `VectorMatch` objects carry the input's `id` /
+         `text` / `metadata` values unchanged (only `score` may
+         change).
+      8. Input list is not mutated.
+      9. ``supports("not-a-real-capability")`` returns False.
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+
+    # 1. empty input → empty output, no work
+    empty = await reranker.rerank("any query", [])
+    assert empty == [], f"rerank([]) must return [], got {empty!r}"
+
+    # 2. top_k < 1 must raise
+    candidates = [
+        VectorMatch(id="a", text="alpha", score=0.9, metadata={"k": 1}),
+        VectorMatch(id="b", text="beta", score=0.5, metadata={"k": 2}),
+        VectorMatch(id="c", text="gamma", score=0.3, metadata={"k": 3}),
+    ]
+    raised_topk = False
+    try:
+        await reranker.rerank("q", candidates, top_k=0)
+    except ValueError:
+        raised_topk = True
+    assert raised_topk, "rerank(top_k=0) must raise ValueError"
+
+    # 3-7. happy path
+    original = list(candidates)
+    full = await reranker.rerank("q", candidates)
+    assert len(full) == len(candidates), (
+        f"rerank(top_k=None) must return all candidates, got {len(full)} vs {len(candidates)}"
+    )
+    for r in full:
+        assert 0.0 <= r.score <= 1.0, f"score out of range: {r.score}"
+    for prev, nxt in itertools.pairwise(full):
+        assert prev.score >= nxt.score, f"results not sorted desc: {prev.score} before {nxt.score}"
+    by_id = {r.id: r for r in full}
+    for orig in original:
+        out = by_id[orig.id]
+        assert out.text == orig.text, (
+            f"text field mutated for id={orig.id}: {orig.text!r} → {out.text!r}"
+        )
+        assert out.metadata == orig.metadata, (
+            f"metadata mutated for id={orig.id}: {orig.metadata!r} → {out.metadata!r}"
+        )
+
+    # 4. top_k truncates
+    truncated = await reranker.rerank("q", candidates, top_k=2)
+    assert len(truncated) == 2, f"top_k=2 must return 2 items, got {len(truncated)}"  # noqa: PLR2004
+    for prev, nxt in itertools.pairwise(truncated):
+        assert prev.score >= nxt.score
+
+    # 8. input not mutated
+    assert candidates == original, "rerank must not mutate its input list"
+
+    # 9. unknown capability check
+    assert reranker.supports("not-a-real-capability") is False, (
+        "supports() must return False for unknown capability"
+    )

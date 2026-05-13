@@ -16,6 +16,7 @@ from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.renderer import FindingRenderer
+from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.task import Task
 from agentforge_core.contracts.tool import Tool
@@ -34,6 +35,7 @@ __all__ = [
     "LLMClient",
     "MemoryStore",
     "ReasoningStrategy",
+    "Reranker",
     "Task",
     "Tool",
     "VectorStore",
