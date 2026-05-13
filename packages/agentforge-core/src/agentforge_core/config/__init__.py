@@ -35,6 +35,8 @@ from agentforge_core.config.schema import (
     ObservabilityEntry,
     OutputConfig,
     ProviderConfig,
+    RerankerEntry,
+    RetrievalConfig,
     RetrieverModuleConfig,
 )
 
@@ -51,6 +53,8 @@ __all__ = [
     "ObservabilityEntry",
     "OutputConfig",
     "ProviderConfig",
+    "RerankerEntry",
+    "RetrievalConfig",
     "RetrieverModuleConfig",
     "load_config",
     "parse_overrides",
