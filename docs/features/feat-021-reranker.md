@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-021 |
 | **Title** | Reranker — cross-encoder reranking on top of vector retrieval |
-| **Status** | in-progress (Python) |
+| **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-13 |
 | **Target version** | 0.2 |
@@ -290,10 +290,149 @@ plain JSON object); the ABC's shape translates directly.
 
 ## 11. Implementation status (Python)
 
-(filled in at chunk 5)
+**Status: shipped (Python).** Landed in one PR per the user-
+chosen "ABC + SentenceTransformers default + Retriever
+integration" scope. Five chunks; each gated through
+`uv run pre-commit run --all-files` before being recorded.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `0118b4f` | Canonical `docs/features/feat-021-reranker.md` spec + `docs/features/README.md` row under new "Retrieval" subsection + roadmap cross-reference. |
+| 2 | `6c5a198` | `Reranker` ABC at `agentforge_core/contracts/reranker.py` — async `rerank(query, candidates, *, top_k=None)`, `close()`, `capabilities()` / `supports()`. Re-exported from `agentforge_core` top-level. `run_reranker_conformance()` shipped in `agentforge_core.testing` — nine invariants (empty input, top_k<1 raises, top_k=None returns all, top_k truncates, scores in [0,1], descending sort, non-mutation of id/text/metadata, input immutability, unknown capability returns False). Two reference impls (Identity / Reverse) in tests pass it. |
+| 3 | `6edf080` | `Retriever.__init__` gains `reranker: Reranker | None = None` + `over_fetch_factor: int = 3`. `retrieve(query, top_k=K)` pulls `K * over_fetch_factor` from the store and reranks to `K` when set, falls back to plain `K` slicing otherwise. `close()` propagates to the reranker. `.reranker` property exposes the injected instance; constructor validates `over_fetch_factor >= 1`. |
+| 4 | `fbe6d50` | New workspace member `agentforge-reranker-sentence-transformers`. `SentenceTransformersReranker(runner=...)` + `.from_config(model=...)` builder. Builds `(query, text)` pairs, forwards through runner.predict, applies numerically-stable sigmoid to satisfy `score ∈ [0, 1]`, sorts + truncates. `CrossEncoderRunner` Protocol + `_SentenceTransformersRunner` (`# pragma: no cover`) wrapping the SDK; `FakeCrossEncoderRunner` in `src/_inmem_runner.py` with scripted `set_scores` + `predict_calls` recorder. Capabilities `{"local", "batched"}`. Entry-point `agentforge.rerankers:sentence-transformers` registered. |
+| 5 | (this PR) | Spec §11 + §12 + CHANGELOG `[Unreleased]/Added + Changed` + roadmap flip + state. |
+
+### Deviations from this spec
+
+- **No `retrieval.reranker:` YAML resolver wiring shipped.**
+  Spec §4.5 sketches the config-block. The `Reranker` entry-
+  point is registered (`agentforge.rerankers:sentence-
+  transformers`) but the resolver glue that maps
+  `retrieval.reranker.name` → a `Reranker` instance + auto-
+  wires it into the `Retriever` is deferred. Direct
+  `Retriever(reranker=...)` works today; config-driven wiring
+  lands in a follow-up alongside the next vendor reranker
+  package.
+- **Default `over_fetch_factor=3` matches Cohere's docs**;
+  Voyage suggests 5, SentenceTransformers' own examples use
+  2. We picked 3 as the middle of the cluster + the most
+  cited value.
+- **Cross-encoder thread safety.** The production runner
+  doesn't yet hold an internal lock; the spec hinted at
+  one. CrossEncoder.predict is reportedly thread-safe at the
+  PyTorch level; adding an asyncio.Lock around it can ship
+  as a v0.2.x patch if reports surface.
+
+### Open items
+
+- Vendor reranker sister packages
+  (`agentforge-reranker-cohere`, `-voyage`,
+  `-mixedbread`) — each is the same shape as
+  `agentforge-reranker-sentence-transformers` (Protocol +
+  runner + fake + entry-point), one PR per vendor.
+- `retrieval.reranker:` YAML resolver wiring (above).
+- ColBERT-style late-interaction rerankers — different
+  contract (token-level scoring); separate spec when
+  picked up.
+- TS port.
 
 ---
 
 ## 12. Runbook
 
-(filled in at chunk 5)
+### How do I add reranking to an existing Retriever?
+
+```bash
+pip install agentforge-reranker-sentence-transformers[sentence-transformers]
+```
+
+```python
+from agentforge import Retriever
+from agentforge_reranker_sentence_transformers import (
+    SentenceTransformersReranker,
+)
+
+reranker = SentenceTransformersReranker.from_config(
+    model="cross-encoder/ms-marco-MiniLM-L-6-v2",
+)
+retriever = Retriever(
+    store=vector_store,
+    embedder=embedding_client,
+    reranker=reranker,
+    over_fetch_factor=3,
+)
+results = await retriever.retrieve("how do I deploy?", top_k=5)
+```
+
+The retriever now pulls `5 * 3 = 15` candidates from the
+vector store and asks the reranker to choose the best 5.
+
+### How do I write a custom Reranker?
+
+Implement the ABC; register the entry-point.
+
+```python
+from agentforge_core.contracts.reranker import Reranker
+from agentforge_core.values.vector import VectorMatch
+
+
+class MyReranker(Reranker):
+    async def rerank(
+        self,
+        query: str,
+        candidates: list[VectorMatch],
+        *,
+        top_k: int | None = None,
+    ) -> list[VectorMatch]:
+        if top_k is not None and top_k < 1:
+            raise ValueError(f"top_k must be >= 1, got {top_k}")
+        if not candidates:
+            return []
+        # Score each (query, candidate.text) pair however you like;
+        # the only contract is that scores end up in [0, 1] and
+        # the returned list is sorted descending.
+        scored = await _your_scoring(query, candidates)
+        scored.sort(key=lambda m: m.score, reverse=True)
+        return scored[:top_k] if top_k else scored
+
+    async def close(self) -> None:
+        return None
+
+    def capabilities(self) -> set[str]:
+        return {"managed"}
+```
+
+Register via `pyproject.toml` entry-point:
+
+```toml
+[project.entry-points."agentforge.rerankers"]
+my-reranker = "my_pkg:MyReranker"
+```
+
+### How do I tune `over_fetch_factor`?
+
+The default `3` is a sane middle. Higher values (5–10) buy
+more recall at the cost of vector-store load + reranker
+latency. Lower values (1–2) cut cost but risk losing the
+relevant document before the reranker sees it.
+
+Two rules of thumb:
+
+- If the corpus is small (< 10k docs), `over_fetch_factor=1`
+  with no reranker is usually enough.
+- If the corpus is large (> 100k docs) and quality matters
+  more than latency, push `over_fetch_factor` to 5 or 10.
+
+### How do I run the live reranker test?
+
+```bash
+RUN_LIVE_RERANKER=1 \
+    uv run pytest -m live \
+    packages/agentforge-reranker-sentence-transformers/
+```
+
+The test downloads the
+`cross-encoder/ms-marco-MiniLM-L-6-v2` model (~80MB) on
+first run and reranks three known candidates against a
+deterministic query.
