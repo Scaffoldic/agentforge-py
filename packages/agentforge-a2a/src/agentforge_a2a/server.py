@@ -50,10 +50,14 @@ import uvicorn
 from agentforge.agent import Agent
 from agentforge.recording import _finding_payload
 from agentforge_core.contracts.auth import AuthPolicy
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.production.budget import BudgetPolicy
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from opentelemetry.trace.propagation.tracecontext import (
+    TraceContextTextMapPropagator,
+)
 from pydantic import BaseModel, ConfigDict
 
 from agentforge_a2a._runner import A2AServerRunner
@@ -189,7 +193,22 @@ class A2AServer:
                 detail=f"unknown endpoint: {body.endpoint!r}",
             )
         parent_run_id = request.headers.get("X-AgentForge-Run-Id")
-        result = await self._run_with_budget_cap(body, request)
+        # feat-009 v0.3 polish: W3C TraceContext propagation. Extract
+        # the caller's span context from `traceparent` (no-op when
+        # missing) and use it as the parent for the inner work so the
+        # `a2a.call` span — and its child `agent.run` — stitches into
+        # the caller's trace.
+        extracted_ctx = TraceContextTextMapPropagator().extract(dict(request.headers))
+        tracer = get_tracer()
+        with tracer.start_as_current_span(
+            "a2a.call",
+            context=extracted_ctx,
+            attributes={
+                "agentforge.a2a.endpoint": body.endpoint,
+                "agentforge.a2a.parent_run_id": parent_run_id or "",
+            },
+        ):
+            result = await self._run_with_budget_cap(body, request)
         response = A2AResponse(
             output=result.output,
             findings=tuple(_finding_payload(f) for f in getattr(result, "findings", ())),
@@ -224,6 +243,19 @@ class A2AServer:
             )
             return
 
+        # feat-009 v0.3 polish: W3C TraceContext propagation.
+        extracted_ctx = TraceContextTextMapPropagator().extract(dict(request.headers))
+        tracer = get_tracer()
+        a2a_span_cm = tracer.start_as_current_span(
+            "a2a.call",
+            context=extracted_ctx,
+            attributes={
+                "agentforge.a2a.endpoint": body.endpoint,
+                "agentforge.a2a.parent_run_id": parent_run_id or "",
+                "agentforge.a2a.streaming": True,
+            },
+        )
+
         task_str = self._task_builder(body.endpoint, body.payload)
         budget_cap = self._read_budget_header(request)
         original_budget = self._agent._budget
@@ -236,6 +268,7 @@ class A2AServer:
             )
 
         done_content: dict[str, Any] | None = None
+        a2a_span_cm.__enter__()
         try:
             async for event in self._agent.stream(task_str):
                 if event.kind == "done":
@@ -269,6 +302,7 @@ class A2AServer:
         finally:
             if budget_cap is not None:
                 self._agent._budget = original_budget
+            a2a_span_cm.__exit__(None, None, None)
 
         final = done_content or {"output": None, "cost_usd": 0.0, "run_id": ""}
         yield _sse_frame(
