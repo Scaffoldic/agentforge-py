@@ -11,6 +11,26 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-021 v0.2 follow-up — vendor reranker sister
+  packages.** Three managed-API rerankers ship in one
+  bundle, all following the
+  `agentforge-reranker-sentence-transformers` template
+  (Runner Protocol + production wrapper under
+  `# pragma: no cover` + in-memory fake in `src/`):
+  - `agentforge-reranker-cohere` — Cohere Rerank API.
+    Default model `rerank-english-v3.0`. SDK is the
+    `[cohere]` extra.
+  - `agentforge-reranker-voyage` — Voyage AI Rerank API.
+    Default model `rerank-2`. SDK is the `[voyage]` extra.
+  - `agentforge-reranker-mixedbread` — Mixedbread AI
+    Rerank API. Default model
+    `mixedbread-ai/mxbai-rerank-large-v1`. SDK is the
+    `[mixedbread]` extra.
+- **Three new `agentforge.rerankers` entry-points:**
+  `cohere`, `voyage`, `mixedbread`. With the `retrieval:`
+  YAML block from PR #38, users swap rerankers in
+  `agentforge.yaml` with no code changes.
+
 - **feat-021 v0.2 follow-up — `retrieval:` YAML block +
   builder.** Closes the deferred config-driven wiring from
   feat-021's initial PR. New surfaces:
