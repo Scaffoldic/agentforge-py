@@ -11,6 +11,23 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-014 v0.3 — A2A per-token streaming.**
+  `A2AServer._stream_call` now drives `Agent.stream(task)`
+  (shipped in feat-020 v0.2) and forwards each
+  `StreamingEvent` as one `A2AChunk` SSE frame. Strategies
+  that override `ReasoningStrategy.stream` get true
+  per-token granularity end-to-end; strategies that don't
+  fall through to the default ABC stream and emit one
+  canonical `done`. The strategy's terminal `done` is
+  swallowed; the server emits its own canonical `done` with
+  `output` + `cost_usd` + `run_id`. The v0.2 transient
+  `agent._on_step.append/remove` hack is gone.
+- **feat-014 v0.3 — unified `StreamingChunkKind`.**
+  Framework-wide closed vocabulary (`text` / `thinking` /
+  `step` / `tool_call` / `tool_result` / `done` / `error`)
+  in `agentforge_core.values.chat`. `ChatChunkKind` and
+  `A2AChunkKind` are now aliases of it. `text` and
+  `thinking` are newly valid on the A2A wire.
 - **feat-013 v0.2 — production MCP runner.** Replaced the
   `# pragma: no cover` stubs in `agentforge-mcp` with real
   implementations against the upstream `mcp` Python SDK.
@@ -102,6 +119,18 @@ release tag bumps every workspace member to the same minor version.
 
 ### Changed
 
+- **feat-014 v0.3 — `A2AChunkKind` aliased to
+  `StreamingChunkKind`.** Sourced from
+  `agentforge_core.values.chat` (re-exported from
+  `agentforge_a2a.values` for backward compat). Existing
+  imports keep working; new code should prefer
+  `StreamingChunkKind`.
+- **feat-014 v0.3 — A2A streaming chunk shape.** A2A
+  clients that consumed v0.2's
+  `step` / `tool_call` / `tool_result` chunks from a default
+  strategy now receive a single `done` instead — override
+  `ReasoningStrategy.stream` on the strategy to restore
+  per-step granularity (or migrate to per-token text).
 - **CI: new non-gating `live` job.** Runs
   `pytest -m live` against every package shipping a
   `tests/integration/test_*_live.py` suite (mcp + a2a as of

@@ -114,16 +114,32 @@ follow-up"). Three items all landed in one PR:
   `agent_call_stream(...)` yields them. Step-level
   granularity for v0.2.
 
-What remains for v0.3:
+**v0.3 follow-up: per-token streaming + chunk-kind
+unification** — shipped on the v0.1 → v0.3 line (spec §10
+"v0.3 follow-up"):
 
-- Real per-token LLM streaming via `ReasoningStrategy.stream()`
-  (lands alongside feat-020's strategy-level streaming
-  follow-up).
-- Per-run hook kwarg on `Agent.run` (cleanup of the streaming
-  server's transient `agent._on_step.append(...)` dance).
+- **Per-token A2A streaming** —
+  `A2AServer._stream_call` now drives `Agent.stream(task)`
+  and forwards each `StreamingEvent` as an `A2AChunk`. The
+  v0.2 hook-append/remove dance is gone; per-token text is
+  available end-to-end when the strategy overrides
+  `ReasoningStrategy.stream`.
+- **Unified `StreamingChunkKind`** — one closed vocabulary
+  (`text` / `thinking` / `step` / `tool_call` /
+  `tool_result` / `done` / `error`) lives in
+  `agentforge_core.values.chat`. `ChatChunkKind` +
+  `A2AChunkKind` are aliases.
+
+The per-run hook kwarg on `Agent.run` was **obviated** by
+this refactor (no remaining caller) and dropped from scope.
+
+What remains for v0.4+:
+
 - Central A2A registry service (still out of v0.x scope).
-- Unifying `A2AChunkKind` with `ChatChunkKind` under a
-  framework-wide `StreamingChunk`.
+- Hardening the `live` CI job to gate merge.
+- Overriding `ReasoningStrategy.stream` on built-in
+  strategies (`ReActLoop`, etc.).
+- TS port.
 
 ### feat-020 follow-ups — chat history + adapters + streaming
 
@@ -146,10 +162,10 @@ What remains for v0.3:
 - **Provider-aware tokeniser** — `tiktoken_tokeniser` +
   `anthropic_tokeniser` wired into `TokenBudget`.
 
-Remaining for v0.3:
+Remaining for v0.3+:
 
 - A2A per-token streaming using `ReasoningStrategy.stream()`
-  (separate feat-014 follow-up).
+  — **shipped** in feat-014 v0.3 follow-up.
 - Concrete `stream()` overrides on `ReActLoop`.
 - Multi-cluster Redlock for `RedisSessionLock`.
 - Sentence-window streaming output guardrails.

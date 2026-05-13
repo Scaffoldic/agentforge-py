@@ -1560,3 +1560,64 @@ Tooling notes:
   would lazily create the lock at __aenter__ time.
 
 Ready to push and raise PR.
+
+---
+
+## 2026-05-13 — feat-014 v0.3 follow-up shipped
+
+Closed the two remaining v0.2-deferred items in a single PR
+per user-chosen "Full v0.3 bundle" scope: per-token A2A
+streaming + chunk-kind unification. The per-run hook kwarg
+on `Agent.run` was **obviated** by the streaming refactor
+(no caller remaining) and dropped from scope, not deferred.
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`a3ed2d7`): `StreamingChunkKind = Literal[text,
+  thinking, step, tool_call, tool_result, done, error]`
+  in `agentforge_core.values.chat`; `ChatChunkKind` and
+  `A2AChunkKind` aliased to it. `step` kept in the union
+  for strategies that want step-level granularity. Tests
+  assert `typing.get_args` shape and that A2AChunk accepts
+  the newly-unified kinds.
+- chunk 2 (`09674b5`): `A2AServer._stream_call` rewritten
+  to drive `Agent.stream(task)`. Drops
+  `_STEP_KIND_TO_CHUNK_KIND`, `_chunk_kind_for`, the
+  `asyncio.Queue` + backgrounded `_run_agent` coroutine,
+  and the `agent._on_step.append/remove` dance. Strategy's
+  terminal `done` is swallowed; server emits its own
+  canonical `done` with `output` + `cost_usd` + `run_id`.
+  Tests now exercise a `stream()`-overriding
+  `_PerTokenStrategy` (text × 3 + done) plus a
+  `_SilentStrategy` (default stream → one canonical done).
+- chunk 3 (`b3724a4`): live integration test
+  `_PerTokenStrategy` overrides `stream()` to yield three
+  `text` tokens + a `tool_call` + a `tool_result` + a
+  terminal `done`. `test_stream_round_trip` asserts the
+  canonical chunk sequence end-to-end against a real
+  uvicorn server + `_HTTPXClientRunner`. All three live
+  tests pass locally.
+- chunk 4 (about-to-commit): spec §10 v0.3 follow-up
+  subsection + per-chunk table + deviations (`step_hook=`
+  kwarg obviated; v0.2 step-level shape requires opt-in
+  override; `step` kind preserved); §11 runbook refresh
+  with per-token usage + a "How do I expose per-token
+  streaming on my strategy?" snippet; roadmap flipped;
+  CHANGELOG `[Unreleased] / Added + Changed` populated.
+
+Tooling notes:
+
+- `AgentState` has no `output` field — `Agent._extract_output`
+  picks the last non-system step's content. Stream-overriding
+  strategies must `state.steps.append(Step(...))` before the
+  terminal `done` so the canonical chunk carries the assembled
+  output.
+- `Agent.stream` already swallows the strategy's terminal
+  `done` and emits its own with the full RunResult shape; A2A
+  server mirrors that, swallowing the strategy's done a second
+  time and emitting the canonical wire frame.
+- Plain `X = Y` aliases preferred over `X: TypeAlias = Y`
+  (ruff UP040 wants `type X = Y`, but PEP 695's
+  `TypeAliasType` doesn't compose well with Pydantic literal
+  validation — plain assignment threads the literal through).
