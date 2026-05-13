@@ -91,7 +91,53 @@ class GraphModuleConfig(ModuleEntry):
 
 
 class RetrieverModuleConfig(ModuleEntry):
-    """Alias of `ModuleEntry` for `modules.retriever:`."""
+    """Alias of `ModuleEntry` for `modules.retriever:` (legacy).
+
+    .. deprecated:: 0.2
+        Use the top-level `retrieval:` block (see
+        :class:`RetrievalConfig`) instead. The legacy single-entry
+        form remains valid for v0.2 backward compatibility and may
+        be removed in v1.0.
+    """
+
+
+class RerankerEntry(BaseModel):
+    """`retrieval.reranker:` — name + config for a `Reranker` impl.
+
+    Resolved against the `rerankers` entry-point category. Name
+    matches the registered entry-point name (e.g.
+    `sentence-transformers`).
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    name: str = Field(min_length=1)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class RetrievalConfig(BaseModel):
+    """Top-level `retrieval:` block (feat-021 follow-up).
+
+    Models the full retrieval pipeline: a `VectorStore` + an
+    `EmbeddingClient` + an optional `Reranker`, plus retrieval-
+    time knobs (`top_k`, `over_fetch_factor`, `batch_size`).
+    Lives at the root of `agentforge.yaml`, not nested under
+    `modules:`.
+
+    The legacy `modules.retriever` single-entry form still works
+    for v0.2 backward compat; the new `retrieval:` block
+    supersedes it. Both should not be set simultaneously — the
+    builder picks `retrieval:` when present.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    vector_store: ModuleEntry
+    embedder: ModuleEntry
+    reranker: RerankerEntry | None = None
+    top_k: int = Field(default=5, ge=1)
+    over_fetch_factor: int = Field(default=3, ge=1)
+    batch_size: int = Field(default=32, ge=1)
 
 
 class EvaluatorEntry(BaseModel):
@@ -317,6 +363,7 @@ class AgentForgeConfig(BaseModel):
 
     agent: AgentConfig = Field(default_factory=AgentConfig)
     modules: ModulesConfig = Field(default_factory=ModulesConfig)
+    retrieval: RetrievalConfig | None = None
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)

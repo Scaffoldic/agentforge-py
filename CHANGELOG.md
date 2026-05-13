@@ -11,6 +11,26 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-021 v0.2 follow-up — `retrieval:` YAML block +
+  builder.** Closes the deferred config-driven wiring from
+  feat-021's initial PR. New surfaces:
+  - `RetrievalConfig` + `RerankerEntry` Pydantic models in
+    `agentforge_core.config.schema`. `AgentForgeConfig`
+    gains an optional top-level `retrieval:` block carrying
+    `vector_store` + `embedder` + optional `reranker` +
+    `top_k` / `over_fetch_factor` / `batch_size`.
+  - `validate_module_configs` walks the new block, resolving
+    each sub-component under its existing entry-point group
+    (`vector_stores` / `embeddings` / `rerankers`).
+  - `build_retriever_from_config(config) -> Retriever | None`
+    in `agentforge.cli._build` constructs a wired-up
+    `Retriever` from the YAML config. Each resolved class is
+    validated against its expected ABC; ABC mismatches raise
+    `ModuleError`.
+  - `agentforge config validate` and `agentforge config
+    schema` surface the new block automatically (CLI is
+    polymorphic on the schema; no command changes).
+
 - **feat-021 — Reranker ABC + SentenceTransformers default
   + Retriever integration.** New canonical feat-021 covers
   cross-encoder reranking on top of vector retrieval. Three
@@ -170,6 +190,19 @@ release tag bumps every workspace member to the same minor version.
 
 ### Changed
 
+- **feat-021 v0.2 follow-up — `_instantiate()` factory
+  helper.** `agentforge.cli._build._instantiate` now prefers
+  keyword expansion (`cls.from_config(**cfg)`) to support
+  modules whose `from_config` uses keyword-only parameters
+  (the `SentenceTransformersReranker.from_config(*,
+  model=...)` shape). Falls back to dict-positional
+  `from_config(cfg)` for legacy modules and plain
+  `cls(**cfg)` as the final fallback. No in-tree callers
+  break.
+- **feat-021 v0.2 follow-up — `modules.retriever` legacy
+  block.** Marked deprecated in the docstring; superseded by
+  the new top-level `retrieval:` block. Still valid for v0.2
+  backward compatibility.
 - **feat-021 — `Retriever.__init__` signature.** Adds the
   optional `reranker: Reranker | None = None` +
   `over_fetch_factor: int = 3` kwargs. Backward-compatible
