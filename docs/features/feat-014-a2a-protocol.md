@@ -301,6 +301,56 @@ the framework's second live suite after feat-013.
 - Hardening the `live` CI job to gate merge.
 - TS port.
 
+### v0.3 follow-up — per-token streaming + chunk-kind unification
+
+Shipped on the v0.1 → v0.3 line. Closes the per-token
+streaming + chunk-kind unification items v0.2 deferred. The
+per-run hook kwarg on `Agent.run` is **obviated** by the
+streaming refactor — the v0.2 hack it would have cleaned up
+is gone.
+
+| Chunk | What landed |
+|---|---|
+| 1 | Framework-wide `StreamingChunkKind` (`text` / `thinking` / `step` / `tool_call` / `tool_result` / `done` / `error`) lives in `agentforge_core.values.chat`. `ChatChunkKind` and `A2AChunkKind` are aliased to it so chat and A2A share one closed vocabulary. The `step` kind stays in the union for strategies that emit step-level events. |
+| 2 | `A2AServer._stream_call` drives `Agent.stream(task)` and forwards each `StreamingEvent` as an `A2AChunk` SSE frame. The strategy's terminal `done` is swallowed; the server emits its own canonical `done` with `output` + `cost_usd` + `run_id`. The v0.2 `asyncio.Queue` + backgrounded `_run_agent` + `agent._on_step.append/remove` dance is removed wholesale. Budget-cap swap stays inline. |
+| 3 | Live integration test `_PerTokenStrategy` overrides `ReasoningStrategy.stream` to yield three `text` tokens + a `tool_call` + a `tool_result` + a terminal `done`; `test_stream_round_trip` asserts the canonical sequence end-to-end against a real `uvicorn.Server` + `_HTTPXClientRunner`. |
+| 4 | Docs + Runbook + roadmap + CHANGELOG + state. |
+
+### v0.3 deviations from the v0.2 design
+
+- **Per-run `step_hook=` kwarg on `Agent.run` obviated, not
+  shipped.** The v0.2 streaming server's transient
+  `agent._on_step.append/remove` hack is gone now that
+  `_stream_call` drives `agent.stream()` directly. The
+  cleanup the kwarg would have unlocked has no remaining
+  caller, so we don't add API surface speculatively.
+- **`step` kind preserved in `StreamingChunkKind`.** It's no
+  longer emitted by the default streaming server (which now
+  forwards typed events from the strategy), but stays in the
+  union so strategies that want step-level granularity can
+  yield `StreamingEvent(kind="step", ...)` explicitly.
+- **v0.2 `step` / `tool_call` / `tool_result` shape requires
+  an opt-in `stream()` override.** Strategies that don't
+  override `ReasoningStrategy.stream` now emit a single
+  canonical `done` over A2A — same graduation behaviour as
+  `ChatSession`. This is a breaking change for A2A clients
+  that relied on the v0.2 per-step shape from a default
+  strategy; documented here so callers either override
+  `stream()` on their strategy or migrate to consuming the
+  canonical `done` alone.
+- **`A2AChunkKind` is now `agentforge_core`-owned.** The
+  alias still lives at `agentforge_a2a.values` for backward
+  compat, but the canonical definition is
+  `agentforge_core.values.chat.StreamingChunkKind`.
+
+### Out-of-scope (deferred to v0.4+)
+
+- Central A2A registry service.
+- Hardening the `live` CI job to gate merge.
+- TS port.
+- Overriding `ReasoningStrategy.stream` on built-in
+  strategies (`ReActLoop`, etc.) — case-by-case.
+
 ## 11. Runbook
 
 ### How do I consume another agent?
@@ -423,7 +473,7 @@ When you have multiple peers wired through `A2ABridge`,
 `await bridge.discover_all()` probes them all and caches the
 results on `bridge.peer_info`.
 
-### How do I stream a long-running agent call? (v0.2)
+### How do I stream a long-running agent call? (v0.3)
 
 ```python
 from agentforge_a2a import agent_call_stream
@@ -435,20 +485,55 @@ async for chunk in agent_call_stream(
     timeout_s=60.0,
     budget_usd=0.25,
 ):
-    if chunk.kind in {"step", "tool_call", "tool_result"}:
-        print(chunk.kind, chunk.step)
+    if chunk.kind == "text":
+        print(chunk.content, end="", flush=True)
+    elif chunk.kind in {"thinking", "step", "tool_call", "tool_result"}:
+        print(f"\n[{chunk.kind}] {chunk.content}")
     elif chunk.kind == "done":
-        print("done →", chunk.content)
+        print("\ndone →", chunk.content)
     elif chunk.kind == "error":
         # agent_call_stream raises A2AAuthError / A2ACallError
         # on error frames — this branch is for completeness.
         raise RuntimeError(chunk.content)
 ```
 
-Step-level granularity for v0.2: one chunk per agent `Step`
-(mapped from `Step.kind`) plus a final `done`. Real per-token
-streaming through the strategy ABC lands in v0.3 alongside
-feat-020's strategy-level streaming follow-up.
+v0.3 ships true per-token streaming via
+`ReasoningStrategy.stream()`. Each event the strategy yields
+becomes one SSE frame on the wire; the server emits its own
+canonical `done` with `output` + `cost_usd` + `run_id` after
+the strategy completes.
+
+Strategies that **don't** override `ReasoningStrategy.stream`
+fall through to the default ABC implementation and emit a
+single `done` event — same graduation behaviour as
+`ChatSession`. Override `stream()` on your strategy to get
+per-token granularity.
+
+### How do I expose per-token streaming on my strategy? (v0.3)
+
+```python
+from collections.abc import AsyncIterator
+
+from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.values.chat import StreamingEvent
+from agentforge_core.values.state import AgentState, Step
+
+
+class MyTokenStrategy(ReasoningStrategy):
+    async def run(self, state: AgentState) -> AgentState:
+        # Unary callers still call run(); append a final step
+        # so Agent._extract_output picks up the answer.
+        state.steps.append(Step(iteration=0, kind="synthesize", content="final"))
+        return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        async for token in self._llm_stream(state.task):
+            yield StreamingEvent(kind="text", content=token)
+        state.steps.append(Step(iteration=0, kind="synthesize", content="final"))
+        # Always yield a terminal `done`; Agent.stream swallows it
+        # and emits its own canonical done with the full RunResult.
+        yield StreamingEvent(kind="done", content={"run_id": state.run_id})
+```
 
 ### How do I run the live A2A tests?
 
