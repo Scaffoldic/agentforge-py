@@ -48,6 +48,7 @@ dependencies = [
     "agentforge-evidently",
     "agentforge-reranker-sentence-transformers",
     "agentforge-reranker-cohere",
+    "agentforge-reranker-voyage",
 ]
 
 [tool.uv.workspace]
@@ -81,6 +82,7 @@ agentforge-phoenix = { workspace = true }
 agentforge-evidently = { workspace = true }
 agentforge-reranker-sentence-transformers = { workspace = true }
 agentforge-reranker-cohere = { workspace = true }
+agentforge-reranker-voyage = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -373,6 +375,17 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_reranker_cohere.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-021 vendor follow-up: voyageai SDK.
+[[tool.mypy.overrides]]
+module = ["voyageai", "voyageai.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_reranker_voyage.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -408,6 +421,7 @@ testpaths = [
     "packages/agentforge-evidently/tests",
     "packages/agentforge-reranker-sentence-transformers/tests",
     "packages/agentforge-reranker-cohere/tests",
+    "packages/agentforge-reranker-voyage/tests",
     "tests",
 ]
 markers = [
@@ -469,6 +483,7 @@ source = [
     "packages/agentforge-evidently/src",
     "packages/agentforge-reranker-sentence-transformers/src",
     "packages/agentforge-reranker-cohere/src",
+    "packages/agentforge-reranker-voyage/src",
 ]
 branch = true
 parallel = true
