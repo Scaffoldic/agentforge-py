@@ -15,6 +15,7 @@ from agentforge_core.values.chat import (
     ChatRole,
     ChatTurn,
     SessionInfo,
+    StreamingChunkKind,
     StreamingEvent,
 )
 from agentforge_core.values.claim import Claim
@@ -89,6 +90,7 @@ __all__ = [
     "StopReason",
     "StreamChunk",
     "StreamChunkKind",
+    "StreamingChunkKind",
     "StreamingEvent",
     "TemplateFile",
     "TokenUsage",
