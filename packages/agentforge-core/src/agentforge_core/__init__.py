@@ -38,6 +38,7 @@ from agentforge_core.contracts import (
     LLMClient,
     MemoryStore,
     ReasoningStrategy,
+    Reranker,
     Tool,
     VectorStore,
 )
@@ -171,6 +172,7 @@ __all__ = [
     "ProviderError",
     "RateLimitError",
     "ReasoningStrategy",
+    "Reranker",
     "Resolver",
     "RetrieverModuleConfig",
     "RunContext",
