@@ -30,28 +30,27 @@ Lifecycle:
      shape stays tolerant of any `Finding` Protocol-compatible
      object.
 
-Streaming installs a one-off `on_step` hook on the agent for
-the duration of a single call so each `Step` arrives as a
-chunk; the final frame carries the cost + output. The hook is
-removed in a `finally` block. A cleaner per-run hook surface
-on `Agent.run` is a v0.3 cleanup.
+Streaming (v0.3) drives `Agent.stream(task)` and forwards each
+`StreamingEvent` emitted by the strategy as one `A2AChunk` SSE
+frame. The strategy's terminal `done` event is swallowed; the
+server emits its own canonical `done` chunk carrying
+`output` + `cost_usd` + `run_id`. The v0.2 transient
+`agent._on_step` hook dance is gone — events arrive
+pre-typed from the strategy generator.
 """
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
 import logging
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 import uvicorn
-from agentforge.agent import Agent, StepHook
-from agentforge.recording import _finding_payload, _step_payload
+from agentforge.agent import Agent
+from agentforge.recording import _finding_payload
 from agentforge_core.contracts.auth import AuthPolicy
 from agentforge_core.production.budget import BudgetPolicy
-from agentforge_core.values.state import Step
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -60,7 +59,6 @@ from pydantic import BaseModel, ConfigDict
 from agentforge_a2a._runner import A2AServerRunner
 from agentforge_a2a.values import (
     A2AChunk,
-    A2AChunkKind,
     A2AEndpointConfig,
     A2AEndpointDescriptor,
     A2APeerInfo,
@@ -76,22 +74,11 @@ TaskBuilder = Callable[[str, dict[str, Any]], str]
 """Maps (endpoint_name, payload) -> the task string the agent
 receives. Default: JSON-encode the payload."""
 
-_STEP_KIND_TO_CHUNK_KIND: dict[str, A2AChunkKind] = {
-    "think": "step",
-    "act": "tool_call",
-    "observe": "tool_result",
-}
-
 
 def _default_task_builder(endpoint: str, payload: dict[str, Any]) -> str:
     """Concatenates endpoint name + JSON payload for the agent."""
     body = json.dumps(payload, sort_keys=True)
     return f"a2a.{endpoint}: {body}"
-
-
-def _chunk_kind_for(step_kind: str) -> A2AChunkKind:
-    """Map an agent `Step.kind` to a wire-format `A2AChunkKind`."""
-    return _STEP_KIND_TO_CHUNK_KIND.get(step_kind, "step")
 
 
 def _sse_frame(chunk: A2AChunk) -> bytes:
@@ -216,11 +203,12 @@ class A2AServer:
     async def _stream_call(self, body: CallRequest, request: Request) -> AsyncIterator[bytes]:
         """SSE generator for `POST /a2a/v1/calls/stream`.
 
-        Each `Step` produced by the inner `Agent.run` is pushed
-        onto an `asyncio.Queue` by a one-off `on_step` hook and
-        flushed to the wire as a `data:` frame. The final frame
-        is either ``kind="done"`` carrying the result or
-        ``kind="error"`` carrying the failure reason.
+        Drives `Agent.stream(task)` and forwards each
+        ``StreamingEvent`` as one ``A2AChunk`` ``data:`` frame.
+        The strategy's terminal ``done`` event is swallowed; this
+        method emits the canonical ``done`` chunk carrying
+        ``output`` + ``cost_usd`` + ``run_id``. Strategy errors
+        surface as a terminal ``kind="error"`` frame.
         """
         parent_run_id = request.headers.get("X-AgentForge-Run-Id")
         if body.endpoint not in self._endpoints:
@@ -236,63 +224,61 @@ class A2AServer:
             )
             return
 
-        queue: asyncio.Queue[A2AChunk | None] = asyncio.Queue()
+        task_str = self._task_builder(body.endpoint, body.payload)
+        budget_cap = self._read_budget_header(request)
+        original_budget = self._agent._budget
+        if budget_cap is not None:
+            self._agent._budget = BudgetPolicy(
+                usd=min(original_budget.usd, budget_cap),
+                max_tokens=original_budget.max_tokens,
+                max_iterations=original_budget.max_iterations,
+                error_streak_limit=original_budget.error_streak_limit,
+            )
 
-        async def _hook(step: Step) -> None:
-            await queue.put(
+        done_content: dict[str, Any] | None = None
+        try:
+            async for event in self._agent.stream(task_str):
+                if event.kind == "done":
+                    raw = event.content if isinstance(event.content, dict) else {}
+                    done_content = {
+                        "output": _coerce_jsonable(raw.get("output")),
+                        "cost_usd": float(raw.get("cost_usd", 0.0) or 0.0),
+                        "run_id": str(raw.get("run_id", "")),
+                    }
+                    continue
+                yield _sse_frame(
+                    A2AChunk(
+                        kind=event.kind,
+                        content=event.content,
+                        metadata=dict(event.metadata),
+                        parent_run_id=parent_run_id,
+                    )
+                )
+        except Exception as exc:
+            yield _sse_frame(
                 A2AChunk(
-                    kind=_chunk_kind_for(step.kind),
-                    step=_step_payload(step),
+                    kind="error",
+                    content={
+                        "error": type(exc).__name__,
+                        "message": str(exc),
+                    },
                     parent_run_id=parent_run_id,
                 )
             )
-
-        hook: StepHook = _hook
-        self._agent._on_step.append(hook)
-
-        async def _run_agent() -> None:
-            try:
-                result = await self._run_with_budget_cap(body, request)
-                await queue.put(
-                    A2AChunk(
-                        kind="done",
-                        content={
-                            "output": _coerce_jsonable(result.output),
-                            "cost_usd": float(result.cost_usd),
-                            "run_id": result.run_id,
-                        },
-                        run_id=result.run_id,
-                        parent_run_id=parent_run_id,
-                    )
-                )
-            except Exception as exc:
-                await queue.put(
-                    A2AChunk(
-                        kind="error",
-                        content={
-                            "error": type(exc).__name__,
-                            "message": str(exc),
-                        },
-                        parent_run_id=parent_run_id,
-                    )
-                )
-            finally:
-                await queue.put(None)
-
-        task = asyncio.create_task(_run_agent())
-        try:
-            while True:
-                chunk = await queue.get()
-                if chunk is None:
-                    break
-                yield _sse_frame(chunk)
+            return
         finally:
-            with contextlib.suppress(ValueError):
-                self._agent._on_step.remove(hook)
-            if not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError, Exception):
-                    await task
+            if budget_cap is not None:
+                self._agent._budget = original_budget
+
+        final = done_content or {"output": None, "cost_usd": 0.0, "run_id": ""}
+        yield _sse_frame(
+            A2AChunk(
+                kind="done",
+                content=final,
+                run_id=final["run_id"] or None,
+                parent_run_id=parent_run_id,
+            )
+        )
 
     async def _run_with_budget_cap(self, body: CallRequest, request: Request) -> Any:
         """Run the agent honouring the per-call ``X-AgentForge-Budget-Usd``
