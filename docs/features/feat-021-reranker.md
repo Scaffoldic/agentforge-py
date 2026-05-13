@@ -305,15 +305,13 @@ integration" scope. Five chunks; each gated through
 
 ### Deviations from this spec
 
-- **No `retrieval.reranker:` YAML resolver wiring shipped.**
-  Spec §4.5 sketches the config-block. The `Reranker` entry-
-  point is registered (`agentforge.rerankers:sentence-
-  transformers`) but the resolver glue that maps
-  `retrieval.reranker.name` → a `Reranker` instance + auto-
-  wires it into the `Retriever` is deferred. Direct
-  `Retriever(reranker=...)` works today; config-driven wiring
-  lands in a follow-up alongside the next vendor reranker
-  package.
+- ~~**No `retrieval.reranker:` YAML resolver wiring shipped.**~~
+  **Shipped** in the feat-021 v0.2 follow-up — see the
+  "v0.2 follow-up — `retrieval:` YAML block" subsection
+  below. The full top-level `retrieval:` block
+  (vector_store + embedder + reranker + over_fetch_factor)
+  + `build_retriever_from_config()` builder + module-schema
+  validation are all live.
 - **Default `over_fetch_factor=3` matches Cohere's docs**;
   Voyage suggests 5, SentenceTransformers' own examples use
   2. We picked 3 as the middle of the cluster + the most
@@ -331,11 +329,41 @@ integration" scope. Five chunks; each gated through
   `-mixedbread`) — each is the same shape as
   `agentforge-reranker-sentence-transformers` (Protocol +
   runner + fake + entry-point), one PR per vendor.
-- `retrieval.reranker:` YAML resolver wiring (above).
+- ~~`retrieval.reranker:` YAML resolver wiring~~ —
+  shipped (see v0.2 follow-up below).
 - ColBERT-style late-interaction rerankers — different
   contract (token-level scoring); separate spec when
   picked up.
+- `Agent(retriever=...)` constructor kwarg — currently the
+  builder returns a sibling `Retriever`; agents wire it
+  into tools manually. May ship in v0.3.
 - TS port.
+
+### v0.2 follow-up — `retrieval:` YAML block + builder
+
+Shipped on the v0.1 → v0.2 line. Closes the deferred
+config-driven wiring item from feat-021's initial PR.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `307e1e5` | `RetrievalConfig` + `RerankerEntry` Pydantic models in `agentforge_core.config.schema`. `AgentForgeConfig.retrieval: RetrievalConfig \| None`. `_validate_retrieval()` helper in `module_schemas.py` resolves vector_store / embedder / reranker under their existing entry-point groups (`vector_stores` / `embeddings` / `rerankers`). Legacy `modules.retriever` block stays valid (deprecation notice). |
+| 2 | `178358f` | `build_retriever_from_config(config) -> Retriever \| None` in `agentforge.cli._build`. Resolves the three sub-components, checks each against the expected ABC (`VectorStore` / `EmbeddingClient` / `Reranker`), threads `top_k` / `over_fetch_factor` / `batch_size` into the `Retriever` constructor. `_instantiate()` updated to prefer `from_config(**cfg)` (keyword expansion) so the SentenceTransformersReranker's `from_config(*, model=...)` signature works. |
+| 3 | `79ac9a4` | End-to-end YAML smoke test at `tests/integration/test_retrieval_yaml.py` — writes a YAML fixture, loads it through `load_config`, builds the retriever, indexes 6 docs, retrieves with `top_k=2`, asserts the reranker was invoked once with the over-fetch pool. |
+| 4 | (this PR) | `agentforge config validate` and `agentforge config schema` confirmed to surface the new block. No code changes — CLI is polymorphic on the schema. |
+| 5 | (this PR) | Docs + roadmap + CHANGELOG + state. |
+
+### v0.2 follow-up deviations
+
+- **`Agent.__init__` does NOT gain a `retriever=` kwarg.**
+  `build_retriever_from_config()` returns a sibling
+  construct; callers wire it into their tools or strategy.
+  Reasoning: retrieval is a tool-level concern per ADR-0007
+  — agent-owned retrievers conflate two layers. May
+  reconsider in v0.3 if usage patterns warrant.
+- **Legacy `modules.retriever` block stays valid.** The
+  single-entry form is kept for v0.2 backward compat with a
+  deprecation notice on the docstring. The new `retrieval:`
+  block supersedes it; both should not be set together.
 
 ---
 
@@ -423,6 +451,54 @@ Two rules of thumb:
   with no reranker is usually enough.
 - If the corpus is large (> 100k docs) and quality matters
   more than latency, push `over_fetch_factor` to 5 or 10.
+
+### How do I wire a Retriever from `agentforge.yaml`?
+
+```yaml
+# agentforge.yaml
+retrieval:
+  vector_store:
+    driver: sqlite
+    config:
+      path: ./vectors.db
+      dimensions: 1536
+  embedder:
+    driver: bedrock
+    config:
+      model: amazon.titan-embed-text-v2:0
+  reranker:                          # optional
+    name: sentence-transformers
+    config:
+      model: cross-encoder/ms-marco-MiniLM-L-6-v2
+  top_k: 5                           # default match count
+  over_fetch_factor: 3               # pull 5 * 3 = 15 from the store
+  batch_size: 32                     # embed batches of 32
+```
+
+```python
+from agentforge.cli._build import (
+    load_config,
+    build_retriever_from_config,
+)
+
+config = load_config()              # picks up agentforge.yaml
+retriever = build_retriever_from_config(config)
+# retriever is a fully-wired Retriever; pass to tools / strategy.
+```
+
+The builder resolves each sub-component under its existing
+entry-point group (`vector_stores` / `embeddings` /
+`rerankers`) and validates that each registered class
+implements the expected ABC.
+
+Validation runs at config-load time:
+
+```bash
+agentforge config validate --path agentforge.yaml
+```
+
+Surfaces unresolved drivers, type mismatches, and out-of-
+range knob values (`top_k < 1`, `over_fetch_factor < 1`).
 
 ### How do I run the live reranker test?
 

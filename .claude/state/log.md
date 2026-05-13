@@ -1763,3 +1763,82 @@ Tooling notes:
 - ruff PLR2004 (magic numbers) fires on test assertions
   like `len(results) == 2` — auto-fixed across two
   pre-commit runs.
+
+---
+
+## 2026-05-14 — feat-021 v0.2 follow-up shipped
+
+Closed the deferred config-driven wiring deviation from
+feat-021's initial PR. Per user-chosen "Full retrieval:
+block + Retriever builder" scope.
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`307e1e5`): RetrievalConfig + RerankerEntry
+  Pydantic models in agentforge_core.config.schema. New
+  AgentForgeConfig.retrieval: RetrievalConfig | None field.
+  _validate_retrieval helper in module_schemas.py walks
+  the block, resolves vector_store under "vector_stores",
+  embedder under "embeddings", reranker under "rerankers"
+  — all three categories already existed as entry-point
+  groups (no new groups invented). Legacy modules.retriever
+  block kept valid with a deprecation notice on the
+  docstring. Tests cover schema round-trip, default values,
+  knob lower-bound validation, extra-field rejection.
+- chunk 2 (`178358f`): build_retriever_from_config in
+  cli/_build.py. Resolves all three sub-components, checks
+  each against the expected ABC (VectorStore /
+  EmbeddingClient / Reranker), threads top_k /
+  over_fetch_factor / batch_size into Retriever.__init__.
+  _instantiate() updated to prefer from_config(**cfg)
+  keyword expansion so SentenceTransformersReranker's
+  from_config(*, model=...) signature works; falls back to
+  dict-positional then cls(**cfg). Five unit tests covering
+  None-return, build-without-reranker, build-with-reranker
+  + over_fetch_factor threading, unregistered driver
+  raises, wrong-ABC raises.
+- chunk 3 (`79ac9a4`): end-to-end YAML smoke test at
+  tests/integration/test_retrieval_yaml.py. Writes a YAML
+  fixture to tmp_path, loads through load_config, builds
+  the retriever, indexes 6 docs, retrieves with top_k=2,
+  asserts the reranker was invoked once with the 6-element
+  over-fetch pool (2 * 3 = 6) and the final result is
+  truncated to 2.
+- chunk 4: CLI sanity check passed without code changes.
+  `agentforge config validate --path test-retrieval.yaml`
+  returns "OK"; `agentforge config schema` surfaces
+  RetrievalConfig + RerankerEntry in the JSON Schema
+  output. The CLI is polymorphic on the schema; nothing
+  to update.
+- chunk 5 (about-to-commit): feat-021 spec §11 + §12 — flipped
+  the deferred "No retrieval.reranker: YAML resolver
+  wiring" deviation to shipped; new v0.2 follow-up
+  subsection with per-chunk table + two v0.2-follow-up
+  deviations (Agent.__init__(retriever=...) deferred,
+  modules.retriever legacy block kept). New §12 Runbook
+  entry "How do I wire a Retriever from agentforge.yaml?"
+  with a complete YAML + load+build snippet + validation
+  command. Roadmap entry extended. CHANGELOG
+  [Unreleased]/Added entry + Changed notes on _instantiate
+  behaviour + modules.retriever deprecation.
+
+Tooling notes:
+
+- `_instantiate(cls, cfg)` previously called from_config
+  with a single dict-positional arg. Vendor packages
+  (sentence-transformers, langfuse, phoenix, evidently,
+  statsd) all ship keyword-only from_config signatures,
+  so the dict-positional shape never worked for them
+  through the resolver. Existing _instantiate callers
+  (memory/evaluators/pipeline/tools modules) don't ship
+  from_config at all — they fall through to cls(**cfg).
+  So the keyword-expansion change is backward-compatible
+  in the in-tree tree; externally-shipped modules using
+  the legacy dict-positional shape still load via the
+  TypeError-fallback branch.
+- The Resolver.register signature is positional
+  (`register(category, name, cls)`), not keyword-only.
+  Ruff's PT006 fires on `@pytest.mark.parametrize` when
+  the names string isn't a tuple; switch to
+  `("field", "bad_value")` form.
