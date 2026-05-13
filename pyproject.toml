@@ -45,6 +45,7 @@ dependencies = [
     "agentforge-statsd",
     "agentforge-langfuse",
     "agentforge-phoenix",
+    "agentforge-evidently",
 ]
 
 [tool.uv.workspace]
@@ -75,6 +76,7 @@ agentforge-a2a = { workspace = true }
 agentforge-statsd = { workspace = true }
 agentforge-langfuse = { workspace = true }
 agentforge-phoenix = { workspace = true }
+agentforge-evidently = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -333,6 +335,18 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_phoenix.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-009 v0.2: evidently + pandas SDK (used only on the production
+# runner path) — keep out of strict-mypy land.
+[[tool.mypy.overrides]]
+module = ["evidently", "evidently.*", "pandas", "pandas.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_evidently.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -365,6 +379,7 @@ testpaths = [
     "packages/agentforge-statsd/tests",
     "packages/agentforge-langfuse/tests",
     "packages/agentforge-phoenix/tests",
+    "packages/agentforge-evidently/tests",
     "tests",
 ]
 markers = [
@@ -423,6 +438,7 @@ source = [
     "packages/agentforge-statsd/src",
     "packages/agentforge-langfuse/src",
     "packages/agentforge-phoenix/src",
+    "packages/agentforge-evidently/src",
 ]
 branch = true
 parallel = true
