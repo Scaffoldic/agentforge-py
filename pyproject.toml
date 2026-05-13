@@ -44,6 +44,7 @@ dependencies = [
     "agentforge-a2a",
     "agentforge-statsd",
     "agentforge-langfuse",
+    "agentforge-phoenix",
 ]
 
 [tool.uv.workspace]
@@ -73,6 +74,7 @@ agentforge-chat-slack = { workspace = true }
 agentforge-a2a = { workspace = true }
 agentforge-statsd = { workspace = true }
 agentforge-langfuse = { workspace = true }
+agentforge-phoenix = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -320,6 +322,17 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_langfuse.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-009 v0.2: arize-phoenix SDK has loose typing; isolate.
+[[tool.mypy.overrides]]
+module = ["phoenix", "phoenix.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_phoenix.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -351,6 +364,7 @@ testpaths = [
     "packages/agentforge-a2a/tests",
     "packages/agentforge-statsd/tests",
     "packages/agentforge-langfuse/tests",
+    "packages/agentforge-phoenix/tests",
     "tests",
 ]
 markers = [
@@ -408,6 +422,7 @@ source = [
     "packages/agentforge-a2a/src",
     "packages/agentforge-statsd/src",
     "packages/agentforge-langfuse/src",
+    "packages/agentforge-phoenix/src",
 ]
 branch = true
 parallel = true
