@@ -11,6 +11,30 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-021 — Reranker ABC + SentenceTransformers default
+  + Retriever integration.** New canonical feat-021 covers
+  cross-encoder reranking on top of vector retrieval. Three
+  surfaces:
+  - `agentforge_core.contracts.reranker.Reranker` ABC —
+    `async rerank(query, candidates, *, top_k=None) ->
+    list[VectorMatch]`, plus `close()` /
+    `capabilities()` / `supports()`. Conformance suite
+    (`run_reranker_conformance`) ships in
+    `agentforge_core.testing`.
+  - `Retriever.__init__` gains
+    `reranker: Reranker | None = None` and
+    `over_fetch_factor: int = 3`. When a reranker is set,
+    `retrieve(top_k=K)` pulls `K * over_fetch_factor`
+    candidates from the vector store and reranks down to
+    `K`. `close()` propagates to the reranker.
+  - `agentforge-reranker-sentence-transformers` — default
+    concrete impl wrapping
+    `sentence_transformers.CrossEncoder.predict`. Applies a
+    numerically-stable sigmoid to the raw logits to satisfy
+    the `VectorMatch.score ∈ [0, 1]` contract. SDK is the
+    optional `[sentence-transformers]` extra. Entry-point
+    `agentforge.rerankers:sentence-transformers`.
+
 - **feat-009 v0.2 — vendor observability backends.** Four
   new sister packages closing the v0.1 backlog. Each
   implements the existing `StepHook + FinishHook` contracts
@@ -146,6 +170,10 @@ release tag bumps every workspace member to the same minor version.
 
 ### Changed
 
+- **feat-021 — `Retriever.__init__` signature.** Adds the
+  optional `reranker: Reranker | None = None` +
+  `over_fetch_factor: int = 3` kwargs. Backward-compatible
+  defaults — existing callers see no behaviour change.
 - **feat-014 v0.3 — `A2AChunkKind` aliased to
   `StreamingChunkKind`.** Sourced from
   `agentforge_core.values.chat` (re-exported from

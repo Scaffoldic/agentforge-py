@@ -87,7 +87,7 @@
 
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
-| **feat-021** | Reranker — cross-encoder reranking on top of vector retrieval; `Reranker` ABC + `Retriever(reranker=...)` integration with configurable over-fetch + SentenceTransformers default concrete impl | in-progress (Python) | 0.2 | both | `agentforge-core` (ABC), `agentforge` (Retriever integration), `agentforge-reranker-sentence-transformers` |
+| **feat-021** | Reranker — cross-encoder reranking on top of vector retrieval; `Reranker` ABC + `Retriever(reranker=...)` integration with configurable over-fetch + SentenceTransformers default concrete impl | shipped (Python) | 0.2 | both | `agentforge-core` (ABC), `agentforge` (Retriever integration), `agentforge-reranker-sentence-transformers` |
 
 ---
 
