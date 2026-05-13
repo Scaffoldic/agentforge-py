@@ -350,10 +350,6 @@ specific module."
 
 ### What's *not* yet implemented
 
-- **Vendor packages**: `agentforge-langfuse`, `agentforge-phoenix`,
-  `agentforge-evidently`, `agentforge-statsd`. Each is a small
-  follow-up that wraps its respective SDK in the same hook
-  contract; OTel coverage covers the major bases until then.
 - **`strategy.iteration` / `llm.call` / `tool.<name>` /
   `evaluator.<name>` child spans** as proper OTel spans (not just
   events). Requires instrumenting strategy internals + tool
@@ -362,6 +358,55 @@ specific module."
   dependency).
 - **Content-based PII redaction** (regex over arg values).
 - **TypeScript port** of the whole feat-009 surface.
+
+### v0.2 follow-up — vendor backends
+
+Shipped on the v0.1 → v0.2 line. Closes the four vendor
+packages spec §4.4 left for v0.2. Each follows the same
+template as `agentforge-otel` (hook implements
+`StepHook + FinishHook` via `__call__` dispatch) plus the
+runner-Protocol pattern from feat-020 v0.2 (Protocol +
+production runner under `# pragma: no cover` + in-memory fake
+in `src/`).
+
+| Chunk | What landed |
+|---|---|
+| 1 | `agentforge-statsd` — `StatsdHook` emits counters (`<prefix>.step.<kind>`, `tool.<name>`, `run.finish.<reason>`), timings (step + run duration), and gauges (run cost + tokens). `StatsdRunner` Protocol + `_StatsClientRunner` (statsd SDK). SDK is the `[statsd]` extra. |
+| 2 | `agentforge-langfuse` — `LangfuseHook` opens one trace per run (keyed by `run_id` from `current_run()`), adds a span per step, nests a tool span on `step.tool_call`, scores the trace on finish with cost + duration, flushes. `LangfuseRunner` Protocol + `_LangfuseClientRunner`. SDK is the `[langfuse]` extra. |
+| 3 | `agentforge-phoenix` — `PhoenixHook` logs `agent.step` / `agent.tool_call` / `agent.run` events to a Phoenix project. Same redaction shape as OTel. SDK is the `[phoenix]` extra. |
+| 4 | `agentforge-evidently` — `EvidentlyHook` buffers a per-step row keyed by `run_id` + writes an Evidently `Report` JSON to `<report_dir>/<run_id>.json` at finish. Schema: `iteration` / `kind` / `cost_usd` / `tokens_in/out` / `duration_ms` / `has_tool_call`; the run-row carries `finish_reason` + `n_steps`. SDK is the `[evidently]` extra. |
+| 5–6 | Workspace registration (root pyproject + ci.yml + pre-commit) + docs (this section + Runbook entries) + roadmap + CHANGELOG + state. |
+
+### v0.2 deviations from the v0.1 spec
+
+- **No live CI for vendor backends.** None of the four
+  vendors have free zero-config CI services with a stable
+  endpoint; each package ships a
+  `tests/integration/test_*_live.py` scaffold that skips on
+  missing env var, but the `live` CI job doesn't run them.
+  Mirrors the v0.2 slack-adapter precedent. Live coverage is
+  developer-machine-only.
+- **Phoenix integration uses the SDK's own event logger,
+  not the OTel exporter.** Phoenix is OTel-compatible and
+  `agentforge-otel` would also work; we ship a first-party
+  Phoenix hook anyway so callers get project-namespaced
+  events without composing two packages.
+- **Evidently is end-of-run, not streaming.** Per-step rows
+  accumulate in memory; the JSON report is written at
+  finish. Real-time drift dashboards via Evidently Cloud are
+  a v0.3 follow-up.
+- **Per-run hook kwarg on `Agent.run` not needed.** Hooks
+  are configured at Agent construction; the four backends
+  don't need per-call installation.
+
+### Out-of-scope (deferred to v0.3+)
+
+- Child OTel spans (strategy.iteration, llm.call,
+  tool.<name>, evaluator.<name>).
+- A2A trace propagation via OTel context.
+- Content-based PII redaction (regex over arg values).
+- Evidently real-time drift dashboards via Cloud.
+- TypeScript port.
 
 ---
 
@@ -566,6 +611,102 @@ Future first-party packages (`agentforge-langfuse`,
 `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd`)
 will add LLM-specific dashboards on top of the OTel baseline once
 shipped.
+
+### How do I use Langfuse?
+
+```bash
+pip install agentforge-langfuse[langfuse]
+```
+
+```python
+from agentforge import Agent
+from agentforge_langfuse import LangfuseHook
+
+langfuse = LangfuseHook.from_config(
+    public_key="pk-lf-...",
+    secret_key="sk-lf-...",
+    host="https://cloud.langfuse.com",     # or self-hosted
+    trace_name_prefix="agentforge.pr-reviewer",
+)
+
+agent = Agent(model="...", on_step=langfuse, on_finish=langfuse)
+```
+
+One trace per run (keyed by `run_id`), one span per step,
+nested span per tool call, two scores at finish
+(`cost_usd` + `duration_ms`). The trace is `flush()`-ed at
+finish so it lands in the dashboard without waiting for the
+SDK's batch interval.
+
+### How do I use Phoenix?
+
+```bash
+pip install agentforge-phoenix[phoenix]
+docker run -p 6006:6006 arizephoenix/phoenix
+```
+
+```python
+from agentforge_phoenix import PhoenixHook
+
+phoenix = PhoenixHook.from_config(
+    endpoint="http://localhost:6006",
+    project_name="pr-reviewer",
+)
+
+agent = Agent(model="...", on_step=phoenix, on_finish=phoenix)
+```
+
+Phoenix is OTel-compatible — `agentforge-otel` also works
+against it. Pick `agentforge-phoenix` when you want events
+under a Phoenix project namespace (one project per agent
+deployment) without composing the OTel exporter manually.
+
+### How do I use Evidently?
+
+```bash
+pip install agentforge-evidently[evidently]
+```
+
+```python
+from agentforge_evidently import EvidentlyHook
+
+evidently = EvidentlyHook.from_config(
+    project="pr-reviewer",
+    report_dir="./evidently-reports",
+)
+
+agent = Agent(model="...", on_step=evidently, on_finish=evidently)
+```
+
+Per-step rows accumulate in memory; at finish the hook
+writes `./evidently-reports/<run_id>.json` carrying every
+step's `kind` / `cost_usd` / `tokens_in/out` / `duration_ms`
+plus a synthetic run-row with `finish_reason` + `n_steps`.
+Feed the directory into Evidently's drift / data-quality
+reports for cross-run analysis.
+
+### How do I use StatsD?
+
+```bash
+pip install agentforge-statsd[statsd]
+```
+
+```python
+from agentforge_statsd import StatsdHook
+
+statsd = StatsdHook.from_config(
+    host="statsd.internal",
+    port=8125,
+    prefix="agentforge.pr-reviewer",
+)
+
+agent = Agent(model="...", on_step=statsd, on_finish=statsd)
+```
+
+Emits one counter + optional timing per step, a tool-name
+counter on `tool_call`, and a counter + gauges + timing
+summary on finish. Lightweight UDP fire-and-forget — fits
+well alongside an OTel hook for ops dashboards.
 
 ### When should I NOT add an observability hook?
 
