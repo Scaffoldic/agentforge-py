@@ -29,6 +29,7 @@ members = [
     "agentforge-memory-sqlite",
     "agentforge-memory-surrealdb",
     "agentforge-otel",
+    "agentforge-statsd",
     "agentforge-testing",
     "agentforge-workspace",
 ]
@@ -364,6 +365,26 @@ requires-dist = [
 ]
 
 [[package]]
+name = "agentforge-statsd"
+version = "0.1.0"
+source = { editable = "packages/agentforge-statsd" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.optional-dependencies]
+statsd = [
+    { name = "statsd" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "statsd", marker = "extra == 'statsd'", specifier = ">=4.0" },
+]
+provides-extras = ["statsd"]
+
+[[package]]
 name = "agentforge-testing"
 version = "0.1.0"
 source = { editable = "packages/agentforge-testing" }
@@ -403,6 +424,7 @@ dependencies = [
     { name = "agentforge-memory-sqlite" },
     { name = "agentforge-memory-surrealdb" },
     { name = "agentforge-otel" },
+    { name = "agentforge-statsd" },
     { name = "agentforge-testing" },
 ]
 
@@ -443,6 +465,7 @@ requires-dist = [
     { name = "agentforge-memory-sqlite", editable = "packages/agentforge-memory-sqlite" },
     { name = "agentforge-memory-surrealdb", editable = "packages/agentforge-memory-surrealdb" },
     { name = "agentforge-otel", editable = "packages/agentforge-otel" },
+    { name = "agentforge-statsd", editable = "packages/agentforge-statsd" },
     { name = "agentforge-testing", editable = "packages/agentforge-testing" },
 ]
 
@@ -2513,6 +2536,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/81/69/17425771797c36cded50b7fe44e850315d039f28b15901ab44839e70b593/starlette-1.0.0.tar.gz", hash = "sha256:6a4beaf1f81bb472fd19ea9b918b50dc3a77a6f2e190a12954b25e6ed5eea149", size = 2655289, upload-time = "2026-03-22T18:29:46.779Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/c9/584bc9651441b4ba60cc4d557d8a547b5aff901af35bda3a4ee30c819b82/starlette-1.0.0-py3-none-any.whl", hash = "sha256:d3ec55e0bb321692d275455ddfd3df75fff145d009685eb40dc91fc66b03d38b", size = 72651, upload-time = "2026-03-22T18:29:45.111Z" },
+]
+
+[[package]]
+name = "statsd"
+version = "4.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/27/29/05e9f50946f4cf2ed182726c60d9c0ae523bb3f180588c574dd9746de557/statsd-4.0.1.tar.gz", hash = "sha256:99763da81bfea8daf6b3d22d11aaccb01a8d0f52ea521daab37e758a4ca7d128", size = 27814, upload-time = "2022-11-06T14:17:36.194Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/d0/c9543b52c067a390ae6ae632d7fd1b97a35cdc8d69d40c0b7d334b326410/statsd-4.0.1-py2.py3-none-any.whl", hash = "sha256:c2676519927f7afade3723aca9ca8ea986ef5b059556a980a867721ca69df093", size = 13118, upload-time = "2022-11-06T14:17:34.258Z" },
 ]
 
 [[package]]
