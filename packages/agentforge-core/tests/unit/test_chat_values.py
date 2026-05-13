@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import typing
+
 import pytest
-from agentforge_core.values.chat import ChatChunk, ChatResponse, ChatTurn, SessionInfo
+from agentforge_core.values.chat import (
+    ChatChunk,
+    ChatChunkKind,
+    ChatResponse,
+    ChatTurn,
+    SessionInfo,
+    StreamingChunkKind,
+)
 from pydantic import ValidationError
 
 
@@ -43,3 +52,12 @@ def test_chat_response_round_trip() -> None:
     blob = r.model_dump_json()
     restored = ChatResponse.model_validate_json(blob)
     assert restored == r
+
+
+def test_streaming_chunk_kind_unified_alias() -> None:
+    """feat-014 v0.3 unifies ChatChunkKind with the framework-wide
+    StreamingChunkKind. Both names must resolve to the same Literal
+    union covering text/thinking/step/tool_call/tool_result/done/error."""
+    expected = {"text", "thinking", "step", "tool_call", "tool_result", "done", "error"}
+    assert set(typing.get_args(StreamingChunkKind)) == expected
+    assert set(typing.get_args(ChatChunkKind)) == expected
