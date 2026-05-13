@@ -16,10 +16,29 @@ from agentforge_core.values.messages import ToolCall
 ChatRole = Literal["user", "assistant", "system", "tool"]
 """Closed enum of chat turn roles."""
 
-ChatChunkKind = Literal["text", "tool_call", "tool_result", "thinking", "done", "error"]
-"""Closed enum of streaming chunk kinds. Adding a new kind requires a
-minor version bump per ADR-0007. Receivers must ignore unknown kinds
-on the wire — forward-compat for future additions."""
+StreamingChunkKind = Literal[
+    "text",
+    "thinking",
+    "step",
+    "tool_call",
+    "tool_result",
+    "done",
+    "error",
+]
+"""Closed enum of streaming chunk kinds shared across chat (token-level)
+and A2A (step + token-level) wire formats. Adding a new kind requires a
+minor version bump per ADR-0007. Receivers must ignore unknown kinds on
+the wire — forward-compat for future additions.
+
+The ``step`` kind is reserved for strategies that emit step-level
+events alongside (or instead of) per-token text. Chat receivers
+typically ignore it; A2A clients render it as a generic step boundary.
+"""
+
+ChatChunkKind = StreamingChunkKind
+"""Backward-compatible alias retained for callers that imported the
+chat-shaped name in feat-020 v0.1 / v0.2. Prefer ``StreamingChunkKind``
+in new code."""
 
 
 class ChatTurn(BaseModel):
