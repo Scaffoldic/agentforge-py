@@ -25,15 +25,19 @@ from typing import TYPE_CHECKING, Any
 
 from agentforge_core.config.loader import load_config
 from agentforge_core.config.schema import AgentForgeConfig
+from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import Evaluator
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.reranker import Reranker
+from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.resolver import Resolver
 
 from agentforge.agent import Agent
 from agentforge.memory import InMemoryStore
 from agentforge.pipeline import Pipeline
+from agentforge.retrieval import Retriever
 
 if TYPE_CHECKING:
     from agentforge_core.contracts.tool import Tool
@@ -147,6 +151,71 @@ def build_pipeline_from_config(config: AgentForgeConfig) -> Pipeline | None:
     )
 
 
+def build_retriever_from_config(config: AgentForgeConfig) -> Retriever | None:
+    """Resolve + instantiate the top-level `retrieval:` block.
+
+    feat-021 follow-up. Returns ``None`` when no `retrieval:`
+    block is set. Otherwise resolves three sub-components:
+
+    - ``retrieval.vector_store.driver`` → ``vector_stores``
+      category → instantiated `VectorStore`.
+    - ``retrieval.embedder.driver`` → ``embeddings`` category →
+      instantiated `EmbeddingClient`.
+    - ``retrieval.reranker.name`` (optional) → ``rerankers``
+      category → instantiated `Reranker`.
+
+    The three are wired into a `Retriever` with the top-level
+    knobs (``top_k`` / ``over_fetch_factor`` / ``batch_size``)
+    forwarded to its constructor.
+
+    Raises:
+        ModuleError: a referenced module isn't registered or
+            its instance doesn't implement the expected ABC.
+    """
+    r = config.retrieval
+    if r is None:
+        return None
+
+    store_cls = _resolve_class("vector_stores", r.vector_store.driver)
+    store = _instantiate(store_cls, r.vector_store.config)
+    if not isinstance(store, VectorStore):
+        msg = (
+            f"Resolved vector_store {r.vector_store.driver!r} "
+            f"({store_cls.__name__}) does not implement VectorStore."
+        )
+        raise ModuleError(msg)
+
+    embedder_cls = _resolve_class("embeddings", r.embedder.driver)
+    embedder = _instantiate(embedder_cls, r.embedder.config)
+    if not isinstance(embedder, EmbeddingClient):
+        msg = (
+            f"Resolved embedder {r.embedder.driver!r} "
+            f"({embedder_cls.__name__}) does not implement EmbeddingClient."
+        )
+        raise ModuleError(msg)
+
+    reranker: Reranker | None = None
+    if r.reranker is not None:
+        reranker_cls = _resolve_class("rerankers", r.reranker.name)
+        reranker_instance = _instantiate(reranker_cls, r.reranker.config)
+        if not isinstance(reranker_instance, Reranker):
+            msg = (
+                f"Resolved reranker {r.reranker.name!r} "
+                f"({reranker_cls.__name__}) does not implement Reranker."
+            )
+            raise ModuleError(msg)
+        reranker = reranker_instance
+
+    return Retriever(
+        store=store,
+        embedder=embedder,
+        reranker=reranker,
+        top_k=r.top_k,
+        over_fetch_factor=r.over_fetch_factor,
+        batch_size=r.batch_size,
+    )
+
+
 def build_tools_from_config(config: AgentForgeConfig) -> list[Tool]:
     """Resolve tools listed under `agent.tools` (string or dict form)."""
     from agentforge_core.contracts.tool import Tool as ToolBase  # noqa: PLC0415
@@ -188,10 +257,26 @@ def _resolve_class(category: str, name: str) -> type:
 
 
 def _instantiate(cls: type, cfg: dict[str, Any]) -> Any:
-    """Try `from_config(cfg)` first; else fall back to `cls(**cfg)`."""
+    """Construct an instance of `cls` from a YAML config dict.
+
+    Preference order:
+
+    1. ``cls.from_config(**cfg)`` — keyword-friendly factory
+       (preferred for new modules; matches the
+       `SentenceTransformersReranker.from_config(*, model=...)`
+       shape from feat-021).
+    2. ``cls.from_config(cfg)`` — legacy dict-positional shape
+       (no in-tree callers today; kept as a defensive fallback
+       so externally-shipped modules that ship the older shape
+       still load).
+    3. ``cls(**cfg)`` — plain constructor.
+    """
     from_config = getattr(cls, "from_config", None)
     if callable(from_config):
-        return from_config(cfg)
+        try:
+            return from_config(**cfg)
+        except TypeError:
+            return from_config(cfg)
     return cls(**cfg)
 
 
@@ -206,6 +291,7 @@ __all__ = [
     "build_evaluators_from_config",
     "build_memory_from_config",
     "build_pipeline_from_config",
+    "build_retriever_from_config",
     "build_tools_from_config",
     "load_and_build",
 ]
