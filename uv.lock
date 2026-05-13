@@ -36,6 +36,7 @@ members = [
     "agentforge-otel",
     "agentforge-phoenix",
     "agentforge-reranker-cohere",
+    "agentforge-reranker-mixedbread",
     "agentforge-reranker-sentence-transformers",
     "agentforge-reranker-voyage",
     "agentforge-statsd",
@@ -454,6 +455,26 @@ requires-dist = [
 provides-extras = ["cohere"]
 
 [[package]]
+name = "agentforge-reranker-mixedbread"
+version = "0.1.0"
+source = { editable = "packages/agentforge-reranker-mixedbread" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.optional-dependencies]
+mixedbread = [
+    { name = "mixedbread-ai" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "mixedbread-ai", marker = "extra == 'mixedbread'", specifier = ">=2.0" },
+]
+provides-extras = ["mixedbread"]
+
+[[package]]
 name = "agentforge-reranker-sentence-transformers"
 version = "0.1.0"
 source = { editable = "packages/agentforge-reranker-sentence-transformers" }
@@ -557,6 +578,7 @@ dependencies = [
     { name = "agentforge-otel" },
     { name = "agentforge-phoenix" },
     { name = "agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread" },
     { name = "agentforge-reranker-sentence-transformers" },
     { name = "agentforge-reranker-voyage" },
     { name = "agentforge-statsd" },
@@ -604,6 +626,7 @@ requires-dist = [
     { name = "agentforge-otel", editable = "packages/agentforge-otel" },
     { name = "agentforge-phoenix", editable = "packages/agentforge-phoenix" },
     { name = "agentforge-reranker-cohere", editable = "packages/agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread", editable = "packages/agentforge-reranker-mixedbread" },
     { name = "agentforge-reranker-sentence-transformers", editable = "packages/agentforge-reranker-sentence-transformers" },
     { name = "agentforge-reranker-voyage", editable = "packages/agentforge-reranker-voyage" },
     { name = "agentforge-statsd", editable = "packages/agentforge-statsd" },
@@ -2473,6 +2496,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
+]
+
+[[package]]
+name = "mixedbread-ai"
+version = "2.2.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/f4/7d7a512b859c2f6145684968431f1eaabe291873bec65749ccae55af939b/mixedbread_ai-2.2.6.tar.gz", hash = "sha256:b0ea2320c34d48f1744d7656ea1b67777188606c6574e47c5c5f7c39dfb0c6f6", size = 21392, upload-time = "2024-06-26T16:22:06.775Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/69/5bd0057a8263fef977d196d38594ec5237547e3825e7536ee8e036fb7f54/mixedbread_ai-2.2.6-py3-none-any.whl", hash = "sha256:2e665769fcd07e36e083216a4ec4a4700588cb2d1a7a3da147042aaefe325464", size = 42949, upload-time = "2024-06-26T16:22:04.943Z" },
 ]
 
 [[package]]

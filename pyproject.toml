@@ -49,6 +49,7 @@ dependencies = [
     "agentforge-reranker-sentence-transformers",
     "agentforge-reranker-cohere",
     "agentforge-reranker-voyage",
+    "agentforge-reranker-mixedbread",
 ]
 
 [tool.uv.workspace]
@@ -83,6 +84,7 @@ agentforge-evidently = { workspace = true }
 agentforge-reranker-sentence-transformers = { workspace = true }
 agentforge-reranker-cohere = { workspace = true }
 agentforge-reranker-voyage = { workspace = true }
+agentforge-reranker-mixedbread = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -386,6 +388,17 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_reranker_voyage.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-021 vendor follow-up: mixedbread-ai SDK.
+[[tool.mypy.overrides]]
+module = ["mixedbread_ai", "mixedbread_ai.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_reranker_mixedbread.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -422,6 +435,7 @@ testpaths = [
     "packages/agentforge-reranker-sentence-transformers/tests",
     "packages/agentforge-reranker-cohere/tests",
     "packages/agentforge-reranker-voyage/tests",
+    "packages/agentforge-reranker-mixedbread/tests",
     "tests",
 ]
 markers = [
@@ -484,6 +498,7 @@ source = [
     "packages/agentforge-reranker-sentence-transformers/src",
     "packages/agentforge-reranker-cohere/src",
     "packages/agentforge-reranker-voyage/src",
+    "packages/agentforge-reranker-mixedbread/src",
 ]
 branch = true
 parallel = true
