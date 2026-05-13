@@ -218,7 +218,10 @@ targeted for v0.2:
   SentenceTransformers concrete + `Retriever` integration
   shipped in v0.2. Follow-up v0.2 PR adds the `retrieval:`
   top-level YAML block + `build_retriever_from_config()`
-  resolver wiring.
+  resolver wiring. Third v0.2 PR ships the vendor reranker
+  sister packages (`agentforge-reranker-cohere`, `-voyage`,
+  `-mixedbread`) so users swap rerankers in YAML with no
+  code changes.
 - **Schema migrations** for persistent stores (the
   `init_schema()` opt-in is the v0.1 stand-in; a real migration
   framework lands alongside the first v0.1.0 → v0.2.0 schema delta).

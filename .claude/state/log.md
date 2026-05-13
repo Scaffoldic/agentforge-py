@@ -1842,3 +1842,63 @@ Tooling notes:
   Ruff's PT006 fires on `@pytest.mark.parametrize` when
   the names string isn't a tuple; switch to
   `("field", "bad_value")` form.
+
+---
+
+## 2026-05-14 — feat-021 vendor reranker sister packages shipped
+
+Closed the "Vendor reranker sister packages" open item from
+feat-021's initial PR. Three managed-API rerankers bundled
+into one PR per user-chosen scope. All follow the
+sentence-transformers package template (Runner Protocol +
+production wrapper under pragma: no cover + in-memory fake
+in src/).
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`ca1371a`): agentforge-reranker-cohere. Wraps
+  cohere.Client.rerank(query, documents, model, top_n).
+  Default model rerank-english-v3.0. Capabilities {managed,
+  batched}. 9 unit tests + conformance suite.
+- chunk 2 (`f244861`): agentforge-reranker-voyage. Wraps
+  voyageai.Client.rerank(query, documents, model, top_k).
+  Voyage names the response-cap arg `top_k`, not Cohere's
+  `top_n`; the runner Protocol surfaces this as a
+  per-vendor parameter name. Default model rerank-2.
+- chunk 3 (`096c074`): agentforge-reranker-mixedbread.
+  Wraps MixedbreadAI.rerank(model, query, input, top_k).
+  Mixedbread names the document list `input` (not
+  `documents`) — runner Protocol normalises. Default model
+  mixedbread-ai/mxbai-rerank-large-v1.
+- chunk 4: workspace sweep done inline per package; no
+  new integration test (existing test_retrieval_yaml.py
+  already exercises the YAML resolver path with a fake
+  reranker — adding per-vendor variants would duplicate).
+- chunk 5 (about-to-commit): feat-021 spec §11 vendor
+  follow-up subsection + per-chunk table; flipped the
+  "Vendor reranker sister packages" open item to shipped.
+  §12 Runbook gets a new "How do I swap rerankers without
+  code changes?" section with one YAML snippet per vendor
+  + pip install commands. Roadmap entry extended. CHANGELOG
+  [Unreleased]/Added gets one entry per package + a note
+  on the three new entry-points.
+
+Tooling notes:
+
+- Each vendor SDK names its parameters differently
+  (Cohere: top_n, documents; Voyage: top_k, documents;
+  Mixedbread: top_k, input). The runner Protocol pattern
+  isolates the caller from these inconsistencies — each
+  package's runner Protocol surfaces the vendor's
+  parameter shape, but the reranker class always calls
+  rerank() with a consistent (query, candidates, top_k)
+  interface.
+- Score-normalisation: all three vendors return scores
+  already in [0, 1], so no sigmoid is needed (unlike
+  sentence-transformers which returns raw logits). Each
+  package applies a defensive max(0, min(1, score)) clamp
+  for safety against edge cases.
+- Ruff PLR2004 (magic-number-comparison) fires on test
+  assertions like `len(results) == 2`. Auto-fixed with
+  `# noqa: PLR2004` on first pre-commit pass.
