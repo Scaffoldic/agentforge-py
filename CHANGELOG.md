@@ -11,6 +11,33 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-009 v0.2 — vendor observability backends.** Four
+  new sister packages closing the v0.1 backlog. Each
+  implements the existing `StepHook + FinishHook` contracts
+  via `__call__(payload)` dispatch (same shape as
+  `OpenTelemetryHook`) and uses the runner-Protocol pattern
+  from feat-020 v0.2 so unit tests don't need the vendor
+  SDK in the venv.
+  - `agentforge-langfuse` — opens one Langfuse trace per
+    run, one span per step, nested span per `tool_call`,
+    scores cost + duration on finish, flushes. SDK is the
+    `[langfuse]` extra.
+  - `agentforge-phoenix` — logs `agent.step` /
+    `agent.tool_call` / `agent.run` events to a Phoenix
+    project namespace. SDK is the `[phoenix]` extra.
+  - `agentforge-evidently` — buffers per-step records keyed
+    by `run_id`, writes a JSON report to
+    `<report_dir>/<run_id>.json` at finish. SDK is the
+    `[evidently]` extra.
+  - `agentforge-statsd` — fire-and-forget UDP counters +
+    gauges + timings (`step.<kind>`, `tool.<name>`,
+    `run.finish.<reason>`, `run.cost_usd`, etc.). SDK is
+    the `[statsd]` extra.
+- **Four new `agentforge.hooks` entry-points:**
+  `langfuse`, `phoenix`, `evidently`, `statsd`. The
+  framework's existing hook resolver picks them up — no
+  resolver changes.
+
 - **feat-014 v0.3 — A2A per-token streaming.**
   `A2AServer._stream_call` now drives `Agent.stream(task)`
   (shipped in feat-020 v0.2) and forwards each

@@ -1621,3 +1621,70 @@ Tooling notes:
   (ruff UP040 wants `type X = Y`, but PEP 695's
   `TypeAliasType` doesn't compose well with Pydantic literal
   validation — plain assignment threads the literal through).
+
+---
+
+## 2026-05-13 — feat-009 v0.2 vendor backends shipped
+
+Closed the four vendor backends spec §4.4 left for v0.2 in
+one PR per user-chosen "All four backends in one PR" scope.
+Each package implements the existing StepHook + FinishHook
+contract via __call__ dispatch (mirroring OpenTelemetryHook)
+plus the runner-Protocol pattern from feat-020 v0.2 (Protocol
++ production runner under # pragma: no cover + in-memory fake
+in src/).
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`45ea58a`): agentforge-statsd. Counters
+  (<prefix>.step.<kind>, tool.<name>, run.finish.<reason>),
+  timings (step + run duration_ms), gauges (run cost +
+  tokens). FakeStatsdRunner records every call as a tagged
+  tuple. SDK is the [statsd] extra.
+- chunk 2 (`4e089c5`): agentforge-langfuse. One trace per
+  run (keyed by current_run().run_id), one span per step,
+  nested span on tool_call, scores for cost_usd +
+  duration_ms on finish, flush(). Zero-step runs get a
+  synthetic trace at finish so the score has a home. SDK is
+  [langfuse]. Steps fired outside a RunContext are dropped
+  silently (RuntimeError, not LookupError — caught
+  explicitly).
+- chunk 3 (`d616ca3`): agentforge-phoenix. log_step /
+  log_tool_call / log_run events on a project namespace.
+  Same redaction shape as OTel. SDK is [phoenix].
+- chunk 4 (`ef8fbcf`): agentforge-evidently. Buffers per-
+  step rows keyed by run_id, appends a __run__ row on
+  finish, asks the runner to build an Evidently Report from
+  pandas.DataFrame, writes to <report_dir>/<run_id>.json.
+  Falls back to a plain JSON dump if the SDK errors. SDK is
+  [evidently]; pandas pulled transitively.
+- chunk 5: workspace registration done in-line with each
+  package (root pyproject deps + uv.sources + testpaths +
+  coverage.source + mypy overrides; ci.yml + .pre-commit
+  mypy/bandit/pytest unit lists). Consistency pass-through
+  on this chunk found nothing to fix.
+- chunk 6 (about-to-commit): feat-009 spec §10 v0.2 follow-
+  up subsection + per-chunk table + deviations (no live CI
+  for vendor backends; Phoenix uses SDK events not OTel
+  exporter; Evidently is end-of-run; per-run hook kwarg not
+  needed); Runbook gets four new sections; roadmap flipped
+  to shipped; CHANGELOG `[Unreleased] / Added` entries +
+  four new entry-points listed.
+
+Tooling notes:
+
+- `current_run()` raises **RuntimeError** (not LookupError)
+  when no RunContext is bound — three of the four hooks
+  (langfuse/phoenix/evidently) needed to catch RuntimeError
+  specifically and silently drop steps fired outside a run.
+  Statsd doesn't need this because its metrics don't depend
+  on run_id correlation.
+- ModuleError lives at `agentforge_core.production.exceptions`
+  (not `.errors` — caught that on the first commit).
+- ruff UP040 auto-fixes some test-file constants
+  (e.g. `# noqa: S108`) under hook auto-fix; second commit
+  attempt succeeds after the fix lands.
+- Production from_config classmethods + their _build_*_runner
+  factories live under `# pragma: no cover` since they need
+  the live SDK; live tests cover them when env vars set.
