@@ -30,6 +30,7 @@ from agentforge_core.config.schema import (
     ModuleEntry,
     ObservabilityEntry,
     PipelineTaskEntry,
+    RerankerEntry,
 )
 from agentforge_core.production.exceptions import ModuleError
 
@@ -98,6 +99,9 @@ def validate_module_configs(
                 strict=strict,
             )
 
+    if cfg.retrieval is not None:
+        _validate_retrieval(r, cfg, strict=strict)
+
 
 def _validate_one(
     resolver: Resolver,
@@ -128,7 +132,7 @@ def _validate_one(
 def _validate_named(
     resolver: Resolver,
     category: str,
-    entry: EvaluatorEntry | ObservabilityEntry | PipelineTaskEntry,
+    entry: EvaluatorEntry | ObservabilityEntry | PipelineTaskEntry | RerankerEntry,
     *,
     strict: bool,
 ) -> None:
@@ -150,6 +154,20 @@ def _validate_named(
             f"modules.{category}[{entry.name!r}].config failed validation: "
             f"{exc.errors(include_url=False)}"
         ) from exc
+
+
+def _validate_retrieval(
+    resolver: Resolver,
+    cfg: AgentForgeConfig,
+    *,
+    strict: bool,
+) -> None:
+    """Validate the top-level `retrieval:` block (feat-021 follow-up)."""
+    assert cfg.retrieval is not None
+    _validate_one(resolver, "vector_stores", cfg.retrieval.vector_store, strict=strict)
+    _validate_one(resolver, "embeddings", cfg.retrieval.embedder, strict=strict)
+    if cfg.retrieval.reranker is not None:
+        _validate_named(resolver, "rerankers", cfg.retrieval.reranker, strict=strict)
 
 
 def _validate_driver(
