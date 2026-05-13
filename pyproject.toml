@@ -43,6 +43,7 @@ dependencies = [
     "agentforge-chat-slack",
     "agentforge-a2a",
     "agentforge-statsd",
+    "agentforge-langfuse",
 ]
 
 [tool.uv.workspace]
@@ -71,6 +72,7 @@ agentforge-chat-history-redis = { workspace = true }
 agentforge-chat-slack = { workspace = true }
 agentforge-a2a = { workspace = true }
 agentforge-statsd = { workspace = true }
+agentforge-langfuse = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -305,6 +307,19 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_statsd.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-009 v0.2: langfuse SDK ships partial type info; ignore_missing so
+# the production runner (under `# pragma: no cover`) doesn't drag the
+# SDK into the strict-mypy lane.
+[[tool.mypy.overrides]]
+module = ["langfuse", "langfuse.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_langfuse.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -335,6 +350,7 @@ testpaths = [
     "packages/agentforge-chat-slack/tests",
     "packages/agentforge-a2a/tests",
     "packages/agentforge-statsd/tests",
+    "packages/agentforge-langfuse/tests",
     "tests",
 ]
 markers = [
@@ -391,6 +407,7 @@ source = [
     "packages/agentforge-chat-slack/src",
     "packages/agentforge-a2a/src",
     "packages/agentforge-statsd/src",
+    "packages/agentforge-langfuse/src",
 ]
 branch = true
 parallel = true
