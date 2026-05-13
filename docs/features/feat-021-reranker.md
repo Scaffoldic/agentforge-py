@@ -393,12 +393,15 @@ vendor backend precedent.
 
 ### v0.2 follow-up deviations
 
-- **`Agent.__init__` does NOT gain a `retriever=` kwarg.**
-  `build_retriever_from_config()` returns a sibling
-  construct; callers wire it into their tools or strategy.
-  Reasoning: retrieval is a tool-level concern per ADR-0007
-  — agent-owned retrievers conflate two layers. May
-  reconsider in v0.3 if usage patterns warrant.
+- ~~**`Agent.__init__` does NOT gain a `retriever=` kwarg.**~~
+  **Resolved in the v0.3 polish bundle.** Agent already
+  accepted `retriever=` and stored it on
+  `RuntimeContext.retriever`; the missing piece was
+  `build_agent_from_config()` calling
+  `build_retriever_from_config()` and threading the result.
+  Now config-driven retrieval is wired end-to-end —
+  strategies / tools that ask for `get_runtime(state).retriever`
+  get the YAML-built instance.
 - **Legacy `modules.retriever` block stays valid.** The
   single-entry form is kept for v0.2 backward compat with a
   deprecation notice on the docstring. The new `retrieval:`
