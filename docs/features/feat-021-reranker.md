@@ -324,11 +324,10 @@ integration" scope. Five chunks; each gated through
 
 ### Open items
 
-- Vendor reranker sister packages
+- ~~Vendor reranker sister packages
   (`agentforge-reranker-cohere`, `-voyage`,
-  `-mixedbread`) — each is the same shape as
-  `agentforge-reranker-sentence-transformers` (Protocol +
-  runner + fake + entry-point), one PR per vendor.
+  `-mixedbread`)~~ — **shipped** in the v0.2 follow-up
+  PR; see the subsection below.
 - ~~`retrieval.reranker:` YAML resolver wiring~~ —
   shipped (see v0.2 follow-up below).
 - ColBERT-style late-interaction rerankers — different
@@ -351,6 +350,46 @@ config-driven wiring item from feat-021's initial PR.
 | 3 | `79ac9a4` | End-to-end YAML smoke test at `tests/integration/test_retrieval_yaml.py` — writes a YAML fixture, loads it through `load_config`, builds the retriever, indexes 6 docs, retrieves with `top_k=2`, asserts the reranker was invoked once with the over-fetch pool. |
 | 4 | (this PR) | `agentforge config validate` and `agentforge config schema` confirmed to surface the new block. No code changes — CLI is polymorphic on the schema. |
 | 5 | (this PR) | Docs + roadmap + CHANGELOG + state. |
+
+### v0.2 follow-up — vendor reranker sister packages
+
+Shipped on the v0.1 → v0.2 line. Closes the "Vendor
+reranker sister packages" open item from feat-021's
+initial PR. Three managed-API rerankers ship in one
+bundled PR, all following the
+`agentforge-reranker-sentence-transformers` template
+(Runner Protocol + production wrapper under
+`# pragma: no cover` + in-memory fake in `src/`).
+
+With the `retrieval:` YAML wiring from PR #38, users now
+swap rerankers in `agentforge.yaml` with no code changes:
+
+```yaml
+retrieval:
+  reranker:
+    name: cohere    # or voyage / mixedbread / sentence-transformers
+    config:
+      api_key: ${COHERE_API_KEY}
+      model: rerank-english-v3.0
+```
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `ca1371a` | `agentforge-reranker-cohere`. Wraps `cohere.Client.rerank(query, documents, model, top_n)`. Default model `rerank-english-v3.0`. Capabilities `{managed, batched}`. SDK is the `[cohere]` extra. Entry-point `agentforge.rerankers:cohere`. |
+| 2 | `f244861` | `agentforge-reranker-voyage`. Wraps `voyageai.Client.rerank(query, documents, model, top_k)`. Default model `rerank-2`. SDK is the `[voyage]` extra. Entry-point `agentforge.rerankers:voyage`. |
+| 3 | `096c074` | `agentforge-reranker-mixedbread`. Wraps `MixedbreadAI.rerank(model, query, input, top_k)` (note: SDK calls the doc-list parameter `input`, not `documents`). Default model `mixedbread-ai/mxbai-rerank-large-v1`. SDK is the `[mixedbread]` extra. Entry-point `agentforge.rerankers:mixedbread`. |
+| 4-5 | (this PR) | Workspace registration done inline + docs + roadmap + CHANGELOG + state. |
+
+Score normalisation: all three vendors return `[0, 1]`-
+normalised scores already; each reranker applies a
+defensive `max(0.0, min(1.0, score))` clamp in case of
+edge cases.
+
+Live tests scoped to developer machines — none of the
+three vendors has a free CI account, so each package
+ships a `tests/integration/test_*_live.py` scaffold that
+skips on missing API-key env var. Mirrors the feat-009
+vendor backend precedent.
 
 ### v0.2 follow-up deviations
 
@@ -451,6 +490,54 @@ Two rules of thumb:
   with no reranker is usually enough.
 - If the corpus is large (> 100k docs) and quality matters
   more than latency, push `over_fetch_factor` to 5 or 10.
+
+### How do I swap rerankers without code changes?
+
+Pick a registered `agentforge.rerankers` entry-point in
+`agentforge.yaml`; the resolver auto-wires the rest.
+
+```yaml
+# Local cross-encoder (sentence-transformers)
+retrieval:
+  reranker:
+    name: sentence-transformers
+    config:
+      model: cross-encoder/ms-marco-MiniLM-L-6-v2
+
+# Cohere managed API
+retrieval:
+  reranker:
+    name: cohere
+    config:
+      api_key: ${COHERE_API_KEY}
+      model: rerank-english-v3.0
+
+# Voyage managed API
+retrieval:
+  reranker:
+    name: voyage
+    config:
+      api_key: ${VOYAGE_API_KEY}
+      model: rerank-2
+
+# Mixedbread managed API
+retrieval:
+  reranker:
+    name: mixedbread
+    config:
+      api_key: ${MIXEDBREAD_API_KEY}
+      model: mixedbread-ai/mxbai-rerank-large-v1
+```
+
+Each vendor ships its SDK as an optional extra; install
+the one you want:
+
+```bash
+pip install agentforge-reranker-cohere[cohere]
+pip install agentforge-reranker-voyage[voyage]
+pip install agentforge-reranker-mixedbread[mixedbread]
+pip install agentforge-reranker-sentence-transformers[sentence-transformers]
+```
 
 ### How do I wire a Retriever from `agentforge.yaml`?
 
