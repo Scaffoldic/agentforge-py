@@ -68,7 +68,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"
 
-  live:
+  live-ubuntu:
     # feat-014 v0.2: live integration tests for every package that
     # ships a `tests/integration/test_*_live.py` suite. Runs on every
     # PR and push to main, but does NOT gate merge — branch protection
@@ -76,17 +76,17 @@ jobs:
     # stabilises across more packages.
     #
     # feat-020 v0.2 adds the Postgres + Redis live tests
-    # (chat-history backends) via a `services:` block on the Ubuntu
-    # runner. macOS leaves `RUN_LIVE_POSTGRES_DSN` / `REDIS_URL`
-    # unset so service-backed tests skip cleanly there.
-    name: Live (${{ matrix.os }}, Python ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
+    # (chat-history backends) via a `services:` block. GitHub Actions
+    # `services:` require Docker, which is only available on Linux
+    # runners, so this job is Ubuntu-only. macOS lives in the sibling
+    # `live-macos` job below without services.
+    name: Live (ubuntu-latest, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     if: success() || failure()
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         python-version: ["3.13"]
     services:
       postgres:
@@ -111,8 +111,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      RUN_LIVE_POSTGRES_DSN: ${{ matrix.os == 'ubuntu-latest' && 'postgresql://postgres:test@localhost:5432/agentforge_test' || '' }}
-      REDIS_URL: ${{ matrix.os == 'ubuntu-latest' && 'redis://localhost:6379' || '' }}
+      RUN_LIVE_POSTGRES_DSN: postgresql://postgres:test@localhost:5432/agentforge_test
+      REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -124,6 +124,37 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Pytest live (every package shipping integration/)
+        run: |
+          uv run pytest -q -m live \
+            packages/agentforge-mcp/tests/integration \
+            packages/agentforge-a2a/tests/integration \
+            packages/agentforge-chat-history-postgres/tests/integration \
+            packages/agentforge-chat-history-redis/tests/integration
+
+  live-macos:
+    # macOS live runner has no Docker available, so Postgres + Redis
+    # service-backed live tests skip cleanly here (env vars unset).
+    # Kept in CI to catch macOS-specific regressions in the mcp + a2a
+    # live suites that don't require external services.
+    name: Live (macos-latest, Python ${{ matrix.python-version }})
+    runs-on: macos-latest
+    if: success() || failure()
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest live (mcp + a2a only; service-backed suites skip)
         run: |
           uv run pytest -q -m live \
             packages/agentforge-mcp/tests/integration \
