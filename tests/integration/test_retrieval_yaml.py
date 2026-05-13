@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 from agentforge import InMemoryVectorStore
-from agentforge.cli._build import build_retriever_from_config
+from agentforge.cli._build import build_agent_from_config, build_retriever_from_config
 from agentforge_core.config import load_config
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.reranker import Reranker
@@ -112,6 +112,8 @@ class _ReverseReranker(Reranker):
 
 
 _INTEGRATION_YAML = """
+agent:
+  strategy: react
 retrieval:
   vector_store:
     driver: integration-store
@@ -165,3 +167,24 @@ async def test_yaml_to_retriever_end_to_end(registered: None, tmp_path: Path) ->
     assert query == "alpha query"
     assert n_candidates == 6  # top_k=2 * over_fetch_factor=3
     assert len(results) == 2
+
+
+@pytest.mark.asyncio
+async def test_build_agent_from_config_threads_retriever(registered: None, tmp_path: Path) -> None:
+    """feat-021 follow-up: `build_agent_from_config` now threads the
+    Retriever returned by `build_retriever_from_config` into the
+    Agent constructor (Agent already accepts `retriever=` and stores
+    it on `RuntimeContext.retriever`)."""
+    del registered
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text(_INTEGRATION_YAML)
+
+    cfg = load_config(yaml_path)
+    agent = await build_agent_from_config(cfg)
+    try:
+        # Agent constructed with the YAML's retrieval: block has the
+        # retriever threaded in via build_agent_from_config.
+        assert agent._retriever is not None
+        assert isinstance(agent._retriever.reranker, _ReverseReranker)
+    finally:
+        await agent.close()

@@ -76,6 +76,7 @@ async def build_agent_from_config(
         await _maybe_init_schema(memory)
     evaluators = build_evaluators_from_config(config)
     pipeline = build_pipeline_from_config(config)
+    retriever = build_retriever_from_config(config)
     llm = _resolve_llm(config)
     strategy = config.agent.strategy if isinstance(config.agent.strategy, str) else None
 
@@ -84,6 +85,7 @@ async def build_agent_from_config(
         memory=memory if memory is not None else InMemoryStore(),
         evaluators=evaluators,
         strategy=strategy,
+        retriever=retriever,
         system_prompt=config.agent.system_prompt,
         budget_usd=config.agent.budget.usd,
         max_iterations=config.agent.max_iterations,

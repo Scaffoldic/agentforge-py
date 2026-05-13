@@ -21,6 +21,7 @@ call args as span attributes.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from typing import Any
 
@@ -65,6 +66,7 @@ class OpenTelemetryHook:
         service_name: str = "agentforge",
         sample_rate: float = 1.0,
         redact_fields: tuple[str, ...] | None = None,
+        redact_value_patterns: tuple[str, ...] | None = None,
     ) -> None:
         if not 0.0 <= sample_rate <= 1.0:
             raise ValueError(f"sample_rate must be in [0, 1]; got {sample_rate}")
@@ -76,6 +78,15 @@ class OpenTelemetryHook:
         self._sample_rate = sample_rate
         self._redact_fields = tuple(
             f.lower() for f in (redact_fields if redact_fields is not None else _DEFAULT_REDACT)
+        )
+        # feat-009 v0.3 polish: content-based PII redaction. Patterns
+        # are compiled once at construction so per-step redaction
+        # stays cheap. Default None — content-based redaction is
+        # opt-in.
+        self._redact_value_patterns: tuple[re.Pattern[str], ...] = (
+            tuple(re.compile(p) for p in redact_value_patterns)
+            if redact_value_patterns is not None
+            else ()
         )
         _ensure_provider(
             service_name=service_name,
@@ -90,6 +101,10 @@ class OpenTelemetryHook:
     @property
     def redact_fields(self) -> tuple[str, ...]:
         return self._redact_fields
+
+    @property
+    def redact_value_patterns(self) -> tuple[re.Pattern[str], ...]:
+        return self._redact_value_patterns
 
     def __call__(self, payload: Step | RunResult) -> None:
         """Hook entry point — dispatches on payload type."""
@@ -147,18 +162,41 @@ class OpenTelemetryHook:
     # ------------------------------------------------------------------
 
     def _redact(self, args: dict[str, Any]) -> str:
-        """Stringify a dict for span attribution, masking sensitive keys.
+        """Stringify a dict for span attribution, masking sensitive
+        keys *and* values matching configured regex patterns.
+
+        Two redaction passes:
+        1. Key-based: case-insensitive substring match on the field
+           name against `redact_fields` (e.g. ``api_key``,
+           ``password``). The whole value gets masked.
+        2. Content-based (feat-009 v0.3 polish): for string values
+           that survived the key check, run each pattern in
+           `redact_value_patterns` against the stringified value;
+           any match masks the whole value.
 
         Span attributes accept primitives + lists thereof; we render
-        the dict to a compact `k=v` form rather than fight the schema.
+        the dict to a compact ``k=v`` form rather than fight the
+        schema.
         """
         parts: list[str] = []
         for key, value in args.items():
             if any(token in key.lower() for token in self._redact_fields):
                 parts.append(f"{key}=<redacted>")
-            else:
-                parts.append(f"{key}={value!r}")
+                continue
+            if self._value_matches_pattern(value):
+                parts.append(f"{key}=<redacted>")
+                continue
+            parts.append(f"{key}={value!r}")
         return ", ".join(parts)
+
+    def _value_matches_pattern(self, value: Any) -> bool:
+        """True if any configured regex pattern matches the value
+        text. Non-string values are stringified first so payloads
+        like ``42``, ``True``, or nested dicts are still scanned."""
+        if not self._redact_value_patterns:
+            return False
+        text = value if isinstance(value, str) else str(value)
+        return any(p.search(text) for p in self._redact_value_patterns)
 
 
 def _ensure_provider(

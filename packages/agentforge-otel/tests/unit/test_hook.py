@@ -312,3 +312,57 @@ async def test_child_span_tree_via_react_loop():
     llm_attrs = dict(by_name["llm.call"][0].attributes or {})
     assert llm_attrs["agentforge.llm.provider"] == "fake"
     assert llm_attrs["agentforge.llm.tokens_in"] == 5
+
+
+# --- content-based PII redaction (feat-009 v0.3 polish) --------
+
+
+def test_redact_value_patterns_masks_matching_values() -> None:
+    """Values matching any regex in `redact_value_patterns` get
+    replaced wholesale — even when the key isn't in
+    `redact_fields`."""
+    h = OpenTelemetryHook(
+        service_name="test",
+        endpoint="http://localhost:4317",
+        redact_value_patterns=(
+            r"\b\d{3}-\d{2}-\d{4}\b",  # US SSN
+            r"\b\d{16}\b",  # Credit-card-like 16-digit run
+            r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",  # email
+        ),
+    )
+    rendered = h._redact(
+        {
+            "ssn": "123-45-6789",
+            "card": "4111111111111111",
+            "email": "alice@example.com",
+            "innocent": "hello world",
+            "count": 7,
+        }
+    )
+    assert "ssn=<redacted>" in rendered
+    assert "card=<redacted>" in rendered
+    assert "email=<redacted>" in rendered
+    # Plain integers + harmless strings pass through.
+    assert "innocent='hello world'" in rendered
+    assert "count=7" in rendered
+
+
+def test_redact_value_patterns_default_none_is_passthrough() -> None:
+    """Without `redact_value_patterns`, behaviour is identical to
+    v0.1 (key-only redaction)."""
+    h = OpenTelemetryHook(service_name="test", endpoint="http://localhost:4317")
+    assert h.redact_value_patterns == ()
+    rendered = h._redact({"email": "alice@example.com", "api_key": "shh"})
+    assert "email='alice@example.com'" in rendered
+    assert "api_key=<redacted>" in rendered
+
+
+def test_redact_key_match_takes_precedence_over_value_match() -> None:
+    h = OpenTelemetryHook(
+        service_name="test",
+        endpoint="http://localhost:4317",
+        redact_value_patterns=(r"unused-pattern",),
+    )
+    rendered = h._redact({"api_key": "abc"})
+    # Key matches first; we never even check the value patterns.
+    assert "api_key=<redacted>" in rendered
