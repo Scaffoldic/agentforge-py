@@ -1,0 +1,62 @@
+# agentforge-statsd — StatsD metrics emitter for AgentForge.
+#
+# Tier-3 module per ADR-0003. Installs as `agentforge.hooks:statsd`
+# and emits counters, gauges, and timings for every step + run.
+# The production runner wraps `statsd.StatsClient` under
+# `# pragma: no cover`; unit tests inject a fake runner that records
+# every metric call.
+
+[project]
+name = "agentforge-statsd"
+version = "0.1.0"
+description = "StatsD metrics emitter hook for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "observability", "statsd", "metrics"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+]
+
+[project.optional-dependencies]
+# Required to use the production runner. Bare install works fine for
+# tests that inject `FakeStatsdRunner`.
+statsd = ["statsd>=4.0"]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.hooks"]
+statsd = "agentforge_statsd:StatsdHook"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_statsd"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_statsd",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
