@@ -17,6 +17,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState, Step
@@ -56,64 +57,72 @@ class ReActLoop(StrategyBase):
         tool_specs = [tool.to_spec() for tool in runtime.tools] if runtime.tools else None
         messages: list[Message] = [Message(role="user", content=state.task)]
         iteration = 0
+        tracer = get_tracer()
 
         while True:
-            self._check_guardrails(state)
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": iteration,
+                    "agentforge.strategy": "react",
+                },
+            ):
+                self._check_guardrails(state)
 
-            response = await self._call_llm(
-                state,
-                iteration=iteration,
-                system=system_prompt,
-                messages=messages,
-                tools=tool_specs,
-                kind="think",
-            )
-
-            # Modern termination: no tool calls means the LLM is done.
-            if not response.tool_calls:
-                break
-
-            # Record the assistant's turn for the next iteration's context.
-            messages.append(Message(role="assistant", content=response.content))
-
-            # Dispatch every tool call the LLM emitted.
-            for tool_call in response.tool_calls:
-                self._record_step(
+                response = await self._call_llm(
                     state,
                     iteration=iteration,
-                    kind="act",
-                    content={
-                        "tool": tool_call.name,
-                        "arguments": tool_call.arguments,
-                    },
-                    tool_call=tool_call,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=tool_specs,
+                    kind="think",
                 )
 
-                tool = _find_tool(runtime.tools, tool_call.name)
-                observation = await self._dispatch_tool(
-                    tool, tool_call.name, dict(tool_call.arguments)
-                )
-                if observation.startswith("Error:"):
-                    runtime.budget.record_error()
-                else:
-                    runtime.budget.record_success()
+                # Modern termination: no tool calls means the LLM is done.
+                if not response.tool_calls:
+                    break
 
-                self._record_step(
-                    state,
-                    iteration=iteration,
-                    kind="observe",
-                    content=observation,
-                    tool_call=tool_call,
-                )
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=observation,
-                        tool_call_id=tool_call.id,
+                # Record the assistant's turn for the next iteration's context.
+                messages.append(Message(role="assistant", content=response.content))
+
+                # Dispatch every tool call the LLM emitted.
+                for tool_call in response.tool_calls:
+                    self._record_step(
+                        state,
+                        iteration=iteration,
+                        kind="act",
+                        content={
+                            "tool": tool_call.name,
+                            "arguments": tool_call.arguments,
+                        },
+                        tool_call=tool_call,
                     )
-                )
 
-            iteration += 1
+                    tool = _find_tool(runtime.tools, tool_call.name)
+                    observation = await self._dispatch_tool(
+                        tool, tool_call.name, dict(tool_call.arguments)
+                    )
+                    if observation.startswith("Error:"):
+                        runtime.budget.record_error()
+                    else:
+                        runtime.budget.record_success()
+
+                    self._record_step(
+                        state,
+                        iteration=iteration,
+                        kind="observe",
+                        content=observation,
+                        tool_call=tool_call,
+                    )
+                    messages.append(
+                        Message(
+                            role="tool",
+                            content=observation,
+                            tool_call_id=tool_call.id,
+                        )
+                    )
+
+                iteration += 1
 
         return state
 
@@ -138,71 +147,79 @@ class ReActLoop(StrategyBase):
         messages: list[Message] = [Message(role="user", content=state.task)]
         iteration = 0
         before = len(state.steps)
+        tracer = get_tracer()
 
         while True:
-            self._check_guardrails(state)
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": iteration,
+                    "agentforge.strategy": "react",
+                },
+            ):
+                self._check_guardrails(state)
 
-            response = await self._call_llm(
-                state,
-                iteration=iteration,
-                system=system_prompt,
-                messages=messages,
-                tools=tool_specs,
-                kind="think",
-            )
-            for ev in _events_for_new_steps(state.steps, before):
-                yield ev
-            before = len(state.steps)
-
-            if not response.tool_calls:
-                break
-
-            messages.append(Message(role="assistant", content=response.content))
-
-            for tool_call in response.tool_calls:
-                self._record_step(
+                response = await self._call_llm(
                     state,
                     iteration=iteration,
-                    kind="act",
-                    content={
-                        "tool": tool_call.name,
-                        "arguments": tool_call.arguments,
-                    },
-                    tool_call=tool_call,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=tool_specs,
+                    kind="think",
                 )
                 for ev in _events_for_new_steps(state.steps, before):
                     yield ev
                 before = len(state.steps)
 
-                tool = _find_tool(runtime.tools, tool_call.name)
-                observation = await self._dispatch_tool(
-                    tool, tool_call.name, dict(tool_call.arguments)
-                )
-                if observation.startswith("Error:"):
-                    runtime.budget.record_error()
-                else:
-                    runtime.budget.record_success()
+                if not response.tool_calls:
+                    break
 
-                self._record_step(
-                    state,
-                    iteration=iteration,
-                    kind="observe",
-                    content=observation,
-                    tool_call=tool_call,
-                )
-                for ev in _events_for_new_steps(state.steps, before):
-                    yield ev
-                before = len(state.steps)
+                messages.append(Message(role="assistant", content=response.content))
 
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=observation,
-                        tool_call_id=tool_call.id,
+                for tool_call in response.tool_calls:
+                    self._record_step(
+                        state,
+                        iteration=iteration,
+                        kind="act",
+                        content={
+                            "tool": tool_call.name,
+                            "arguments": tool_call.arguments,
+                        },
+                        tool_call=tool_call,
                     )
-                )
+                    for ev in _events_for_new_steps(state.steps, before):
+                        yield ev
+                    before = len(state.steps)
 
-            iteration += 1
+                    tool = _find_tool(runtime.tools, tool_call.name)
+                    observation = await self._dispatch_tool(
+                        tool, tool_call.name, dict(tool_call.arguments)
+                    )
+                    if observation.startswith("Error:"):
+                        runtime.budget.record_error()
+                    else:
+                        runtime.budget.record_success()
+
+                    self._record_step(
+                        state,
+                        iteration=iteration,
+                        kind="observe",
+                        content=observation,
+                        tool_call=tool_call,
+                    )
+                    for ev in _events_for_new_steps(state.steps, before):
+                        yield ev
+                    before = len(state.steps)
+
+                    messages.append(
+                        Message(
+                            role="tool",
+                            content=observation,
+                            tool_call_id=tool_call.id,
+                        )
+                    )
+
+                iteration += 1
 
         yield StreamingEvent(
             kind="done",

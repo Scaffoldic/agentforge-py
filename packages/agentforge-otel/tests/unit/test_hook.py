@@ -231,3 +231,84 @@ async def test_end_to_end_root_span_from_agent_run():
     # The step hook annotated the span with an event.
     step_events = [e for e in run_spans[0].events if e.name == "agent.step"]
     assert len(step_events) == 1
+
+
+@pytest.mark.asyncio
+async def test_child_span_tree_via_react_loop():
+    """Drive an Agent with the built-in ReActLoop strategy and a
+    scripted FakeLLM that triggers one tool_call. Assert the full
+    OTel span tree lands:
+      agent.run
+        ├── strategy.iteration (iter 0)
+        │   ├── llm.call
+        │   └── tool.<name>
+        └── strategy.iteration (iter 1)
+            └── llm.call
+    """
+    from agentforge._testing import FakeLLMClient  # noqa: PLC0415
+    from agentforge.strategies.react import ReActLoop  # noqa: PLC0415
+    from agentforge_core.contracts.tool import Tool  # noqa: PLC0415
+    from agentforge_core.values.messages import LLMResponse, TokenUsage  # noqa: PLC0415
+    from pydantic import BaseModel  # noqa: PLC0415
+
+    exporter = _install_inmemory_provider()
+
+    class _SearchArgs(BaseModel):
+        query: str
+
+    class _SearchTool(Tool):
+        name = "search"
+        description = "echoes the query"
+        input_schema = _SearchArgs
+
+        async def run(self, query: str) -> str:
+            return f"got {query!r}"
+
+    fake = FakeLLMClient(
+        responses=[
+            LLMResponse(
+                content="I'll search.",
+                stop_reason="tool_use",
+                tool_calls=(ToolCall(id="t-1", name="search", arguments={"query": "x"}),),
+                usage=TokenUsage(input_tokens=5, output_tokens=3),
+                cost_usd=0.0,
+                model="fake",
+                provider="fake",
+            ),
+            LLMResponse(
+                content="done",
+                stop_reason="end_turn",
+                usage=TokenUsage(input_tokens=4, output_tokens=2),
+                cost_usd=0.0,
+                model="fake",
+                provider="fake",
+            ),
+        ],
+    )
+    otel = OpenTelemetryHook(service_name="test", endpoint="http://localhost:4317")
+    async with Agent(
+        model=fake,
+        tools=[_SearchTool()],
+        strategy=ReActLoop(),
+        on_step=otel,
+        on_finish=otel,
+    ) as agent:
+        await agent.run("find x")
+
+    finished = exporter.get_finished_spans()
+    by_name: dict[str, list] = {}
+    for s in finished:
+        by_name.setdefault(s.name, []).append(s)
+
+    # Root span
+    assert len(by_name["agent.run"]) == 1
+    # Two iterations: one with the tool_call, one terminating
+    assert len(by_name["strategy.iteration"]) == 2
+    # Two LLM calls (one per iteration)
+    assert len(by_name["llm.call"]) == 2
+    # One tool execution
+    assert len(by_name["tool.search"]) == 1
+    # llm.call spans carry provider + token attributes
+    llm_attrs = dict(by_name["llm.call"][0].attributes or {})
+    assert llm_attrs["agentforge.llm.provider"] == "fake"
+    assert llm_attrs["agentforge.llm.tokens_in"] == 5
