@@ -42,6 +42,10 @@ dependencies = [
     "agentforge-chat-history-redis",
     "agentforge-chat-slack",
     "agentforge-a2a",
+    "agentforge-statsd",
+    "agentforge-langfuse",
+    "agentforge-phoenix",
+    "agentforge-evidently",
 ]
 
 [tool.uv.workspace]
@@ -69,6 +73,10 @@ agentforge-chat-history-postgres = { workspace = true }
 agentforge-chat-history-redis = { workspace = true }
 agentforge-chat-slack = { workspace = true }
 agentforge-a2a = { workspace = true }
+agentforge-statsd = { workspace = true }
+agentforge-langfuse = { workspace = true }
+agentforge-phoenix = { workspace = true }
+agentforge-evidently = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -292,6 +300,53 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_otel.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-009 v0.2: statsd SDK has no type stubs / py.typed marker.
+[[tool.mypy.overrides]]
+module = ["statsd", "statsd.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_statsd.*"
+disable_error_code = ["no-any-unimported"]
+
+# feat-009 v0.2: langfuse SDK ships partial type info; ignore_missing so
+# the production runner (under `# pragma: no cover`) doesn't drag the
+# SDK into the strict-mypy lane.
+[[tool.mypy.overrides]]
+module = ["langfuse", "langfuse.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_langfuse.*"
+disable_error_code = ["no-any-unimported"]
+
+# feat-009 v0.2: arize-phoenix SDK has loose typing; isolate.
+[[tool.mypy.overrides]]
+module = ["phoenix", "phoenix.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_phoenix.*"
+disable_error_code = ["no-any-unimported"]
+
+# feat-009 v0.2: evidently + pandas SDK (used only on the production
+# runner path) — keep out of strict-mypy land.
+[[tool.mypy.overrides]]
+module = ["evidently", "evidently.*", "pandas", "pandas.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_evidently.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -321,6 +376,10 @@ testpaths = [
     "packages/agentforge-chat-history-redis/tests",
     "packages/agentforge-chat-slack/tests",
     "packages/agentforge-a2a/tests",
+    "packages/agentforge-statsd/tests",
+    "packages/agentforge-langfuse/tests",
+    "packages/agentforge-phoenix/tests",
+    "packages/agentforge-evidently/tests",
     "tests",
 ]
 markers = [
@@ -376,6 +435,10 @@ source = [
     "packages/agentforge-chat-history-redis/src",
     "packages/agentforge-chat-slack/src",
     "packages/agentforge-a2a/src",
+    "packages/agentforge-statsd/src",
+    "packages/agentforge-langfuse/src",
+    "packages/agentforge-phoenix/src",
+    "packages/agentforge-evidently/src",
 ]
 branch = true
 parallel = true

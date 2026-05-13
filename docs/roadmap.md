@@ -173,16 +173,35 @@ Remaining for v0.3+:
 
 ### feat-009 vendor observability sub-feats
 
-Four small packages, each wrapping its SDK behind the same
-hook contract feat-009 locked in. OTel coverage covers the
-major bases until then.
+**Status: shipped on the v0.1 → v0.2 line** (see feat-009 spec
+§"v0.2 follow-up: vendor backends"). All four packages
+landed in one PR, each wrapping its SDK behind the same hook
+contract feat-009 v0.1 locked in:
 
 - **`agentforge-langfuse`** — Langfuse trace dashboard
-  (LLM-focused).
+  (LLM-focused). One trace per run, one span per step, scores
+  on finish.
 - **`agentforge-phoenix`** — Phoenix / Arize dashboard.
+  Logs `agent.step` / `agent.tool_call` / `agent.run` events
+  to a project namespace.
 - **`agentforge-evidently`** — Evidently AI metrics + drift
-  monitoring.
-- **`agentforge-statsd`** — StatsD metrics emitter.
+  monitoring. Per-step rows buffered + a JSON report written
+  per run.
+- **`agentforge-statsd`** — StatsD metrics emitter. Counters
+  + gauges + timings via UDP.
+
+Each uses the runner-Protocol pattern (production runner
+under `# pragma: no cover` + in-memory fake in `src/` for
+unit tests). SDK is an optional extra; bare install keeps
+the package importable without the SDK.
+
+What remains for v0.3+ (per feat-009 spec):
+
+- Child OTel spans (`strategy.iteration`, `llm.call`,
+  `tool.<name>`, `evaluator.<name>`).
+- A2A trace propagation via OTel context.
+- Content-based PII redaction.
+- Evidently real-time drift dashboards via Cloud.
 
 ### Sub-feat backlog (no canonical number yet)
 
