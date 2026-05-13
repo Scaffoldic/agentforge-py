@@ -645,7 +645,25 @@ class Agent:
                     remaining,
                 )
                 continue
-            eval_result = await evaluator.evaluate(result, context)
+            tracer = get_tracer()
+            started_ms = time.monotonic()
+            with tracer.start_as_current_span(
+                f"evaluator.{evaluator.name}",
+                attributes={
+                    "agentforge.evaluator.name": evaluator.name,
+                    "agentforge.evaluator.cost_estimate_usd": est,
+                },
+            ) as ev_span:
+                eval_result = await evaluator.evaluate(result, context)
+                ev_span.set_attribute("agentforge.evaluator.score", float(eval_result.score))
+                ev_span.set_attribute(
+                    "agentforge.evaluator.cost_usd",
+                    float(getattr(eval_result, "cost_usd", 0.0)),
+                )
+                ev_span.set_attribute(
+                    "agentforge.evaluator.duration_ms",
+                    int((time.monotonic() - started_ms) * 1000),
+                )
             out.append(eval_result)
         return tuple(out)
 
