@@ -14,9 +14,12 @@ observations (counted toward `error_streak_limit`).
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
-from agentforge_core.values.state import AgentState
+from agentforge_core.values.state import AgentState, Step
 
 from agentforge.resolver_register import register_strategy
 from agentforge.strategies._base import StrategyBase, get_runtime
@@ -113,6 +116,118 @@ class ReActLoop(StrategyBase):
             iteration += 1
 
         return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        """Per-iteration streaming override (feat-002 v0.3 polish).
+
+        Mirrors :meth:`run` but yields a ``step`` `StreamingEvent`
+        each time a step is appended to ``state.steps``. The terminal
+        ``done`` event is yielded so ``Agent.stream`` can swallow it
+        and emit its own canonical one carrying the full RunResult
+        shape.
+
+        Strategies that bypass `Agent.stream()` (e.g. unit tests) see
+        the strategy-level done with ``run_id`` + ``cost_usd``.
+        """
+        runtime = get_runtime(state)
+        if self._max_iterations_override is not None:
+            runtime.budget.max_iterations = self._max_iterations_override
+
+        system_prompt = runtime.system_prompt or DEFAULT_SYSTEM_PROMPT
+        tool_specs = [tool.to_spec() for tool in runtime.tools] if runtime.tools else None
+        messages: list[Message] = [Message(role="user", content=state.task)]
+        iteration = 0
+        before = len(state.steps)
+
+        while True:
+            self._check_guardrails(state)
+
+            response = await self._call_llm(
+                state,
+                iteration=iteration,
+                system=system_prompt,
+                messages=messages,
+                tools=tool_specs,
+                kind="think",
+            )
+            for ev in _events_for_new_steps(state.steps, before):
+                yield ev
+            before = len(state.steps)
+
+            if not response.tool_calls:
+                break
+
+            messages.append(Message(role="assistant", content=response.content))
+
+            for tool_call in response.tool_calls:
+                self._record_step(
+                    state,
+                    iteration=iteration,
+                    kind="act",
+                    content={
+                        "tool": tool_call.name,
+                        "arguments": tool_call.arguments,
+                    },
+                    tool_call=tool_call,
+                )
+                for ev in _events_for_new_steps(state.steps, before):
+                    yield ev
+                before = len(state.steps)
+
+                tool = _find_tool(runtime.tools, tool_call.name)
+                observation = await self._dispatch_tool(
+                    tool, tool_call.name, dict(tool_call.arguments)
+                )
+                if observation.startswith("Error:"):
+                    runtime.budget.record_error()
+                else:
+                    runtime.budget.record_success()
+
+                self._record_step(
+                    state,
+                    iteration=iteration,
+                    kind="observe",
+                    content=observation,
+                    tool_call=tool_call,
+                )
+                for ev in _events_for_new_steps(state.steps, before):
+                    yield ev
+                before = len(state.steps)
+
+                messages.append(
+                    Message(
+                        role="tool",
+                        content=observation,
+                        tool_call_id=tool_call.id,
+                    )
+                )
+
+            iteration += 1
+
+        yield StreamingEvent(
+            kind="done",
+            content={
+                "run_id": state.run_id,
+                "cost_usd": float(runtime.budget.spent_usd),
+            },
+        )
+
+
+def _events_for_new_steps(steps: list[Step], before: int) -> list[StreamingEvent]:
+    """Build ``step`` `StreamingEvent`s for every step appended since
+    the ``before`` index. Keeps the streaming-side rendering of state
+    deltas separate from the strategy's recording semantics."""
+    return [
+        StreamingEvent(
+            kind="step",
+            content=step.content,
+            metadata={
+                "iteration": step.iteration,
+                "kind": step.kind,
+            },
+        )
+        for step in steps[before:]
+    ]
 
 
 def _find_tool(tools: tuple[Tool, ...], name: str) -> Tool | None:
