@@ -83,6 +83,12 @@
 | **feat-017** | CLI runtime — `agentforge run` (+ `--replay`), `agentforge eval`, `agentforge debug`, `agentforge db {migrate,backup,restore,purge,query}`, `agentforge health` (preflight) | shipped (Python) | 0.1 | both | `agentforge` (CLI), `agentforge-core` (`MemoryStore.delete` ABC addition) |
 | **feat-019** | Developer experience — 16 runbooks + `AGENTS.md` / `CLAUDE.md` / `.cursorrules` rules shipped with every scaffolded agent; `agentforge docs` CLI (list / open / drift-check / serve); three-section managed/custom file format with upgrade-safe custom preservation | shipped (Python) | 0.1 (initial set) | both | `agentforge` (CLI + templates._shared) |
 
+### Retrieval
+
+| ID | Title | Status | Target | Languages | Module(s) |
+|---|---|---|---|---|---|
+| **feat-021** | Reranker — cross-encoder reranking on top of vector retrieval; `Reranker` ABC + `Retriever(reranker=...)` integration with configurable over-fetch + SentenceTransformers default concrete impl | shipped (Python) | 0.2 | both | `agentforge-core` (ABC), `agentforge` (Retriever integration), `agentforge-reranker-sentence-transformers` |
+
 ---
 
 ## Cross-cutting concerns (not features, but tracked here)

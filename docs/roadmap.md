@@ -213,8 +213,10 @@ targeted for v0.2:
   outgoing edges to enrich context).
 - **Hybrid search** (BM25 + vector fusion) inside the
   `VectorStore` capability vocabulary.
-- **Reranker contract** — `Reranker` ABC for cross-encoder reranking
-  on top of `VectorStore.search`.
+- ~~**Reranker contract**~~ — promoted to canonical
+  [feat-021](./features/feat-021-reranker.md); ABC + default
+  SentenceTransformers concrete + `Retriever` integration
+  shipping in v0.2.
 - **Schema migrations** for persistent stores (the
   `init_schema()` opt-in is the v0.1 stand-in; a real migration
   framework lands alongside the first v0.1.0 → v0.2.0 schema delta).

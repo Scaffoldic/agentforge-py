@@ -1688,3 +1688,78 @@ Tooling notes:
 - Production from_config classmethods + their _build_*_runner
   factories live under `# pragma: no cover` since they need
   the live SDK; live tests cover them when env vars set.
+
+---
+
+## 2026-05-13 — feat-021 Reranker shipped
+
+Promoted the Reranker sub-feat from the un-numbered backlog
+(feat-005 follow-up) to canonical feat-021. One PR per
+user-chosen "ABC + SentenceTransformers default + Retriever
+integration" scope.
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`0118b4f`): canonical
+  docs/features/feat-021-reranker.md spec following the
+  feat-020 template (Metadata + Why + framework + benefits +
+  Specifications + Plug-and-play + Cross-language + Tests +
+  Risks + Out-of-scope + References + Implementation
+  status (filled in chunk 5) + Runbook (filled in chunk 5)).
+  Added a new "Retrieval" subsection to features/README.md
+  for the row; flipped the roadmap sub-feat-backlog entry to
+  a cross-reference.
+- chunk 2 (`6c5a198`): Reranker ABC at
+  agentforge_core.contracts.reranker — async rerank /
+  close / capabilities / supports. Conformance suite
+  run_reranker_conformance with 9 invariants (empty input,
+  top_k<1 raises, top_k=None returns all, top_k truncates,
+  scores in [0,1], descending sort, id/text/metadata
+  non-mutation, input immutability, unknown capability).
+  Two reference impls (IdentityReranker, ReverseReranker)
+  in tests pass it.
+- chunk 3 (`6edf080`): Retriever.__init__ gains optional
+  reranker + over_fetch_factor kwargs (default factor=3 per
+  Cohere/Voyage best practice). retrieve(query, top_k=K)
+  pulls K * factor from the store + reranks to K when set,
+  plain slicing otherwise. close() propagates. Constructor
+  validates over_fetch_factor >= 1. .reranker property
+  exposes the injected instance.
+- chunk 4 (`fbe6d50`): agentforge-reranker-
+  sentence-transformers workspace member. Wraps
+  sentence_transformers.CrossEncoder.predict; applies a
+  numerically-stable sigmoid to the raw logits so scores
+  satisfy VectorMatch.score in [0, 1]. Runner-Protocol
+  pattern (CrossEncoderRunner Protocol +
+  _SentenceTransformersRunner under pragma: no cover +
+  FakeCrossEncoderRunner in src/_inmem_runner.py with
+  set_scores test knob). Entry-point
+  agentforge.rerankers:sentence-transformers. SDK is the
+  optional [sentence-transformers] extra. Conformance suite
+  passes via test_conformance_suite.
+- chunk 5 (about-to-commit): spec §11 Implementation
+  status (per-chunk table + deviations including the
+  obviated YAML resolver wiring) + §12 Runbook (4 sections:
+  add reranking, write a custom Reranker, tune
+  over_fetch_factor, run live test); roadmap row flipped
+  to shipped; CHANGELOG [Unreleased] Added entry + Changed
+  note on Retriever signature; state.
+
+Tooling notes:
+
+- First feature with the spec-first workflow (Branch number
+  must match a canonical feat-NNN spec; the first commit on
+  the branch lands the spec to satisfy that rule). Chunk 1
+  is docs-only and gates clean.
+- VectorMatch.score is constrained to [0, 1] by Pydantic;
+  the raw cross-encoder logits (range roughly -10..+10)
+  must be normalised. Standard practice is sigmoid; we
+  ship a numerically-stable variant in
+  agentforge_reranker_sentence_transformers.reranker
+  (_sigmoid).
+- Live test gated on RUN_LIVE_RERANKER=1 — the model
+  download (~80MB) is a CI footgun if always-on.
+- ruff PLR2004 (magic numbers) fires on test assertions
+  like `len(results) == 2` — auto-fixed across two
+  pre-commit runs.

@@ -24,6 +24,7 @@ from __future__ import annotations
 from typing import Any
 
 from agentforge_core.contracts.embedding import EmbeddingClient
+from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.vector import VectorItem, VectorMatch
 from ulid import ULID
@@ -42,10 +43,21 @@ class Retriever:
             documents. Bedrock Titan loops one-at-a-time anyway, but
             other providers (Cohere, OpenAI) batch natively; tuning
             this is a per-provider concern.
+        reranker: Optional `Reranker` to apply after the initial
+            vector search. When set, `retrieve()` pulls
+            ``top_k * over_fetch_factor`` candidates from the store
+            and reranks them down to ``top_k``. None disables
+            reranking (feat-021 default).
+        over_fetch_factor: Multiplier for the candidate pool size
+            when a reranker is configured. Default 3 (Cohere /
+            Voyage best practice). Set to 1 to disable over-fetch
+            even when a reranker is set; ignored when
+            ``reranker is None``.
 
     Raises:
-        ValueError: store and embedder dimensions don't match, or
-            `top_k`/`batch_size` are not positive.
+        ValueError: store and embedder dimensions don't match,
+            ``top_k`` / ``batch_size`` / ``over_fetch_factor`` are
+            not positive.
     """
 
     def __init__(
@@ -55,11 +67,15 @@ class Retriever:
         embedder: EmbeddingClient,
         top_k: int = 5,
         batch_size: int = 32,
+        reranker: Reranker | None = None,
+        over_fetch_factor: int = 3,
     ) -> None:
         if top_k < 1:
             raise ValueError(f"top_k must be >= 1, got {top_k}")
         if batch_size < 1:
             raise ValueError(f"batch_size must be >= 1, got {batch_size}")
+        if over_fetch_factor < 1:
+            raise ValueError(f"over_fetch_factor must be >= 1, got {over_fetch_factor}")
         if store.dimensions() != embedder.dimensions():
             raise ValueError(
                 f"store dimensions ({store.dimensions()}) do not match "
@@ -69,6 +85,8 @@ class Retriever:
         self._embedder = embedder
         self._top_k = top_k
         self._batch_size = batch_size
+        self._reranker = reranker
+        self._over_fetch_factor = over_fetch_factor
 
     @property
     def store(self) -> VectorStore:
@@ -77,6 +95,10 @@ class Retriever:
     @property
     def embedder(self) -> EmbeddingClient:
         return self._embedder
+
+    @property
+    def reranker(self) -> Reranker | None:
+        return self._reranker
 
     async def add_documents(
         self,
@@ -140,6 +162,12 @@ class Retriever:
     ) -> list[VectorMatch]:
         """Embed `query` and return the top matches from the store.
 
+        When a `Reranker` is configured, the retriever first pulls
+        ``top_k * over_fetch_factor`` candidates from the vector
+        store, then reranks them down to ``top_k``. Without a
+        reranker the original ``top_k`` candidates are returned
+        as-is.
+
         Args:
             query: The user's question / prompt to embed and search.
             top_k: Override the constructor's default. Must be >= 1.
@@ -154,20 +182,26 @@ class Retriever:
             raise ValueError(f"top_k must be >= 1, got {limit}")
         response = await self._embedder.embed([query])
         query_vector = tuple(response.vectors[0])
-        return await self._store.search(
+        over_fetch = limit * self._over_fetch_factor if self._reranker is not None else limit
+        candidates = await self._store.search(
             query_vector,
-            limit=limit,
+            limit=over_fetch,
             filter_metadata=filter_metadata,
         )
+        if self._reranker is None:
+            return candidates
+        return await self._reranker.rerank(query, candidates, top_k=limit)
 
     async def close(self) -> None:
-        """Close the underlying store and embedder.
+        """Close the underlying store, embedder, and reranker.
 
-        Convenience for callers that own both. If the retriever shares
-        a store/embedder with other components, do NOT call this.
+        Convenience for callers that own all three. If the retriever
+        shares any of them with other components, do NOT call this.
         """
         await self._store.close()
         await self._embedder.close()
+        if self._reranker is not None:
+            await self._reranker.close()
 
 
 __all__ = ["Retriever"]
