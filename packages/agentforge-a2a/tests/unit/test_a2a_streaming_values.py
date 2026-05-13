@@ -17,6 +17,14 @@ def test_a2a_chunk_is_frozen_and_validates_kind() -> None:
         chunk.kind = "done"  # type: ignore[misc]
 
 
+def test_a2a_chunk_accepts_unified_streaming_kinds() -> None:
+    """v0.3 unifies A2AChunkKind with StreamingChunkKind, so per-token
+    `text` / `thinking` kinds are now valid on the A2A wire."""
+    for kind in ("text", "thinking", "step", "tool_call", "tool_result", "done", "error"):
+        chunk = A2AChunk(kind=kind, content="x" if kind in {"text", "thinking"} else {"x": 1})
+        assert chunk.kind == kind
+
+
 def test_a2a_chunk_rejects_unknown_kind() -> None:
     with pytest.raises(ValidationError):
         A2AChunk(kind="bogus")  # type: ignore[arg-type]

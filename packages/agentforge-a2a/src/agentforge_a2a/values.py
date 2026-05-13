@@ -19,14 +19,21 @@ v0.2 follow-up adds the discovery + streaming wire shapes:
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
+from agentforge_core.values.chat import StreamingChunkKind
 from pydantic import BaseModel, ConfigDict, Field
 
-A2AChunkKind = Literal["step", "tool_call", "tool_result", "done", "error"]
+A2AChunkKind = StreamingChunkKind
 """Kinds of frames streamed over `POST /a2a/v1/calls/stream`.
 
-- ``step`` — generic agent step (think + others).
+Aliased to the framework-wide ``StreamingChunkKind`` so chat and A2A
+share one wire vocabulary (feat-014 v0.3). Common kinds:
+
+- ``text`` — per-token text chunk emitted by strategies that override
+  ``ReasoningStrategy.stream()``.
+- ``thinking`` — model-internal reasoning token (when surfaced).
+- ``step`` — generic agent step boundary (think / observe envelope).
 - ``tool_call`` — agent invoked a tool.
 - ``tool_result`` — observation from a tool call.
 - ``done`` — terminal frame carrying the final output + cost.

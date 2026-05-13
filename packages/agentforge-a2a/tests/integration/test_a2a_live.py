@@ -1,11 +1,13 @@
-"""Live A2A integration test (feat-014 v0.2).
+"""Live A2A integration test (feat-014 v0.3).
 
 Spawns a real `uvicorn.Server` on a random localhost port,
 points a real `_HTTPXClientRunner` at it, and round-trips:
 
 1. `agent_call(...)` — unary `POST /a2a/v1/calls`.
 2. `discover_peer(...)` — `GET /a2a/v1/info`.
-3. `agent_call_stream(...)` — SSE `POST /a2a/v1/calls/stream`.
+3. `agent_call_stream(...)` — SSE `POST /a2a/v1/calls/stream`
+   exercising per-token streaming via a strategy that overrides
+   `ReasoningStrategy.stream()`.
 
 Gated by `@pytest.mark.live` so the default unit gate skips it.
 Run explicitly with:
@@ -39,6 +41,7 @@ from agentforge_core.contracts.auth import AuthPolicy
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.values.auth import Principal
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import (
     LLMResponse,
     Message,
@@ -48,15 +51,32 @@ from agentforge_core.values.messages import (
 from agentforge_core.values.state import AgentState, Step
 
 
-class _ThreeStepStrategy(ReasoningStrategy):
+class _PerTokenStrategy(ReasoningStrategy):
+    """Overrides both `run` (for unary callers) and `stream` (for
+    per-token A2A streaming). The streamed sequence is three text
+    tokens, a tool call, a tool result, and a terminal done — the
+    canonical demonstration of the v0.3 per-token contract."""
+
     async def run(self, state: AgentState) -> AgentState:
         runtime = state.metadata.get(RUNTIME_KEY)
         if runtime is not None:
             runtime.budget.commit(0.0)
-        state.steps.append(Step(iteration=0, kind="think", content="thinking"))
-        state.steps.append(Step(iteration=1, kind="act", content="calling-tool"))
-        state.steps.append(Step(iteration=2, kind="observe", content="observed"))
+        state.steps.append(Step(iteration=0, kind="synthesize", content="Hello, world!"))
         return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        runtime = state.metadata.get(RUNTIME_KEY)
+        if runtime is not None:
+            runtime.budget.commit(0.0)
+        for tok in ("Hello, ", "world", "!"):
+            yield StreamingEvent(kind="text", content=tok)
+        yield StreamingEvent(kind="tool_call", content={"name": "noop", "arguments": {}})
+        yield StreamingEvent(kind="tool_result", content={"output": "ok"})
+        state.steps.append(Step(iteration=0, kind="synthesize", content="Hello, world!"))
+        yield StreamingEvent(
+            kind="done",
+            content={"run_id": state.run_id, "cost_usd": 0.0, "output": "Hello, world!"},
+        )
 
 
 class _FakeLLM(LLMClient):
@@ -94,7 +114,7 @@ class _StaticBearerAuth(AuthPolicy):
 
 
 def _build_agent() -> Agent:
-    return Agent(model=_FakeLLM(), strategy=_ThreeStepStrategy())
+    return Agent(model=_FakeLLM(), strategy=_PerTokenStrategy())
 
 
 def _build_server(*, token: str = "live-tok") -> A2AServer:
@@ -232,10 +252,24 @@ async def test_stream_round_trip() -> None:
                 )
             ]
             kinds = [c.kind for c in chunks]
-            assert kinds[-1] == "done"
-            # three steps + done; mapping: think→step, act→tool_call,
-            # observe→tool_result.
-            assert kinds[:3] == ["step", "tool_call", "tool_result"]
-            assert chunks[-1].run_id is not None
+            # v0.3 per-token contract: three `text` tokens, then one
+            # `tool_call` and one `tool_result`, then the canonical
+            # `done` emitted by the server (carrying the assembled
+            # output + cost + run_id).
+            assert kinds == [
+                "text",
+                "text",
+                "text",
+                "tool_call",
+                "tool_result",
+                "done",
+            ]
+            text_tokens = [c.content for c in chunks if c.kind == "text"]
+            assert text_tokens == ["Hello, ", "world", "!"]
+            done = chunks[-1]
+            assert done.run_id is not None
+            assert isinstance(done.content, dict)
+            assert done.content["output"] == "Hello, world!"
+            assert done.content["cost_usd"] == 0.0
     finally:
         await runner.close()
