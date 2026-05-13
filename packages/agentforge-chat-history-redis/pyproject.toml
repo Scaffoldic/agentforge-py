@@ -1,0 +1,62 @@
+# agentforge-chat-history-redis — Redis-backed ChatHistoryStore.
+#
+# Greenfield sister package — first Redis backend in the workspace.
+# Implements `ChatHistoryStore` from agentforge-core over the
+# `redis-py` async API. Trades durability for speed; ideal for
+# high-throughput chat farms where SQLite + Postgres latency hurts.
+#
+# Also hosts `RedisSessionLock` — the cross-process per-session
+# lock used by multi-worker chat-http deployments.
+
+[project]
+name = "agentforge-chat-history-redis"
+version = "0.1.0"
+description = "Redis-backed ChatHistoryStore and SessionLock for AgentForge"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "chat", "redis", "history", "lock"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+    "agentforge-chat",
+    "redis>=5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.chat.history"]
+redis = "agentforge_chat_history_redis:RedisChatHistory"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_chat_history_redis"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_chat_history_redis",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

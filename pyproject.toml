@@ -38,6 +38,9 @@ dependencies = [
     "agentforge-mcp",
     "agentforge-chat",
     "agentforge-chat-http",
+    "agentforge-chat-history-postgres",
+    "agentforge-chat-history-redis",
+    "agentforge-chat-slack",
     "agentforge-a2a",
 ]
 
@@ -62,6 +65,9 @@ agentforge-guard-llamaguard = { workspace = true }
 agentforge-mcp = { workspace = true }
 agentforge-chat = { workspace = true }
 agentforge-chat-http = { workspace = true }
+agentforge-chat-history-postgres = { workspace = true }
+agentforge-chat-history-redis = { workspace = true }
+agentforge-chat-slack = { workspace = true }
 agentforge-a2a = { workspace = true }
 
 [tool.uv]
@@ -211,6 +217,37 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_memory_postgres.*"
 disable_error_code = ["no-any-unimported"]
 
+# Same for the chat-history postgres sister package (feat-020 v0.2).
+[[tool.mypy.overrides]]
+module = "agentforge_chat_history_postgres.*"
+disable_error_code = ["no-any-unimported"]
+
+# redis-py ships stubs as of 5.x, but the async submodule still
+# leaks Any in some return paths. Suppress import-not-found so the
+# chat-history-redis package builds cleanly when redis isn't
+# installed (lazy import in `_build_client_runner`).
+[[tool.mypy.overrides]]
+module = ["redis", "redis.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_chat_history_redis.*"
+disable_error_code = ["no-any-unimported"]
+
+# slack-bolt + slack-sdk don't ship py.typed; agentforge-chat-slack
+# lazy-imports them inside `start()` so they're optional at runtime.
+[[tool.mypy.overrides]]
+module = ["slack_bolt", "slack_bolt.*", "slack_sdk", "slack_sdk.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_chat_slack.*"
+disable_error_code = ["no-any-unimported"]
+
 # feat-018: llm-guard / presidio / nemoguardrails / Llama Guard SDKs
 # either ship without py.typed or aren't installed by default
 # (vendor modules import them lazily). Skip strict typechecks for
@@ -238,6 +275,15 @@ disable_error_code = ["no-any-unimported"]
 # override is scoped narrowly to the exporter.
 [[tool.mypy.overrides]]
 module = ["opentelemetry.exporter.otlp.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+# feat-020 v0.2: tiktoken + anthropic SDK ship without py.typed
+# markers (or aren't installed by default — agentforge_chat lazy-
+# imports them only when the provider-aware tokeniser is requested).
+[[tool.mypy.overrides]]
+module = ["tiktoken", "tiktoken.*", "anthropic", "anthropic.*"]
 ignore_missing_imports = true
 follow_imports = "skip"
 disable_error_code = ["no-any-unimported"]
@@ -271,6 +317,9 @@ testpaths = [
     "packages/agentforge-mcp/tests",
     "packages/agentforge-chat/tests",
     "packages/agentforge-chat-http/tests",
+    "packages/agentforge-chat-history-postgres/tests",
+    "packages/agentforge-chat-history-redis/tests",
+    "packages/agentforge-chat-slack/tests",
     "packages/agentforge-a2a/tests",
     "tests",
 ]
@@ -323,6 +372,9 @@ source = [
     "packages/agentforge-mcp/src",
     "packages/agentforge-chat/src",
     "packages/agentforge-chat-http/src",
+    "packages/agentforge-chat-history-postgres/src",
+    "packages/agentforge-chat-history-redis/src",
+    "packages/agentforge-chat-slack/src",
     "packages/agentforge-a2a/src",
 ]
 branch = true

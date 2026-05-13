@@ -13,7 +13,10 @@ members = [
     "agentforge-a2a",
     "agentforge-bedrock",
     "agentforge-chat",
+    "agentforge-chat-history-postgres",
+    "agentforge-chat-history-redis",
     "agentforge-chat-http",
+    "agentforge-chat-slack",
     "agentforge-core",
     "agentforge-eval-geval",
     "agentforge-guard-llamaguard",
@@ -112,6 +115,38 @@ requires-dist = [
 provides-extras = ["sqlite"]
 
 [[package]]
+name = "agentforge-chat-history-postgres"
+version = "0.1.0"
+source = { editable = "packages/agentforge-chat-history-postgres" }
+dependencies = [
+    { name = "agentforge-core" },
+    { name = "asyncpg" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "asyncpg", specifier = ">=0.30" },
+]
+
+[[package]]
+name = "agentforge-chat-history-redis"
+version = "0.1.0"
+source = { editable = "packages/agentforge-chat-history-redis" }
+dependencies = [
+    { name = "agentforge-chat" },
+    { name = "agentforge-core" },
+    { name = "redis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-chat", editable = "packages/agentforge-chat" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "redis", specifier = ">=5.0" },
+]
+
+[[package]]
 name = "agentforge-chat-http"
 version = "0.1.0"
 source = { editable = "packages/agentforge-chat-http" }
@@ -132,6 +167,25 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "uvicorn", specifier = ">=0.32" },
+]
+
+[[package]]
+name = "agentforge-chat-slack"
+version = "0.1.0"
+source = { editable = "packages/agentforge-chat-slack" }
+dependencies = [
+    { name = "agentforge-chat" },
+    { name = "agentforge-core" },
+    { name = "slack-bolt" },
+    { name = "slack-sdk" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-chat", editable = "packages/agentforge-chat" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "slack-bolt", specifier = ">=1.20" },
+    { name = "slack-sdk", specifier = ">=3.30" },
 ]
 
 [[package]]
@@ -333,7 +387,10 @@ dependencies = [
     { name = "agentforge-a2a" },
     { name = "agentforge-bedrock" },
     { name = "agentforge-chat" },
+    { name = "agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis" },
     { name = "agentforge-chat-http" },
+    { name = "agentforge-chat-slack" },
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
     { name = "agentforge-guard-llamaguard" },
@@ -370,7 +427,10 @@ requires-dist = [
     { name = "agentforge-a2a", editable = "packages/agentforge-a2a" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-chat", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat-history-postgres", editable = "packages/agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis", editable = "packages/agentforge-chat-history-redis" },
     { name = "agentforge-chat-http", editable = "packages/agentforge-chat-http" },
+    { name = "agentforge-chat-slack", editable = "packages/agentforge-chat-slack" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
     { name = "agentforge-guard-llamaguard", editable = "packages/agentforge-guard-llamaguard" },
@@ -2230,6 +2290,15 @@ wheels = [
 ]
 
 [[package]]
+name = "redis"
+version = "7.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/7f/3759b1d0d72b7c92f0d70ffd9dc962b7b7b5ee74e135f9d7d8ab06b8a318/redis-7.4.0.tar.gz", hash = "sha256:64a6ea7bf567ad43c964d2c30d82853f8df927c5c9017766c55a1d1ed95d18ad", size = 4943913, upload-time = "2026-03-24T09:14:37.53Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/74/3a/95deec7db1eb53979973ebd156f3369a72732208d1391cd2e5d127062a32/redis-7.4.0-py3-none-any.whl", hash = "sha256:a9c74a5c893a5ef8455a5adb793a31bb70feb821c86eccb62eebef5a19c429ec", size = 409772, upload-time = "2026-03-24T09:14:35.968Z" },
+]
+
+[[package]]
 name = "referencing"
 version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2389,6 +2458,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031, upload-time = "2024-12-04T17:35:28.174Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
+]
+
+[[package]]
+name = "slack-bolt"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "slack-sdk" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/97/a62dde97e84027b252807f2044bed2edcda2d063a5cb0c535fb2be8d9b5d/slack_bolt-1.28.0.tar.gz", hash = "sha256:bfe367d867e8fb157a057248ebd4ac2d7f43acac6d0700fa31381db1e10f3b0f", size = 130768, upload-time = "2026-04-06T23:24:59.936Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/a9/697b6a92c728f09d5ef6b8e83dc6c8a87bc6d59499b2933ed067f11b7e30/slack_bolt-1.28.0-py2.py3-none-any.whl", hash = "sha256:738d1ca5e7c7039b6e18103d29267ced6e18c2517053eff18991fdd593acce5c", size = 234819, upload-time = "2026-04-06T23:24:58.278Z" },
+]
+
+[[package]]
+name = "slack-sdk"
+version = "3.41.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/22/35/fc009118a13187dd9731657c60138e5a7c2dea88681a7f04dc406af5da7d/slack_sdk-3.41.0.tar.gz", hash = "sha256:eb61eb12a65bebeca9cb5d36b3f799e836ed2be21b456d15df2627cfe34076ca", size = 250568, upload-time = "2026-03-12T16:10:11.381Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a1/df/2e4be347ff98281b505cc0ccf141408cdd25eb5ca9f3830deb361b2472d3/slack_sdk-3.41.0-py2.py3-none-any.whl", hash = "sha256:bb18dcdfff1413ec448e759cf807ec3324090993d8ab9111c74081623b692a89", size = 313885, upload-time = "2026-03-12T16:10:09.811Z" },
 ]
 
 [[package]]

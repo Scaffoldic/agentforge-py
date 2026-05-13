@@ -1,61 +1,59 @@
 ---
-feature: feat-014 v0.2 follow-up
+feature: feat-020 v0.2 follow-up
 state: in_review
-branch: chore/feat-014-production-runner-discovery-streaming
+branch: chore/feat-020-v0.2-followup-postgres-redis-slack-streaming-lock-tokeniser
 started_at: 2026-05-12
 last_milestone_at: 2026-05-12
-last_shipped: feat-013 v0.2 production MCP runner shipped via PR #32 (merged 2026-05-12)
+last_shipped: feat-014 v0.2 production A2A runner + discovery + streaming shipped via PR #33 (merged 2026-05-12)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-[`feat-014 — A2A protocol`](../../docs/features/feat-014-a2a-protocol.md)
-v0.2 follow-up: production HTTP runner (httpx + uvicorn),
-A2A discovery (`/a2a/v1/info` + `discover_peer` +
-`A2ABridge.discover_all`), and bi-directional streaming
-(`POST /a2a/v1/calls/stream` + `agent_call_stream`). Closes
-the three open items v0.1 deferred. Also adds the framework's
-non-gating `live` CI job (≥ 2 packages now ship live tests).
+[`feat-020 — Chat agents`](../../docs/features/feat-020-chat-agents.md)
+v0.2 follow-up: closes the six v0.1 deferred items in one PR
+per user-chosen "full v0.2 spec" scope. Postgres + redis chat-
+history packages, slack reference adapter,
+`ReasoningStrategy.stream()` ABC + `Agent.stream(task)` +
+`ChatSession` per-token graduation, `SessionLock` Protocol +
+`RedisSessionLock`, provider-aware tokeniser
+(`tiktoken_tokeniser` / `anthropic_tokeniser`). Live CI job
+extended with Postgres + Redis services.
 
 ## Last shipped
 
-[`feat-014 — A2A protocol`](../../docs/features/feat-014-a2a-protocol.md)
-opened as PR #27. Two halves shipped together:
+[`feat-014 v0.2 follow-up`](../../docs/features/feat-014-a2a-protocol.md)
+shipped via PR #33 (merged 2026-05-12). Closes the three
+items v0.1 deferred in one bundle:
 
-- **Canonical auth refactor** in `agentforge-core`:
-  - `agentforge_core.contracts.auth.AuthPolicy` ABC.
-  - `agentforge_core.values.auth.Principal` frozen dataclass.
-  - `A2ACallError` / `A2AAuthError` / `A2ATimeout` exceptions.
-  - `agentforge.auth.EnvBearerAuth` concrete impl;
-    `chat-http` `BearerAuthPolicy` aliased to the canonical
-    contract.
-- **New `agentforge-a2a` package**:
-  - `agent_call(target, payload, *, peers, timeout_s,
-    budget_usd, budget)` outgoing client.
-  - `A2APeer.from_config(...)` + bearer + mTLS credentials.
-  - `A2AServer(agent, *, auth, endpoints)` FastAPI app with
-    `POST /a2a/v1/calls` + `GET /a2a/v1/info`, run_id chain
-    via `X-AgentForge-Run-Id`, optional budget cap via
-    `X-AgentForge-Budget-Usd`.
-  - `A2ABridge.from_config(config, ...)` orchestrator with
-    `start()` / `close()` lifecycle.
-  - `A2AConfig` Pydantic schema; `A2ABridge.config_schema =
-    A2AConfig`.
-  - Production transport runners scaffolded with
-    `# pragma: no cover` (mirrors feat-013 MCP).
-  - Entry point `agentforge.protocols.a2a`; `manifest.yaml`
-    for `agentforge add module a2a`.
+- **Production HTTP runner**: `_HTTPXClientRunner` +
+  `_UvicornServerRunner` wrap `httpx.AsyncClient` /
+  `uvicorn.Server`; v0.1's `NotImplementedError` stubs gone.
+  Bodies remain `# pragma: no cover`; coverage proven by the
+  new `@pytest.mark.live` suite.
+- **A2A discovery**: `GET /a2a/v1/info` returns the full
+  `A2APeerInfo` shape (description + JSON-Schema input
+  shapes per endpoint). `discover_peer(peer)` +
+  `A2ABridge.discover_all()` + `bridge.peer_info` cache.
+  Client-side only — no central registry.
+- **Bi-directional streaming**: `POST /a2a/v1/calls/stream`
+  returns SSE `A2AChunk` frames; `agent_call_stream(...)`
+  yields them. Step-level granularity for v0.2 (one chunk per
+  agent `Step` plus terminal `done` / `error`).
+- **Non-gating `live` CI job** running `pytest -m live`
+  across packages with `tests/integration/test_*_live.py`
+  (mcp + a2a; threshold was ≥ 2).
 
-Deviations recorded in spec §10:
+Deferred to v0.3 (recorded in spec §10):
 
-- Production HTTP runner pending live integration tests.
-- FastAPI used (matches chat-http precedent) instead of bare
-  Starlette as spec §4.4 hinted.
-- Outgoing auth is dict-driven (no policy abstraction);
-  server-side bearer is via the canonical `AuthPolicy`.
-- A2A discovery, bi-directional streaming, TS port deferred.
+- Real per-token LLM streaming via `ReasoningStrategy.stream()`
+  (lands with feat-020's strategy-level streaming follow-up).
+- Per-run hook kwarg on `Agent.run` (cleanup of the
+  streaming server's transient `agent._on_step.append(...)`).
+- Unifying `A2AChunkKind` with `ChatChunkKind` under a
+  framework-wide `StreamingChunk`.
+- Hardening the `live` CI job to gate merge.
 
 ### Previously
 
@@ -64,37 +62,29 @@ shipped in PR #26 (merged 2026-05-12).
 
 ## Next pick candidates
 
-We haven't tagged anything yet. The next two releases are
-**v0.1.0** (everything shipped to date) and **v0.2.0** (the
-entire current backlog). Sequence continues v0.3 → v0.4 →
-1.0 per
+v0.1.0 is tagged + published. We're now mid-v0.2.0 cycle.
+Sequence continues v0.3 → v0.4 → 1.0 per
 [ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
 
-**Release prep (recommended first):**
+**v0.2.0 remaining backlog:**
 
-1. Run [`.claude/checklists/pre-release.md`](../checklists/pre-release.md).
-2. Fill `docs/releases/v0.1.0.md` from
-   [`.claude/templates/release-notes.md`](../templates/release-notes.md).
-3. Bump every workspace `pyproject.toml` to `0.1.0`.
-4. PR, merge, tag, publish via
-   `gh release create v0.1.0 --notes-file docs/releases/v0.1.0.md`.
-
-**v0.2.0 backlog (everything below ships in the next tag):**
-
-- **feat-013 follow-up** — production MCP runner against a
-  real server (replaces `# pragma: no cover` stubs).
-- **feat-014 follow-ups** — production HTTP A2A runner; A2A
-  discovery / registry; bi-directional streaming.
 - **feat-020 follow-ups** —
   `agentforge-chat-history-postgres`,
   `agentforge-chat-history-redis`, `agentforge-chat-slack`
   adapter, real per-token streaming through the strategy
-  loop, cross-process locking, provider-aware tokeniser.
+  loop (also unblocks A2A per-token streaming), cross-process
+  locking, provider-aware tokeniser.
 - **feat-009 vendor backends** — `agentforge-langfuse`,
   `-phoenix`, `-evidently`, `-statsd`.
 - **Sub-feat backlog** (no canonical numbers yet) — GraphRAG
   hybrid retrieval, BM25 + vector hybrid search, `Reranker`
   ABC, schema migrations.
+
+**Already shipped on the v0.1 → v0.2 line:**
+
+- feat-013 v0.2 — production MCP runner (PR #32).
+- feat-014 v0.2 — production A2A runner + discovery +
+  streaming (PR #33).
 
 After v0.2.0 lands, v0.3.0 is reserved for the next round of
 community / ecosystem feedback (intentionally empty at v0.1.0

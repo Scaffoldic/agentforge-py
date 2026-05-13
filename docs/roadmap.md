@@ -127,22 +127,33 @@ What remains for v0.3:
 
 ### feat-020 follow-ups — chat history + adapters + streaming
 
-Six items rolled up:
+**Status: shipped on the v0.1 → v0.2 line** (see spec §11
+"v0.2 follow-up"). All six items landed in one PR:
 
 - **`agentforge-chat-history-postgres`** — asyncpg-backed
   driver.
 - **`agentforge-chat-history-redis`** — Redis-backed driver
   with native TTL.
-- **`agentforge-chat-slack`** — reference channel adapter.
-- **Real per-token streaming through the strategy loop** —
-  graduates `ChatSession.stream()` from buffer-then-stream
-  to real per-token streaming once the strategy ABC grows a
-  `stream()` method.
-- **Cross-process per-session locking** (Redis-backed) —
-  replaces the v0.1 `WeakValueDictionary` single-process
-  lock.
-- **Provider-aware tokeniser in `TokenBudget`** — replaces
-  the 4-chars-per-token heuristic.
+- **`agentforge-chat-slack`** — Slack reference channel
+  adapter.
+- **Real per-token streaming** — `ReasoningStrategy.stream()`
+  ABC method (non-abstract default for backward compat) +
+  `Agent.stream(task)` + `ChatSession.stream()` graduation.
+  Unblocks A2A per-token streaming (separate v0.3 PR).
+- **Cross-process per-session locking** — `SessionLock`
+  Protocol + `RedisSessionLock` with `SET NX PX` + UUID
+  fencing + Lua unlock.
+- **Provider-aware tokeniser** — `tiktoken_tokeniser` +
+  `anthropic_tokeniser` wired into `TokenBudget`.
+
+Remaining for v0.3:
+
+- A2A per-token streaming using `ReasoningStrategy.stream()`
+  (separate feat-014 follow-up).
+- Concrete `stream()` overrides on `ReActLoop`.
+- Multi-cluster Redlock for `RedisSessionLock`.
+- Sentence-window streaming output guardrails.
+- Migration framework for the Postgres schema.
 
 ### feat-009 vendor observability sub-feats
 
