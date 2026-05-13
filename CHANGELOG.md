@@ -58,6 +58,47 @@ release tag bumps every workspace member to the same minor version.
   `packages/agentforge-a2a/tests/integration/` covering the
   unary, discovery, and streaming round-trips against a real
   uvicorn server on a random localhost port.
+- **feat-020 v0.2 — chat agents follow-ups.** Six items
+  closing the v0.1 deferred list in one PR:
+  - **`agentforge-chat-history-postgres`** — asyncpg-backed
+    `ChatHistoryStore` sister package mirroring
+    `agentforge-memory-postgres`. Dual-table schema +
+    composite index. `capabilities()` reports `{"ttl",
+    "encryption_at_rest", "full_text_search"}`. Entry-point
+    `agentforge.chat.history:postgres`.
+  - **`agentforge-chat-history-redis`** — redis-py async
+    sister package. Native TTL via `EXPIRE`. Entry-point
+    `agentforge.chat.history:redis`.
+  - **`agentforge-chat-slack`** — Slack reference channel
+    adapter. Maps `message` / `app_mention` events to
+    `ChatSession.send`; batched `chat.update` calls every
+    `batch_window_s` seconds (Slack rate-limits per
+    channel).
+  - **Real per-token streaming.**
+    `ReasoningStrategy.stream(state)` non-abstract default
+    method (backward-compatible — wraps `run()` and yields a
+    single `done`). New `Agent.stream(task)` mirrors
+    `Agent.run(task)` but drives the strategy via
+    `stream()`. `ChatSession._stream_impl` graduates to the
+    per-token path when the strategy overrides `stream()`;
+    falls back to v0.1 buffer-then-stream otherwise. New
+    `StreamingEvent` value type co-located with `ChatChunk`.
+  - **Cross-process per-session locking.** `SessionLock`
+    Protocol + `SessionLockFactory` alias +
+    `InMemorySessionLock` (default) +
+    `default_session_lock_factory` in
+    `agentforge_chat._locks`. `RedisSessionLock` +
+    `redis_session_lock_factory(runner)` in the redis
+    chat-history package use `SET NX PX` + UUID fencing +
+    Lua unlock. `ChatSession.__init__` +
+    `ChatServer.__init__` accept the optional
+    `session_lock_factory`.
+  - **Provider-aware tokeniser.** New
+    `agentforge_chat.tokenisers` module: `tiktoken_tokeniser`
+    + `anthropic_tokeniser` + `Tokeniser` type alias. Lazy
+    SDK imports + `ModuleError` remediation when missing.
+    `TokenBudget.__init__` accepts `tokeniser: Tokeniser |
+    None`; falls back to the 4-chars-per-token heuristic.
 
 ### Changed
 
@@ -72,6 +113,16 @@ release tag bumps every workspace member to the same minor version.
   JSON round-trip coerces tuple↔list; client-side
   `model_validate(response.json())` needs the default lax
   sequence handling. The wire format is unchanged.
+- **`ReasoningStrategy` ABC gains a non-abstract `stream()`
+  default.** Existing concrete strategies keep working
+  unchanged (default impl wraps `run()` and yields one
+  terminal `done` event). Strategies that want per-token
+  streaming override the method.
+- **CI: live job extended with Postgres + Redis services.**
+  GH Actions `services:` block on Ubuntu provisions
+  `postgres:16` + `redis:7`; tests gate on
+  `RUN_LIVE_POSTGRES_DSN` / `REDIS_URL` env vars (set on
+  Ubuntu only; macOS skips cleanly).
 
 ### Deprecated
 

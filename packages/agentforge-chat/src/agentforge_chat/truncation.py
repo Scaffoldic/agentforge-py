@@ -25,6 +25,8 @@ from typing import Any
 from agentforge_core.contracts.chat import HistoryTruncationStrategy
 from agentforge_core.values.chat import ChatTurn
 
+from agentforge_chat.tokenisers import Tokeniser
+
 SummariserCallback = Callable[[list[ChatTurn]], Awaitable[str]]
 """Async callback that turns a batch of turns into a single
 summary string. The default implementation in `SummariseOldest`
@@ -80,15 +82,34 @@ class SlidingWindow(HistoryTruncationStrategy):
 class TokenBudget(HistoryTruncationStrategy):
     """Keep recent turns until ``max_tokens`` is exhausted.
 
-    Token counting is approximate in v0.2 (4 chars ≈ 1 token).
-    Replace with a provider-aware tokeniser when the next-gen
-    LLM contract lands.
+    Token counting defaults to the 4-chars-per-token heuristic.
+    Pass a ``tokeniser`` callable to use a provider-aware
+    encoder — e.g. :func:`agentforge_chat.tokenisers.tiktoken_tokeniser`
+    for OpenAI-compatible models or
+    :func:`agentforge_chat.tokenisers.anthropic_tokeniser` for
+    Anthropic. The callable maps a string to its token count.
     """
 
-    def __init__(self, max_tokens: int = 64_000) -> None:
+    def __init__(
+        self,
+        max_tokens: int = 64_000,
+        *,
+        tokeniser: Tokeniser | None = None,
+    ) -> None:
         if max_tokens < 1:
             raise ValueError(f"max_tokens must be >= 1, got {max_tokens}")
         self.max_tokens = max_tokens
+        self._tokeniser = tokeniser
+
+    def _tokens_for_text(self, text: str) -> int:
+        if self._tokeniser is None:
+            return max(1, len(text) // _CHARS_PER_TOKEN)
+        return max(0, int(self._tokeniser(text)))
+
+    def _tokens_for_turn(self, turn: ChatTurn) -> int:
+        if self._tokeniser is None:
+            return _approx_tokens(turn)
+        return max(1, int(self._tokeniser(turn.content)))
 
     async def select(
         self,
@@ -98,11 +119,11 @@ class TokenBudget(HistoryTruncationStrategy):
     ) -> list[ChatTurn]:
         del context
         # Reserve budget for the next user message itself.
-        reserved = max(1, len(next_user_message) // _CHARS_PER_TOKEN)
+        reserved = self._tokens_for_text(next_user_message)
         remaining = self.max_tokens - reserved
         chosen: list[ChatTurn] = []
         for turn in reversed(all_turns):
-            cost = _approx_tokens(turn)
+            cost = self._tokens_for_turn(turn)
             if cost > remaining:
                 break
             chosen.append(turn)
