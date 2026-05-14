@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-otel"
-version = "0.1.0"
+version = "0.2.0"
 description = "OpenTelemetry tracing + metrics emitter for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"

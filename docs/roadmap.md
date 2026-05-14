@@ -23,6 +23,13 @@ onward every feature uses the canonical feat-NNN number.
 
 ---
 
+## Tagged releases
+
+| Tag | Date | Highlights |
+|---|---|---|
+| **v0.1.0** | 2026-05-12 | Core contracts + Agent + Bedrock provider + 4 reasoning strategies + Tools + Persistence (sqlite / postgres / neo4j / surrealdb) + Production rails + Findings + 10 evaluators + Observability (JSON + OTel) + Module discovery + Configuration + Scaffolding + CLI runtime + Testing framework + Safety guardrails + MCP integration + Pipeline & tasks + Chat agents v0.2 (sentence-segmenting buffer-then-stream) + AI-rules scaffolding + 16 runbooks. The v0.1 surface — every locked ABC has at least one driver. |
+| **v0.2.0** | 2026-05-14 | 5 first-party LLM provider sister packages (`agentforge-anthropic`, `-openai`, `-voyage`, `-litellm`, `-ollama`); 5 new runbooks (17–21); sentence-window streaming guardrails (feat-020 v0.3 polish); native lexical paths on every shipped vector store (`feat-022 native + feat-025`); GraphRAG retrieval (feat-023); reranker contract + 4 vendor sister packages (feat-021); schema migrations framework + parameterised migrations (feat-024); production MCP + A2A runners; vendor observability backends (Langfuse / Phoenix / Evidently / StatsD); strategy + observability v0.3 polish. Every workspace member bumped to `0.2.0`. |
+
 ## Shipped (Python; TypeScript port pending across the board)
 
 | Canonical | Title | PRs |
@@ -56,10 +63,9 @@ of each spec under [`docs/features/`](./features/).
 
 ## Release sequence
 
-**v0.1.0** is tagged. **v0.2.0** is the next release —
-contents listed in the v0.2.0 section below; tag cut on
-2026-05-14 alongside the first-party LLM provider sister
-packages. After 0.2 the natural minor sequence continues
+**v0.1.0** and **v0.2.0** are tagged. **v0.3.0** is the next
+release — backlog listed in the v0.3.0 section below; no
+hard cut date yet. After 0.2 the natural minor sequence continues
 — v0.3, v0.4, 1.0 — two-weekly during 0.x per
 [ADR-0015](./adr/0015-coordinated-release-train.md).
 Spec metadata's `Target version` field is **aspirational**
