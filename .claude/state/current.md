@@ -1,35 +1,37 @@
 ---
-feature: feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle
+feature: feat-002 + feat-009 v0.3.x strategy follow-ups bundle
 state: in_review
-branch: chore/feat-002-009-021-streaming-otel-spans-a2a-tracecontext-retriever-wiring
+branch: chore/feat-002-feat-009-strategy-streams-iteration-spans
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-021 vendor reranker sister packages shipped via PR #39 (merged 2026-05-14)
+last_shipped: feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle shipped via PR #40 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Bundled v0.3 polish PR closing five surfaces in one go per
-user-chosen "Full bundle as described" scope:
+Bundled strategy follow-ups PR closing two deferred items
+from PR #40 per user-chosen "Strategy follow-ups bundle"
+scope:
 
-- **feat-002** — `ReActLoop.stream()` per-iteration override.
-- **feat-009 v0.3** — child OTel spans
-  (`strategy.iteration` / `llm.call` / `tool.<name>` /
-  `evaluator.<name>`), A2A W3C TraceContext propagation,
-  content-based PII redaction.
-- **feat-021** — `Agent(retriever=...)` auto-wired from
-  `build_agent_from_config`.
+- **feat-009 v0.3.x** — `strategy.iteration` OTel spans on
+  `TreeOfThoughts` + `MultiAgentSupervisor` via extract-method
+  refactor (`_iterate_depth`, `_iterate_round`).
+- **feat-002 v0.3.x** — `stream()` overrides on
+  `PlanExecuteLoop`, `TreeOfThoughts`, and
+  `MultiAgentSupervisor`. ReActLoop's override already
+  shipped in PR #40; the shared `_events_for_new_steps`
+  helper was lifted to `_base.py` for reuse.
 
 ## Last shipped
 
-feat-021 vendor reranker sister packages
-(`agentforge-reranker-cohere`, `-voyage`, `-mixedbread`)
-shipped via PR #39 (merged 2026-05-14).
+feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle
+shipped via PR #40 (merged 2026-05-14).
 
 ### Previously
 
+- feat-021 vendor reranker sister packages (PR #39).
 - feat-021 v0.2 follow-up — `retrieval:` YAML block +
   `build_retriever_from_config` (PR #38).
 - feat-021 — Reranker ABC + sentence-transformers default
@@ -48,11 +50,11 @@ Remaining v0.2 backlog:
 - **Sub-feat backlog (still un-numbered)** — GraphRAG
   hybrid retrieval, BM25 + vector hybrid search, schema
   migrations.
-- **ToT + MultiAgent `stream()` overrides** — feat-002
-  follow-up; each strategy's iteration shape is different.
-- **`strategy.iteration` spans on ToT + MultiAgent** —
-  feat-009 v0.3.x; needs a small extract-method refactor.
-- **Plan-Execute `stream()` override** — feat-002 follow-up.
+- **Evidently real-time drift dashboards via Cloud**
+  (feat-009 v0.3+ open item).
+- **Multi-cluster Redlock for `RedisSessionLock`** and
+  **sentence-window streaming output guardrails** (feat-020
+  v0.3+ open items).
 
 **Already shipped on the v0.1 → v0.2 line:**
 
@@ -71,7 +73,9 @@ Remaining v0.2 backlog:
 - feat-021 v0.2 follow-up — vendor reranker sister
   packages (PR #39).
 - feat-002 + feat-009 v0.3 polish + feat-021 follow-up
-  bundle (in review).
+  bundle (PR #40).
+- feat-002 + feat-009 v0.3.x strategy follow-ups bundle
+  (in review).
 
 ## Reading order on session resume
 

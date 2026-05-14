@@ -446,6 +446,25 @@ Plan-Execute, ToT, and Multi-Agent stream() overrides
 deferred to v0.3.x (case-by-case; each strategy's iteration
 shape is meaningfully different from ReActLoop's).
 
+### v0.3 polish — strategy stream() overrides for the other three loops
+
+Shipped on the v0.1 → v0.2 line. All four built-in
+strategies now provide concrete `stream()` overrides:
+
+| Strategy | Stream shape |
+|---|---|
+| `ReActLoop` | per-iteration `step` events (think / act / observe) |
+| `PlanExecuteLoop` | `plan` event after planning, batched `act`/`observe` events from the topological-execute phase, final `synthesize` |
+| `TreeOfThoughts` | per-depth flush of `branch` events from `_iterate_depth`, final `synthesize` |
+| `MultiAgentSupervisor` | per-round flush: `plan` (delegation) + per-worker `delegate` events, final `synthesize` from `_aggregate` |
+
+Each strategy reuses the shared
+`_events_for_new_steps(state.steps, before)` helper (lifted
+from `react.py` into `_base.py`). The terminal `done` event
+yielded by each `stream()` carries the strategy-level
+`{run_id, cost_usd}` shape; `Agent.stream(task)` swallows it
+and emits the canonical RunResult-shaped done.
+
 ---
 
 ## Runbook

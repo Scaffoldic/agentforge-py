@@ -425,17 +425,26 @@ override and feat-021's retriever-wiring follow-up.
 
 ### v0.3 polish deviations
 
-- **`strategy.iteration` spans on ToT + MultiAgent deferred**
-  to a v0.3.x patch. Their nested loop structure needs a
-  modest refactor (extract-method to keep indent legible
-  inside the `with tracer.start_as_current_span(...)` block).
-  ReActLoop + PlanExecute are the two most-used strategies
-  and ship with spans now.
 - **`a2a.call` span on the streaming path uses manual
   `__enter__` / `__exit__`** since `_stream_call` is an async
   generator (a `with` block doesn't compose cleanly with
   `yield`). The behaviour matches a context-managed
   invocation.
+
+### v0.3.x follow-up — strategy.iteration spans on ToT + MultiAgent
+
+Closes the deferred item from the v0.3 polish bundle. Both
+TreeOfThoughts and MultiAgentSupervisor now emit
+`strategy.iteration` child spans under `agent.run`, matching
+the ReActLoop / PlanExecuteLoop coverage. Implemented via an
+extract-method refactor (`_iterate_depth` on ToT,
+`_iterate_round` on MultiAgent) so the
+`with tracer.start_as_current_span(...)` block wraps a single
+helper call rather than the full inner-loop body. Span
+attributes (`agentforge.iteration`, `agentforge.strategy`)
+mirror the existing strategies; the in-memory exporter test
+in `agentforge-otel/tests/unit/test_hook.py` covers all four
+shipped strategies.
 
 ---
 
