@@ -18,6 +18,7 @@ from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.values.claim import Claim
 from surrealdb import AsyncSurreal
 
+from agentforge_memory_surrealdb._migrator import SurrealMigrator
 from agentforge_memory_surrealdb._runner import SurrealRunner, _SurrealClientRunner
 
 # Table name is a framework constant, never derived from user input;
@@ -74,8 +75,17 @@ class SurrealMemoryStore(MemoryStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> SurrealMigrator:
+        """Return a `SurrealMigrator` configured against the package's
+        bundled migrations directory (feat-024)."""
+        return SurrealMigrator(self._r)
+
     async def init_schema(self) -> None:
-        await self._r.query(_INIT_SCHEMA_QUERY)
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework.
+        """
+        await self.migrator().apply_pending()
 
     async def close(self) -> None:
         await self._r.close()
