@@ -245,6 +245,16 @@ targeted for v0.2:
   sister packages (`agentforge-reranker-cohere`, `-voyage`,
   `-mixedbread`) so users swap rerankers in YAML with no
   code changes.
-- **Schema migrations** for persistent stores (the
+- ~~**Schema migrations** for persistent stores (the
   `init_schema()` opt-in is the v0.1 stand-in; a real migration
-  framework lands alongside the first v0.1.0 → v0.2.0 schema delta).
+  framework lands alongside the first v0.1.0 → v0.2.0 schema delta).~~
+  — promoted to canonical
+  [feat-024](./features/feat-024-schema-migrations.md);
+  **shipped** in v0.2 (`Migration` value + `Migrator` Protocol +
+  `discover_migrations` helper + per-driver migrators for
+  Postgres / SQLite / Neo4j / SurrealDB +
+  `agentforge db migrate` / `migrate-status` CLI). Dim-parameterized
+  vector schemas (Postgres `vector(N)`, SurrealDB `HNSW DIMENSION N`)
+  stay under the existing `init_schema()` until parameterized
+  migrations land in v0.3+. `down` migrations / schema rollback
+  deferred to v0.3.

@@ -42,7 +42,14 @@ def register_db_cmd(sub: argparse._SubParsersAction) -> None:  # type: ignore[ty
     parser.add_argument("--override", action="append", default=[])
     db_sub = parser.add_subparsers(dest="db_command", required=True)
 
-    db_sub.add_parser("migrate", help="Call the driver's init_schema if present.")
+    db_sub.add_parser(
+        "migrate",
+        help="Apply pending schema migrations (feat-024) or call init_schema fallback.",
+    )
+    db_sub.add_parser(
+        "migrate-status",
+        help="List applied + pending migrations for the configured store (feat-024).",
+    )
 
     backup = db_sub.add_parser("backup", help="Dump every claim to JSONL.")
     backup.add_argument("--to", required=True, help="Output path or '-' for stdout.")
@@ -83,6 +90,7 @@ async def _dispatch(args: argparse.Namespace) -> int:
 
     dispatch = {
         "migrate": _do_migrate,
+        "migrate-status": _do_migrate_status,
         "backup": _do_backup,
         "restore": _do_restore,
         "purge": _do_purge,
@@ -93,15 +101,56 @@ async def _dispatch(args: argparse.Namespace) -> int:
 
 
 async def _do_migrate(memory: Any, args: argparse.Namespace) -> int:
+    """Apply pending migrations via the feat-024 framework when the
+    driver exposes a `migrator()` method; otherwise fall back to
+    legacy `init_schema()`."""
     del args
+    migrator_factory = getattr(memory, "migrator", None)
+    if callable(migrator_factory):
+        migrator = migrator_factory()
+        applied = await migrator.apply_pending()
+        if not applied:
+            sys.stdout.write("  → schema up to date; no pending migrations.\n")
+        else:
+            for migration in applied:
+                sys.stdout.write(f"  → applied {migration.id}_{migration.name}\n")
+        return 0
     init = getattr(memory, "init_schema", None)
     if not callable(init):
         sys.stdout.write(
-            "  → driver has no init_schema(); nothing to migrate.\n",
+            "  → driver has no migrator()/init_schema(); nothing to migrate.\n",
         )
         return 0
     await init()
-    sys.stdout.write("  → schema initialised.\n")
+    sys.stdout.write("  → schema initialised (legacy init_schema path).\n")
+    return 0
+
+
+async def _do_migrate_status(memory: Any, args: argparse.Namespace) -> int:
+    """List applied + pending migrations for the configured store
+    (feat-024). Drivers without a `migrator()` method print a
+    diagnostic and exit 0."""
+    del args
+    migrator_factory = getattr(memory, "migrator", None)
+    if not callable(migrator_factory):
+        sys.stdout.write(
+            "  → driver has no migrator() method; cannot report status.\n",
+        )
+        return 0
+    migrator = migrator_factory()
+    statuses = await migrator.status()
+    if not statuses:
+        sys.stdout.write("  → no migrations bundled with this driver.\n")
+        return 0
+    for status in statuses:
+        if status.applied:
+            checksum_flag = "✓" if status.checksum_match else "✗"
+            sys.stdout.write(
+                f"  ✓ {status.migration.id}_{status.migration.name} "
+                f"(applied {status.applied_at}; checksum {checksum_flag})\n"
+            )
+        else:
+            sys.stdout.write(f"    {status.migration.id}_{status.migration.name} — pending\n")
     return 0
 
 

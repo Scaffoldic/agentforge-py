@@ -47,6 +47,9 @@ class SurrealFakeRunner:
     vectors: OrderedDict[str, dict[str, Any]] = field(default_factory=OrderedDict)
     queries: list[_Query] = field(default_factory=list)
     closed: bool = False
+    # feat-024 migration tracking — mirrors the
+    # `agentforge_migrations` SurrealDB table.
+    applied_migrations: OrderedDict[str, dict[str, Any]] = field(default_factory=OrderedDict)
 
     async def query(  # noqa: PLR0911, PLR0912 — dispatch table over SurrealQL shapes
         self, surrealql: str, vars: dict[str, Any] | None = None
@@ -56,6 +59,18 @@ class SurrealFakeRunner:
         s = " ".join(surrealql.split())
         # ---- DEFINE TABLE / INDEX ----
         if s.startswith("DEFINE TABLE") or "DEFINE INDEX" in s:
+            return []
+
+        # ---- feat-024 migration tracking ----
+        if "FROM agentforge_migrations" in s:
+            return [list(self.applied_migrations.values())]
+        if "type::thing('agentforge_migrations'" in s:
+            self.applied_migrations[v["id"]] = {
+                "af_id": v["id"],
+                "name": v["name"],
+                "checksum": v["checksum"],
+                "applied_at": None,
+            }
             return []
 
         # ---- GRAPH: af_node ----

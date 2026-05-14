@@ -16,7 +16,7 @@ import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -48,6 +48,10 @@ class PostgresFakeRunner:
     # Tracks whether `init_schema()` ran on the vector store, mirroring
     # how the production driver flips its `_ann` flag.
     vector_schema_init: bool = False
+    # feat-024 migration tracking — simulates the
+    # `agentforge_migrations` Postgres table.
+    migrations_table_exists: bool = False
+    applied_migrations: OrderedDict[str, dict[str, Any]] = field(default_factory=OrderedDict)
 
     async def fetch(self, sql: str, *params: Any) -> list[Any]:
         self.queries.append(_Query(sql, params))
@@ -91,6 +95,19 @@ class PostgresFakeRunner:
         # init_schema. No-op for the fake (the BM25 path is computed
         # on-the-fly in _dispatch_vector_lexical).
         if "ALTER TABLE vectors ADD COLUMN IF NOT EXISTS embedding_tsv" in s:
+            return
+        # feat-024 migration framework — tracking table + applied rows.
+        if "CREATE TABLE IF NOT EXISTS agentforge_migrations" in s:
+            self.migrations_table_exists = True
+            return
+        if s.startswith("INSERT INTO agentforge_migrations"):
+            migration_id, name, checksum = params
+            self.applied_migrations[str(migration_id)] = {
+                "id": str(migration_id),
+                "name": str(name),
+                "checksum": str(checksum),
+                "applied_at": datetime.now(UTC),
+            }
             return
         # Memory: upsert claim
         if s.startswith("INSERT INTO claims"):
@@ -160,7 +177,7 @@ class PostgresFakeRunner:
         msg = f"PostgresFakeRunner execute_returning_count: unrecognised SQL: {sql!r}"
         raise AssertionError(msg)
 
-    async def _dispatch_select(self, sql: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:
+    async def _dispatch_select(self, sql: str, params: tuple[Any, ...]) -> list[dict[str, Any]]:  # noqa: PLR0911
         s = " ".join(sql.split())
         # Memory: fetch by id
         if s.startswith("SELECT * FROM claims WHERE id = $1"):
@@ -179,6 +196,23 @@ class PostgresFakeRunner:
         # Vector: lexical search (feat-022 follow-up)
         if "plainto_tsquery" in s or "ts_rank_cd" in s:
             return await self._dispatch_vector_lexical(s, params)
+        # feat-024 migration framework
+        if "to_regclass" in s:
+            (table_name,) = params
+            exists = (
+                self.migrations_table_exists if table_name == "agentforge_migrations" else False
+            )
+            return [{"exists_": exists}]
+        if s.startswith("SELECT id, name, checksum, applied_at FROM agentforge_migrations"):
+            return [
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "checksum": row["checksum"],
+                    "applied_at": row["applied_at"],
+                }
+                for row in self.applied_migrations.values()
+            ]
         msg = f"PostgresFakeRunner select: unrecognised SQL: {sql!r}"
         raise AssertionError(msg)
 

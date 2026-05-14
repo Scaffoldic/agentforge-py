@@ -33,6 +33,7 @@ from agentforge_core.values.graph import (
 )
 from surrealdb import AsyncSurreal
 
+from agentforge_memory_surrealdb._migrator import SurrealMigrator
 from agentforge_memory_surrealdb._runner import SurrealRunner, _SurrealClientRunner
 
 # Table names are framework constants — never derived from user input.
@@ -120,10 +121,18 @@ class SurrealGraphStore(GraphStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> SurrealMigrator:
+        """Return a `SurrealMigrator` configured against the package's
+        bundled migrations directory (feat-024)."""
+        return SurrealMigrator(self._r)
+
     async def init_schema(self) -> None:
-        """Define the node + edge tables and a uniqueness constraint
-        on the framework `id` field. Idempotent."""
-        await self._r.query(_INIT_SCHEMA_QUERY)
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework — schema
+        provisioning is now versioned + checksum-tracked.
+        """
+        await self.migrator().apply_pending()
 
     async def close(self) -> None:
         await self._r.close()
