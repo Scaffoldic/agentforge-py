@@ -2235,3 +2235,81 @@ Design notes:
   `ConfigDict(strict=True)`. Pattern: schema uses
   `list[str]`, value type uses `tuple[str, ...]`, builder
   converts.
+
+---
+
+## 2026-05-14T15:00 — feat-024 schema migrations framework in review
+
+Closes the last un-numbered v0.2 persistence sub-feat
+per the user's "Schema migrations framework" +
+"Spec + framework + all four drivers" choices.
+
+Branch: `feat/024-schema-migrations`.
+
+Chunked across 7 commits:
+
+- chunk 1 (`126cb67`): canonical spec at
+  `docs/features/feat-024-schema-migrations.md` +
+  catalogue row + roadmap pointer.
+- chunk 2 (`3ac96b1`): agentforge-core framework —
+  `Migration` value (4-digit id + name + up body +
+  SHA-256 checksum) + `MigrationStatus` + `Migrator`
+  runtime Protocol + `MigrationChecksumError` (subclass
+  of ModuleError) + `discover_migrations(path, *,
+  suffix)` helper at `agentforge_core/migrations/`.
+  Re-exported through `agentforge_core` top-level.
+  18 unit tests.
+- chunk 3 (`e501788`): Postgres — `PostgresMigrator` +
+  2 SQL files. The vectors table stays under the
+  dim-parameterized `init_schema()` because
+  `vector(N)` can't be in a static migration file.
+  Fake runner extended; live integration test added.
+- chunk 4 (`f537d1c`): SQLite — `SqliteMigrator` + 3
+  SQL files (`0000_migrations_table`,
+  `0001_initial` claims + vectors + vector_meta,
+  `0002_fts5` feat-022 delta). `from_path` now
+  bootstraps through the migrator. Renamed both
+  packages' migrator tests to unique basenames
+  (`test_postgres_migrator.py` /
+  `test_sqlite_migrator.py`) to avoid pytest
+  collection collisions on `test_migrator`.
+- chunk 5 (`0784244`): Neo4j — `Neo4jMigrator` + 2
+  Cypher files. `_split_statements` strips `//`
+  comments + blank lines + splits on `;` to honour
+  Neo4j 5.x's one-statement-per-`run()` rule. Applied
+  migrations tracked as `:AgentforgeMigration` nodes.
+- chunk 6 (`8e169cf`): SurrealDB — `SurrealMigrator`
+  + 2 SurrealQL files. SurrealDB v1.x lacks
+  multi-statement transactions — operators
+  single-flight migrate calls. Applied migrations
+  tracked in `agentforge_migrations` SurrealDB table.
+- chunk 7 (about-to-commit): CLI extension —
+  `agentforge db migrate` routes through
+  `memory.migrator()` when present (falls back to
+  legacy `init_schema()` otherwise). New
+  `agentforge db migrate-status` lists per-migration
+  applied + checksum-match status. Spec status flip,
+  catalogue, roadmap, CHANGELOG, state.
+
+Scope reductions:
+
+- The vector tables on Postgres + SurrealDB stay
+  under their existing dim-parameterized
+  `init_schema()` because the migration framework
+  treats migration bodies as static text. Parameterized
+  migrations land in v0.3+.
+- `down` migrations / schema rollback deferred to v0.3.
+
+Tooling notes:
+
+- Pydantic v2 fires `string_too_short` before custom
+  validators; relaxed `Migration.id`'s
+  `Field(min_length=...)` to 1 and rely on the custom
+  validator's `4 digits` message.
+- mypy --strict on the Postgres migrator needed
+  `_fetch_applied` to return `dict[str, dict[str,
+  Any]]` (was `object`) so the call sites can read
+  `["applied_at"]` as `datetime`.
+- pytest collection conflicts on `test_migrator.py`
+  across two packages — rename one (we renamed both:
+  `test_postgres_migrator.py` + `test_sqlite_migrator.py`).

@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-024 |
 | **Title** | Schema migrations framework — versioned migrations + checksum tracking across all four persistent stores |
-| **Status** | in progress |
+| **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-14 |
 | **Target version** | 0.2 |
@@ -300,19 +300,19 @@ table.
 
 ## 11. Implementation status (Python)
 
-**Status: in progress.** Landing as a single PR per the
-user's "Spec + framework + all four drivers" scope
+**Status: shipped (Python).** Landed as a single PR per
+the user's "Spec + framework + all four drivers" scope
 choice. Chunked across 7 commits:
 
-| Chunk | What lands |
-|---|---|
-| 1 | This spec + catalogue row + roadmap pointer. |
-| 2 | `Migration` value + `Migrator` Protocol + `discover_migrations` + `MigrationChecksumError` + unit tests in `agentforge-core`. |
-| 3 | `PostgresMigrator` + 3 migration files (`0000_migrations_table` + `0001_initial` + `0002_vector_tsvector`) + `init_schema()` shim + unit + live tests. |
-| 4 | `SqliteMigrator` + 3 migration files (`0000` + `0001_initial` + `0002_fts5`) + bootstrap update + unit tests. |
-| 5 | `Neo4jMigrator` + 2 Cypher migration files + tracking node + unit + live tests. |
-| 6 | `SurrealMigrator` + 2 SurrealQL migration files + tracking table + unit + live tests. |
-| 7 | `agentforge db migrate` routes through the framework + new `migrate-status` subcommand + spec status flip + CHANGELOG + state. |
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `126cb67` | This spec + catalogue row + roadmap pointer. |
+| 2 | `3ac96b1` | `Migration` value + `Migrator` Protocol + `discover_migrations` + `MigrationChecksumError` + 18 unit tests in `agentforge-core`. |
+| 3 | `e501788` | `PostgresMigrator` + 2 migration files (`0000_migrations_table` + `0001_initial` — claims schema; the vectors table stays under the dim-parameterized `init_schema`) + `init_schema()` shim + unit + live tests. |
+| 4 | `f537d1c` | `SqliteMigrator` + 3 migration files (`0000` + `0001_initial` + `0002_fts5`) + `from_path` rewritten to bootstrap via the migrator + 5 unit tests. |
+| 5 | `0784244` | `Neo4jMigrator` + 2 Cypher migration files + `:AgentforgeMigration` tracking node + statement-splitting helper for Neo4j 5.x's one-statement-per-`run()` rule + 4 unit tests. |
+| 6 | `8e169cf` | `SurrealMigrator` + 2 SurrealQL migration files + `agentforge_migrations` tracking table + 3 unit tests. SurrealVectorStore's `init_schema()` retains the dim-parameterized DDL. |
+| 7 | this commit | `agentforge db migrate` routes through the framework when `memory.migrator()` exists (falls back to legacy `init_schema()` otherwise) + new `agentforge db migrate-status` subcommand + spec status flip + catalogue + roadmap + CHANGELOG + state. |
 
 ### Out-of-scope (deferred)
 

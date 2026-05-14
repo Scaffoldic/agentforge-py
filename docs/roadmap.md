@@ -250,8 +250,11 @@ targeted for v0.2:
   framework lands alongside the first v0.1.0 → v0.2.0 schema delta).~~
   — promoted to canonical
   [feat-024](./features/feat-024-schema-migrations.md);
-  spec locked, implementation landing in the same PR
-  (`Migration` value + `Migrator` Protocol + per-driver migrators
-  for Postgres / SQLite / Neo4j / SurrealDB +
-  `agentforge db migrate` / `migrate-status` CLI). `down`
-  migrations + rollback deferred to v0.3.
+  **shipped** in v0.2 (`Migration` value + `Migrator` Protocol +
+  `discover_migrations` helper + per-driver migrators for
+  Postgres / SQLite / Neo4j / SurrealDB +
+  `agentforge db migrate` / `migrate-status` CLI). Dim-parameterized
+  vector schemas (Postgres `vector(N)`, SurrealDB `HNSW DIMENSION N`)
+  stay under the existing `init_schema()` until parameterized
+  migrations land in v0.3+. `down` migrations / schema rollback
+  deferred to v0.3.
