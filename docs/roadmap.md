@@ -245,7 +245,10 @@ targeted for v0.2:
   [`Neo4jVectorStore`](./features/feat-025-neo4j-vector-store.md)
   + hybrid_search via Neo4j 5.13+ `CREATE VECTOR INDEX` +
   `CREATE FULLTEXT INDEX`. Bundled with the SurrealDB
-  native FTS follow-up above.
+  native FTS follow-up above. **Shipped in v0.2**; every
+  `VectorStore` driver (InMemory / Postgres / SQLite /
+  SurrealDB / Neo4j) now passes
+  `run_hybrid_search_conformance`.
 - ~~**Reranker contract**~~ — promoted to canonical
   [feat-021](./features/feat-021-reranker.md); ABC + default
   SentenceTransformers concrete + `Retriever` integration

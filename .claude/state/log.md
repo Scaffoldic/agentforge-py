@@ -2371,3 +2371,86 @@ Design notes:
   re-deploying with a different dim value produces the
   same checksum, so drift detection stays correct.
   Verified with a dedicated unit test in chunk 1.
+
+---
+
+## 2026-05-14T17:00 — feat-025 (Neo4jVectorStore + SurrealDB native lexical_search) in review
+
+Closes two adjacent retrieval-completeness gaps per the
+user's "Both in one PR" scope choice. After merging,
+every shipped VectorStore (InMemory / Postgres / SQLite /
+SurrealDB / Neo4j) passes both `run_vector_conformance`
+and `run_hybrid_search_conformance`.
+
+Branch:
+`feat/025-neo4j-vector-store-plus-surrealdb-lexical`.
+
+Chunked across 3 commits (chunks 2-4 bundled):
+
+- chunk 1 (`8bfb6a3`): canonical spec at
+  `docs/features/feat-025-neo4j-vector-store.md` +
+  catalogue + roadmap.
+- chunks 2-4 (`465b7bd`):
+  - `Neo4jVectorStore` at
+    `agentforge_memory_neo4j.vector` with vector +
+    fulltext + delete + capability gating. Uses
+    `AfVector` label (coexists with `AfNode` +
+    `Claim`). Cypher queries:
+    `db.index.vector.queryNodes` /
+    `db.index.fulltext.queryNodes`. Lucene fulltext
+    scores max-normalised to `[0, 1]` client-side
+    (mirrors SQLite + SurrealDB).
+  - Migration files at `migrations/vector/0100_vectors.cypher`
+    with `${dimensions}` template (feat-024 v0.3
+    helper) + constraint + vector + fulltext index.
+  - `Neo4jVectorStore.migrator()` /
+    `init_schema()` plumbing.
+  - Entry-point registration:
+    `[project.entry-points."agentforge.vector_stores"]
+     neo4j = ...`.
+  - `VectorFakeRunner` in tests/unit/conftest.py
+    delegates to `InMemoryVectorStore` for vector
+    upsert/search/delete + `_BM25Index` for the
+    fulltext path. Recognises tracking-table reads/
+    writes for `:AgentforgeMigration`.
+  - 7 Neo4j unit tests including both conformance
+    suites.
+  - SurrealDB `migrations/vector/0101_fts.surql`:
+    `DEFINE ANALYZER af_vector_en TOKENIZERS class
+    FILTERS lowercase, ascii;` +
+    `DEFINE INDEX af_vector_fts ON af_vector FIELDS
+    text SEARCH ANALYZER af_vector_en BM25;`.
+  - `SurrealVectorStore.lexical_search` via
+    `WHERE text @0@ $query` +
+    `search::score(0) AS raw` + max-normalisation.
+  - `SurrealVectorStore.capabilities()` now declares
+    `{"native_ann", "hybrid_search"}` after
+    `init_schema()`.
+  - SurrealFakeRunner gains a `_dispatch_vector_fts`
+    branch routing the FTS predicate to `_BM25Index`
+    over the in-memory vectors backing.
+  - 2 new SurrealDB unit tests.
+- chunk 5 (about-to-commit): spec status flip,
+  catalogue + roadmap flips, CHANGELOG, state.
+
+Design notes:
+
+- Decided NOT to ship a brand-new conformance fake for
+  Neo4j; the `VectorFakeRunner` delegates to the
+  existing in-memory implementations. Saves ~200 lines
+  of bespoke cosine + BM25 code in the test fixture.
+- Bundled chunks 2-4 in one commit because they share
+  the same `VectorFakeRunner` / SurrealFakeRunner
+  extensions, and splitting would require interleaved
+  test-fixture changes that wouldn't pass pre-commit
+  in isolation.
+- The Postgres + SurrealDB pattern of per-store
+  migration subdirs (`migrations/vector/`) applies
+  cleanly to Neo4j too. No restructure of the existing
+  Neo4j memory + graph migration dirs needed —
+  vector lives at a new subdir.
+- The Neo4j `VectorFakeRunner` reads
+  `InMemoryVectorStore._items` directly (private
+  attribute). Acceptable for a test fixture since the
+  fake is co-located with the package; production
+  code never touches `_items`.

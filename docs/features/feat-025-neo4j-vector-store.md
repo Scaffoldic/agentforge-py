@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-025 |
 | **Title** | `Neo4jVectorStore` — `VectorStore` over Neo4j 5.13+ vector + fulltext indexes |
-| **Status** | in progress |
+| **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-14 |
 | **Target version** | 0.2 |
@@ -251,21 +251,19 @@ verbatim; the TS port mirrors the Python shape 1:1.
 
 ## 11. Implementation status (Python)
 
-**Status: in progress.** Landing in one PR per the user's
-"Both in one PR" scope choice. Bundled with the SurrealDB
-native `lexical_search` follow-up (a feat-022 sister-package
-gap that completes hybrid_search coverage across every
-shipped `VectorStore`).
+**Status: shipped (Python).** Landed in one PR per the
+user's "Both in one PR" scope choice. Bundled with the
+SurrealDB native `lexical_search` follow-up (a feat-022
+sister-package gap that completes hybrid_search coverage
+across every shipped `VectorStore`).
 
-Chunked across 5 commits:
+Chunked across 3 commits (chunks 2-4 bundled for cohesion):
 
-| Chunk | What lands |
-|---|---|
-| 1 | This spec + catalogue row + roadmap pointer. |
-| 2 | `Neo4jVectorStore` class (vector path only) + entry-point registration + `VectorFakeRunner` test fixture + `run_vector_conformance`. |
-| 3 | Neo4j vector migrations (`migrations/vector/0000_migrations_table.cypher` + `0100_vectors.cypher` with `${dimensions}`) + `lexical_search` method + `run_hybrid_search_conformance`. |
-| 4 | SurrealDB native `lexical_search` via `DEFINE ANALYZER` + `SEARCH ANALYZER ... BM25` + `migrations/vector/0101_fts.surql` + `run_hybrid_search_conformance` on `SurrealVectorStore`. |
-| 5 | Spec status flip + catalogue + roadmap + CHANGELOG + state. |
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `8bfb6a3` | This spec + catalogue row + roadmap pointer. |
+| 2-4 | `465b7bd` | `Neo4jVectorStore` class + entry-point registration + `VectorFakeRunner` + Neo4j vector migrations + Neo4j `lexical_search` + SurrealDB `lexical_search` (with `0101_fts.surql` migration via `DEFINE ANALYZER` + `SEARCH ANALYZER ... BM25`). 9 new unit tests across both packages. |
+| 5 | this commit | Spec status flip + catalogue + roadmap + CHANGELOG + state. |
 
 ### Out-of-scope (deferred)
 
