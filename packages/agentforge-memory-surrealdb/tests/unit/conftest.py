@@ -57,9 +57,13 @@ class SurrealFakeRunner:
         v = vars or {}
         self.queries.append(_Query(surrealql, v))
         s = " ".join(surrealql.split())
-        # ---- DEFINE TABLE / INDEX ----
-        if s.startswith("DEFINE TABLE") or "DEFINE INDEX" in s:
+        # ---- DEFINE TABLE / INDEX / ANALYZER ----
+        if s.startswith("DEFINE TABLE") or "DEFINE INDEX" in s or s.startswith("DEFINE ANALYZER"):
             return []
+
+        # ---- feat-025: vector full-text lexical_search ----
+        if "search::score" in s and "FROM af_vector" in s and "@0@" in s:
+            return await self._dispatch_vector_fts(v)
 
         # ---- feat-024 migration tracking ----
         if "FROM agentforge_migrations" in s:
@@ -230,6 +234,33 @@ class SurrealFakeRunner:
         if m and "limit" in v:
             claims = claims[: v["limit"]]
         return [_claim_record(c) for c in claims]
+
+    async def _dispatch_vector_fts(self, v: dict[str, Any]) -> list[Any]:
+        """feat-025: lexical_search via SurrealDB full-text search.
+
+        Uses the framework's `_BM25Index` over the in-memory vectors
+        backing to produce directionally identical ordering.
+        """
+        from agentforge_core._bm25 import _BM25Index  # noqa: PLC0415
+
+        query = str(v["query"])
+        limit = int(v["limit"])
+        idx = _BM25Index()
+        for rec in self.vectors.values():
+            idx.add(str(rec["af_id"]), str(rec.get("text", "")))
+        scored = idx.score(query, limit=max(limit, 1))
+        rows = []
+        for nid, raw in scored:
+            rec = self.vectors[nid]
+            rows.append(
+                {
+                    "af_id": str(rec["af_id"]),
+                    "text": str(rec.get("text", "")),
+                    "metadata": dict(rec.get("metadata", {})),
+                    "raw": raw,
+                }
+            )
+        return [rows]
 
 
 def _node_record(node: GraphNode) -> dict[str, Any]:
