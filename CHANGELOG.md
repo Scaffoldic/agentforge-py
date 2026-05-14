@@ -11,6 +11,32 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-022 v0.2 follow-up — native hybrid for Postgres
+  + SQLite.** Both production drivers now declare the
+  `"hybrid_search"` capability and ship native
+  `lexical_search` implementations, replacing the
+  default-method NotImplementedError stub:
+  - **`agentforge-memory-postgres`** —
+    `init_schema()` is now idempotent and adds an
+    `embedding_tsv tsvector` generated column over
+    `to_tsvector('english', text)` + a GIN index. Query
+    uses `ts_rank_cd(embedding_tsv, plainto_tsquery(...))`
+    with metadata JSONB containment and max-normalisation
+    at the SQL boundary. Capability gating mirrors
+    `native_ann` — declared only after `init_schema()`
+    runs. Live `run_hybrid_search_conformance` covered
+    under existing `RUN_LIVE_POSTGRES` gating.
+  - **`agentforge-memory-sqlite`** — new FTS5 virtual
+    table over `vectors.text` (`unicode61` tokeniser) +
+    three sync triggers
+    (`AFTER INSERT/UPDATE/DELETE ON vectors`) so the
+    FTS index stays in sync with the content table
+    automatically. Query uses the native `bm25()`
+    ranker, negated + max-normalised to `[0, 1]`. User
+    input passes through `_escape_fts_query` so FTS5
+    special syntax stays literal. Always declares
+    `hybrid_search`.
+
 - **feat-022 — BM25 + vector hybrid search.** New canonical
   feature closing one of the three un-numbered v0.2
   retrieval sub-feats. Ships as a single PR:
