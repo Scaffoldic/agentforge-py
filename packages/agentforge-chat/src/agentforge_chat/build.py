@@ -24,7 +24,7 @@ from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.resolver import Resolver
 
 from agentforge_chat.history import InMemoryChatHistory
-from agentforge_chat.session import ChatSession
+from agentforge_chat.session import ChatSession, SafetyMode
 from agentforge_chat.truncation import SlidingWindow
 
 
@@ -47,6 +47,7 @@ async def build_chat_session_from_config(
     per_turn = None
     per_session = None
     idem_window = 60.0
+    safety_mode: SafetyMode = "buffer-then-stream"
     if chat_cfg is not None:
         if chat_cfg.history is not None:
             history = await _build_history(chat_cfg.history.driver, chat_cfg.history.config)
@@ -55,6 +56,7 @@ async def build_chat_session_from_config(
         per_turn = chat_cfg.session.per_turn_budget_usd
         per_session = chat_cfg.session.per_session_budget_usd
         idem_window = chat_cfg.session.idempotency_window_s
+        safety_mode = chat_cfg.session.safety_mode
     return ChatSession(
         agent=agent,
         session_id=session_id,
@@ -65,6 +67,7 @@ async def build_chat_session_from_config(
         per_turn_budget_usd=per_turn,
         per_session_budget_usd=per_session,
         idempotency_window_s=idem_window,
+        safety_mode=safety_mode,
     )
 
 

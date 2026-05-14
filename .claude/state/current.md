@@ -1,43 +1,45 @@
 ---
-feature: feat-025 — Neo4jVectorStore + SurrealDB native lexical_search
+feature: feat-020 v0.3 polish — sentence-window streaming output guardrails
 state: in_review
-branch: feat/025-neo4j-vector-store-plus-surrealdb-lexical
+branch: chore/feat-020-sentence-window-guardrails
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-024 v0.3 polish — parameterized migrations shipped via PR #46 (merged 2026-05-14)
+last_shipped: feat-025 — Neo4jVectorStore + SurrealDB native lexical_search shipped via PR #47 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Bundled PR per user-chosen "Both in one PR" scope. Closes
-two adjacent retrieval-completeness gaps:
+Closes the deferred safety gap from feat-020 v0.2: per-token
+streamed text on `ChatSession.stream()` now passes through
+output validators at sentence boundaries when
+`safety_mode == "sentence-window"` (or its current alias
+`"stream-then-redact"`). Default `"buffer-then-stream"` is
+unchanged.
 
-1. **feat-025** — `agentforge-memory-neo4j` lacked a
-   `VectorStore`. New `Neo4jVectorStore` uses Neo4j 5.13+
-   native `CREATE VECTOR INDEX` + `CREATE FULLTEXT INDEX`.
-2. **feat-022 follow-up** — SurrealDB was the last
-   `VectorStore` without native `lexical_search`. New
-   migration adds `DEFINE ANALYZER` + `SEARCH ANALYZER
-   ... BM25` index; `SurrealVectorStore.lexical_search`
-   queries via `WHERE text @0@ $query` + `search::score`.
-
-After this PR every shipped VectorStore (InMemory /
-Postgres / SQLite / SurrealDB / Neo4j) passes both
-`run_vector_conformance` and `run_hybrid_search_conformance`.
+- New `_SentenceWindowBuffer` at
+  `agentforge_chat/_window.py`.
+- `ChatSessionConfig.safety_mode` Literal expanded.
+- `SafetyMode` re-exported from `agentforge_chat`.
+- `ChatSession.__init__` gains `safety_mode=` kwarg;
+  `_stream_per_token` dispatches accordingly.
+- `build_chat_session_from_config` reads
+  `modules.chat.session.safety_mode` and forwards it.
 
 ## Last shipped
 
-feat-024 v0.3 polish — parameterized migrations shipped
-via PR #46 (merged 2026-05-14).
+feat-025 — Neo4jVectorStore + SurrealDB native
+lexical_search shipped via PR #47 (merged 2026-05-14).
 
 ### Previously
 
+- feat-024 v0.3 polish — parameterized migrations
+  (PR #46).
 - feat-024 — Schema migrations framework (PR #45).
 - feat-023 — GraphRAG hybrid retrieval (PR #44).
-- feat-022 v0.2 follow-up — native hybrid for Postgres
-  + SQLite (PR #43).
+- feat-022 v0.2 follow-up — native hybrid for Postgres +
+  SQLite (PR #43).
 - feat-022 — BM25 + vector hybrid search (PR #42).
 - feat-002 + feat-009 v0.3.x strategy follow-ups bundle
   (PR #41).
@@ -46,8 +48,7 @@ via PR #46 (merged 2026-05-14).
 
 ## Next pick candidates
 
-Remaining backlog (v0.3+ open items + sister-package
-follow-ups):
+Remaining v0.3+ open items:
 
 - **`down` migrations / schema rollback** (feat-024
   v0.3+).
@@ -56,8 +57,7 @@ follow-ups):
   follow-up).
 - **Evidently real-time drift dashboards via Cloud**
   (feat-009 v0.3+).
-- **Multi-cluster Redlock for `RedisSessionLock`** and
-  **sentence-window streaming output guardrails**
+- **Multi-cluster Redlock for `RedisSessionLock`**
   (feat-020 v0.3+).
 
 **Already shipped on the v0.1 → v0.2 line:**
@@ -87,7 +87,9 @@ follow-ups):
 - feat-024 v0.3 polish — parameterized migrations
   (PR #46).
 - feat-025 — Neo4jVectorStore + SurrealDB native
-  lexical_search (in review).
+  lexical_search (PR #47).
+- feat-020 v0.3 polish — sentence-window streaming
+  output guardrails (in review).
 
 ## Reading order on session resume
 

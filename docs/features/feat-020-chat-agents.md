@@ -643,8 +643,10 @@ Remaining for v0.3+:
   out-of-the-box agents emit per-token text without a custom
   strategy.
 - Multi-cluster `Redlock` for `RedisSessionLock`.
-- Sentence-window streaming guardrails (v0.2 keeps the
-  post-stream final-text check).
+- ~~Sentence-window streaming guardrails (v0.2 keeps the
+  post-stream final-text check).~~ **Shipped in v0.3 polish**
+  via `safety_mode: "sentence-window"`. See the v0.3
+  polish subsection below.
 
 ### v0.2 follow-up — postgres + redis + slack + per-token streaming + cross-process lock + provider-aware tokeniser
 
@@ -672,9 +674,15 @@ items from v0.1.
   UUID fencing**, not full multi-cluster Redlock. Sufficient
   for the typical chat-http deployment (1-N workers sharing
   one Redis); multi-cluster Redlock is a v0.3 follow-up.
-- **Output guardrails still run post-stream**, not against
+- ~~**Output guardrails still run post-stream**, not against
   the streaming buffer. v0.2 ships the contract; sentence-
-  window streaming guardrails wait for v0.3.
+  window streaming guardrails wait for v0.3.~~ **Shipped in
+  v0.3 polish** — `safety_mode: "sentence-window"` on
+  `ChatSession` (or via `modules.chat.session.safety_mode`
+  in YAML) buffers streamed tokens until a sentence
+  boundary, runs `check_output` per completed sentence,
+  and only emits the validated text downstream.
+  `"stream-then-redact"` is a current alias.
 - **`Agent.stream()` is a public method.** Spec §4.2 only
   documented `ChatSession.stream`; adding `Agent.stream` was
   the cleanest path to per-token chat streaming without
@@ -690,6 +698,37 @@ items from v0.1.
   models (one-line additions in v0.3 when first user lands).
 - Migration framework for the Postgres schema.
 - Multi-cluster Redlock for RedisSessionLock.
+
+### v0.3 polish — sentence-window streaming output guardrails
+
+Closes the deferred safety gap from the v0.2 ship.
+Per-token streaming on `ChatSession.stream()` previously
+forwarded each `text` event to the wire immediately and
+only ran output guardrails at end-of-stream — meaning
+streamed PII / unsafe content could reach the client
+before any validator saw it.
+
+`ChatSession` now consults `safety_mode` to decide how
+streamed text passes through validators:
+
+- `"buffer-then-stream"` (default) — unchanged from v0.2.
+  Agent runs to completion; output validators see the
+  full text once; the assembled response is then
+  sentence-segmented for the wire.
+- `"sentence-window"` — streamed text accumulates in
+  `_SentenceWindowBuffer`. Each push extracts completed
+  sentences (`.!?` + whitespace, OR newline, OR a
+  200-char hard cap). Every completed sentence runs
+  through `check_output`; the validated text emits as
+  the next `text` chunk. End-of-stream flushes any
+  residual through the same pipeline.
+- `"stream-then-redact"` — current alias for
+  `sentence-window`. A future v0.3+ pass may add inline
+  regex redaction without buffering.
+
+`SafetyMode` is re-exported from `agentforge_chat`.
+`build_chat_session_from_config` reads
+`modules.chat.session.safety_mode` and forwards it.
 
 ## 12. Runbook
 
