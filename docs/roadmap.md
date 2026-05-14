@@ -219,8 +219,15 @@ targeted for v0.2:
 - **GraphRAG-style hybrid retrieval** — combines vector retrieval
   with graph expansion (pull top-k vector matches, then traverse
   outgoing edges to enrich context).
-- **Hybrid search** (BM25 + vector fusion) inside the
-  `VectorStore` capability vocabulary.
+- ~~**Hybrid search** (BM25 + vector fusion) inside the
+  `VectorStore` capability vocabulary.~~ — promoted to
+  canonical [feat-022](./features/feat-022-hybrid-search.md);
+  spec locked, implementation landing in the same PR
+  (`VectorStore.lexical_search` ABC extension + pure-Python
+  BM25 + `Retriever(mode="hybrid")` with RRF fusion +
+  `InMemoryVectorStore` native impl + opt-in conformance
+  suite). Native Postgres / SQLite lexical paths deferred
+  to per-driver follow-ups.
 - ~~**Reranker contract**~~ — promoted to canonical
   [feat-021](./features/feat-021-reranker.md); ABC + default
   SentenceTransformers concrete + `Retriever` integration
