@@ -226,8 +226,9 @@ targeted for v0.2:
   extension + pure-Python BM25 + `Retriever(mode="hybrid")`
   with RRF fusion + `InMemoryVectorStore` native impl +
   opt-in `run_hybrid_search_conformance` suite). Native
-  Postgres / SQLite lexical paths deferred to per-driver
-  follow-ups.
+  Postgres (`tsvector` + `ts_rank_cd`) and SQLite (FTS5 +
+  `bm25`) lexical paths shipped in the v0.2 follow-up
+  bundle.
 - ~~**Reranker contract**~~ — promoted to canonical
   [feat-021](./features/feat-021-reranker.md); ABC + default
   SentenceTransformers concrete + `Retriever` integration
