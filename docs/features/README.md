@@ -89,6 +89,7 @@
 |---|---|---|---|---|---|
 | **feat-021** | Reranker — cross-encoder reranking on top of vector retrieval; `Reranker` ABC + `Retriever(reranker=...)` integration with configurable over-fetch + SentenceTransformers default concrete impl | shipped (Python) | 0.2 | both | `agentforge-core` (ABC), `agentforge` (Retriever integration), `agentforge-reranker-sentence-transformers` |
 | **feat-022** | Hybrid search — `VectorStore.lexical_search` ABC extension + pure-Python BM25 (`_BM25Index`) + `Retriever(mode="hybrid")` with RRF fusion + `InMemoryVectorStore` / `PostgresVectorStore` (tsvector + ts_rank_cd) / `SqliteVectorStore` (FTS5 + bm25) native impls + opt-in `run_hybrid_search_conformance` suite | shipped (Python) | 0.2 | both | `agentforge-core` (ABC + BM25 + conformance), `agentforge` (Retriever hybrid mode + InMemoryVectorStore impl), `agentforge-memory-postgres` (native tsvector), `agentforge-memory-sqlite` (native FTS5) |
+| **feat-023** | GraphRAG hybrid retrieval — `GraphExpansion` value type + `Retriever(graph_expansion=...)` for post-retrieve N-hop graph traversal expansion + score-decay merge + dedup. Composes orthogonally with `mode="vector"` / `mode="hybrid"` and optional `Reranker`. Reuses the existing `graph_stores` entry-point category | proposed | 0.2 | both | `agentforge-core` (`GraphExpansion` value + config schema), `agentforge` (Retriever extension) |
 
 ---
 

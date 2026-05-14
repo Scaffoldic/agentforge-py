@@ -216,9 +216,16 @@ What remains for v0.3+ (per feat-009 spec):
 Each becomes its own short spec when picked up; all
 targeted for v0.2:
 
-- **GraphRAG-style hybrid retrieval** — combines vector retrieval
+- ~~**GraphRAG-style hybrid retrieval** — combines vector retrieval
   with graph expansion (pull top-k vector matches, then traverse
-  outgoing edges to enrich context).
+  outgoing edges to enrich context).~~ — promoted to canonical
+  [feat-023](./features/feat-023-graphrag-hybrid.md);
+  spec locked, implementation landing in the same PR
+  (`GraphExpansion` value + `Retriever(graph_expansion=...)`
+  post-retrieve N-hop traversal + score-decay merge + dedup,
+  composes orthogonally with vector/hybrid + optional reranker).
+  Native single-query graph-augmented retrieval inside Neo4j /
+  SurrealDB deferred to per-driver follow-ups.
 - ~~**Hybrid search** (BM25 + vector fusion) inside the
   `VectorStore` capability vocabulary.~~ — promoted to
   canonical [feat-022](./features/feat-022-hybrid-search.md);
