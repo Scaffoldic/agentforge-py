@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from agentforge_core.testing import run_vector_conformance
+from agentforge_core.testing import (
+    run_hybrid_search_conformance,
+    run_vector_conformance,
+)
 from agentforge_core.values.vector import VectorItem
 from agentforge_memory_postgres import PostgresVectorStore
 
@@ -42,7 +45,37 @@ def test_capabilities_empty_without_schema(postgres_fake_runner) -> None:  # typ
 async def test_capabilities_declares_native_ann_after_init(postgres_fake_runner) -> None:  # type: ignore[no-untyped-def]
     store = PostgresVectorStore(runner=postgres_fake_runner, dimensions=8)
     await store.init_schema()
-    assert store.capabilities() == {"native_ann"}
+    assert store.capabilities() == {"native_ann", "hybrid_search"}
+
+
+@pytest.mark.asyncio
+async def test_lexical_search_requires_init_schema(postgres_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """Without init_schema(), the tsvector column + GIN index don't
+    exist; lexical_search must raise rather than silently miss."""
+    store = PostgresVectorStore(runner=postgres_fake_runner, dimensions=4)
+    with pytest.raises(RuntimeError, match="init_schema"):
+        await store.lexical_search("anything")
+
+
+@pytest.mark.asyncio
+async def test_passes_hybrid_search_conformance_suite(postgres_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """feat-022 follow-up: post-init_schema() driver passes the
+    opt-in hybrid-search conformance suite against the in-process
+    fake (which uses _BM25Index under the hood)."""
+    store = PostgresVectorStore(runner=postgres_fake_runner, dimensions=8)
+    await store.init_schema()
+    await run_hybrid_search_conformance(store)
+
+
+@pytest.mark.asyncio
+async def test_init_schema_emits_tsvector_column_and_gin_index(  # type: ignore[no-untyped-def]
+    postgres_fake_runner,
+) -> None:
+    store = PostgresVectorStore(runner=postgres_fake_runner, dimensions=8)
+    await store.init_schema()
+    flat = " ".join(q.sql for q in postgres_fake_runner.queries)
+    assert "ADD COLUMN IF NOT EXISTS embedding_tsv" in flat
+    assert "USING gin (embedding_tsv)" in flat
 
 
 @pytest.mark.asyncio
