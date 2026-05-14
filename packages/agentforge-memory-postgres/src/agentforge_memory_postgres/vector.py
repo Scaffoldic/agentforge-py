@@ -51,6 +51,24 @@ _SEARCH_VECTORS_SQL = (
     f" ORDER BY embedding <=> $1 "
     f" LIMIT $3"
 )
+_LEXICAL_SEARCH_SQL = (
+    f"WITH ranked AS ("  # noqa: S608  # nosec B608
+    f"  SELECT id, text, metadata, "
+    f"         ts_rank_cd(embedding_tsv, plainto_tsquery('english', $1)) AS raw "
+    f"    FROM {_VECTORS_TABLE} "
+    f"   WHERE embedding_tsv @@ plainto_tsquery('english', $1) "
+    f"     AND metadata @> $2::jsonb "
+    f"   ORDER BY raw DESC "
+    f"   LIMIT $3"
+    f") "
+    f"SELECT id, text, metadata, "
+    f"       CASE WHEN MAX(raw) OVER () > 0 "
+    f"            THEN raw / MAX(raw) OVER () "
+    f"            ELSE 0.0 "
+    f"       END AS score "
+    f"  FROM ranked "
+    f" ORDER BY raw DESC"
+)
 
 
 def _build_init_schema_sql(dimensions: int) -> str:
@@ -58,6 +76,10 @@ def _build_init_schema_sql(dimensions: int) -> str:
     `int` by the constructor — never a free-form string — so the
     interpolation is safe. Tagged S608 / B608 nonetheless to keep the
     lint surface honest.
+
+    Includes the feat-022 lexical-search column (``embedding_tsv``)
+    + GIN index. Upgrade from a pre-feat-022 schema: re-run
+    ``init_schema()`` to gain the column + index.
     """
     return (
         "CREATE EXTENSION IF NOT EXISTS vector;"
@@ -69,6 +91,11 @@ def _build_init_schema_sql(dimensions: int) -> str:
         ");"
         f"CREATE INDEX IF NOT EXISTS idx_{_VECTORS_TABLE}_embedding "
         f"    ON {_VECTORS_TABLE} USING hnsw (embedding vector_cosine_ops);"
+        f"ALTER TABLE {_VECTORS_TABLE} "  # nosec B608
+        f"    ADD COLUMN IF NOT EXISTS embedding_tsv tsvector "
+        f"    GENERATED ALWAYS AS (to_tsvector('english', coalesce(text, ''))) STORED;"
+        f"CREATE INDEX IF NOT EXISTS idx_{_VECTORS_TABLE}_tsv "
+        f"    ON {_VECTORS_TABLE} USING gin (embedding_tsv);"
     )
 
 
@@ -196,6 +223,39 @@ class PostgresVectorStore(VectorStore):
             for row in rows
         ]
 
+    async def lexical_search(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorMatch]:
+        if limit < 1:
+            msg = f"limit must be >= 1, got {limit}"
+            raise ValueError(msg)
+        if not self._ann:
+            msg = (
+                "PostgresVectorStore.lexical_search requires init_schema() "
+                "to have run (the embedding_tsv column + GIN index live "
+                "alongside the HNSW vector index)."
+            )
+            raise RuntimeError(msg)
+        rows = await self._r.fetch(
+            _LEXICAL_SEARCH_SQL,
+            query,
+            json.dumps(dict(filter_metadata or {})),
+            limit,
+        )
+        return [
+            VectorMatch(
+                id=str(row["id"]),
+                text=str(row["text"]),
+                metadata=_ensure_dict(row["metadata"]),
+                score=float(row["score"]),
+            )
+            for row in rows
+        ]
+
     async def delete(self, ids: list[str]) -> int:
         if not ids:
             return 0
@@ -207,11 +267,16 @@ class PostgresVectorStore(VectorStore):
         return len(existing)
 
     def capabilities(self) -> set[str]:
-        """`native_ann` is declared **only** after `init_schema()`
-        provisions the HNSW index. Without bootstrap the driver still
-        works as a brute-force fallback — but the capability
-        vocabulary is honest per ADR-0009."""
-        return {"native_ann"} if self._ann else set()
+        """`native_ann` + `hybrid_search` are both declared **only**
+        after `init_schema()` provisions the HNSW + GIN indexes.
+        Without bootstrap the driver still does cosine search as a
+        brute-force fallback, but lexical search would fail — so the
+        capability vocabulary stays honest per ADR-0009."""
+        caps: set[str] = set()
+        if self._ann:
+            caps.add("native_ann")
+            caps.add("hybrid_search")
+        return caps
 
 
 def _ensure_dict(value: Any) -> dict[str, Any]:

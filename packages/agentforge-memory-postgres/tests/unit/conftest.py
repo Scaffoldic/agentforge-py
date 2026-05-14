@@ -21,6 +21,7 @@ from typing import Any
 
 import pytest
 from agentforge.memory.in_memory import InMemoryStore
+from agentforge_core._bm25 import _BM25Index
 from agentforge_core.values.claim import Claim
 
 
@@ -73,7 +74,7 @@ class PostgresFakeRunner:
     async def close(self) -> None:
         self.closed = True
 
-    async def _dispatch_execute(self, sql: str, params: tuple[Any, ...]) -> None:
+    async def _dispatch_execute(self, sql: str, params: tuple[Any, ...]) -> None:  # noqa: PLR0911
         s = " ".join(sql.split())
         # Schema bootstrap — record the fact for capability checks.
         if "CREATE TABLE IF NOT EXISTS claims" in s:
@@ -85,6 +86,11 @@ class PostgresFakeRunner:
             self.vector_schema_init = True
             return
         if s.startswith("CREATE INDEX"):
+            return
+        # feat-022 follow-up: tsvector column + GIN index landed via
+        # init_schema. No-op for the fake (the BM25 path is computed
+        # on-the-fly in _dispatch_vector_lexical).
+        if "ALTER TABLE vectors ADD COLUMN IF NOT EXISTS embedding_tsv" in s:
             return
         # Memory: upsert claim
         if s.startswith("INSERT INTO claims"):
@@ -170,6 +176,9 @@ class PostgresFakeRunner:
         # Vector: search (ordered by cosine distance)
         if "ORDER BY embedding <=>" in s:
             return await self._dispatch_vector_search(s, params)
+        # Vector: lexical search (feat-022 follow-up)
+        if "plainto_tsquery" in s or "ts_rank_cd" in s:
+            return await self._dispatch_vector_lexical(s, params)
         msg = f"PostgresFakeRunner select: unrecognised SQL: {sql!r}"
         raise AssertionError(msg)
 
@@ -192,6 +201,47 @@ class PostgresFakeRunner:
             limit=limit_val,
         )
         return [_claim_record(c) for c in claims]
+
+    async def _dispatch_vector_lexical(
+        self, s: str, params: tuple[Any, ...]
+    ) -> list[dict[str, Any]]:
+        """BM25 stand-in for the production `ts_rank_cd` path.
+
+        Production Postgres uses `plainto_tsquery` + `ts_rank_cd`; the
+        fake reuses the framework's `_BM25Index` so unit tests get
+        directionally identical ordering without a real Postgres.
+        """
+        del s
+        query: str = params[0]
+        metadata_filter = _ensure_dict(params[1])
+        limit = int(params[2])
+
+        idx = _BM25Index()
+        for v in self.vectors.values():
+            idx.add(str(v["id"]), str(v["text"]))
+        scored = idx.score(query, limit=max(limit * 4, limit))
+        if not scored:
+            return []
+
+        top_raw = scored[0][1]
+        out: list[dict[str, Any]] = []
+        for doc_id, raw in scored:
+            v = self.vectors[doc_id]
+            meta = dict(v["metadata"])
+            if metadata_filter and not _contains(meta, metadata_filter):
+                continue
+            score = raw / top_raw if top_raw > 0 else 0.0
+            out.append(
+                {
+                    "id": str(v["id"]),
+                    "text": str(v["text"]),
+                    "metadata": meta,
+                    "score": score,
+                }
+            )
+            if len(out) >= limit:
+                break
+        return out
 
     async def _dispatch_vector_search(
         self, s: str, params: tuple[Any, ...]

@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from agentforge_core.testing import (
+    run_hybrid_search_conformance,
     run_memory_conformance,
     run_vector_conformance,
 )
@@ -78,3 +79,11 @@ async def test_live_memory_conformance(memory_store: PostgresMemoryStore) -> Non
 @pytest.mark.asyncio
 async def test_live_vector_conformance(vector_store: PostgresVectorStore) -> None:
     await run_vector_conformance(vector_store)
+
+
+@pytest.mark.asyncio
+async def test_live_hybrid_search_conformance(vector_store: PostgresVectorStore) -> None:
+    """feat-022 follow-up: the live driver passes the opt-in
+    hybrid-search conformance suite against real Postgres + the
+    `embedding_tsv` generated column."""
+    await run_hybrid_search_conformance(vector_store)

@@ -2101,3 +2101,69 @@ Design notes:
   not `run_vector_conformance`). Existing drivers that
   don't declare `"hybrid_search"` keep passing the main
   suite unchanged.
+
+---
+
+## 2026-05-14T13:00 — feat-022 v0.2 follow-up: native hybrid for Postgres + SQLite in review
+
+Closes the two sister-package deferrals from feat-022
+(PR #42) in one bundled PR per the user's "Native hybrid
+for Postgres + SQLite" choice.
+
+Branch: `feat/022-hybrid-postgres-sqlite-native`.
+
+Chunked across 3 commits:
+
+- chunk 1 (`69a450e`): Postgres native lexical_search.
+  `init_schema()` is now idempotent and adds an
+  `embedding_tsv tsvector` generated column (`ALTER TABLE
+  ... ADD COLUMN IF NOT EXISTS`) over
+  `to_tsvector('english', coalesce(text, ''))` + a GIN
+  index on `embedding_tsv`. New `_LEXICAL_SEARCH_SQL`
+  uses a CTE wrapping `ts_rank_cd(embedding_tsv,
+  plainto_tsquery('english', $1))` with metadata JSONB
+  containment, then max-normalises in a window function so
+  the driver returns scores in `[0, 1]` per match. The
+  `hybrid_search` capability joins `native_ann` post-init
+  (same gating pattern); calling `lexical_search` before
+  `init_schema()` raises a clear RuntimeError. The unit
+  test fake runner gains a `plainto_tsquery` branch that
+  uses the framework's `_BM25Index` so unit tests get
+  directionally identical ordering without spinning up
+  Postgres. Live tests gain `run_hybrid_search_conformance`
+  under existing `RUN_LIVE_POSTGRES` gating.
+- chunk 2 (`55c5a38`): SQLite native lexical_search via
+  FTS5. `_SCHEMA_SQL` extended with a `vectors_fts` FTS5
+  virtual table over `vectors.text` (`unicode61`
+  tokeniser) + three triggers
+  (`AFTER INSERT/UPDATE/DELETE ON vectors`) that keep the
+  FTS index in sync without application code having to
+  write to the FTS table directly. `lexical_search` runs
+  a JOIN between `vectors_fts` and `vectors` ordered by
+  `-bm25(vectors_fts) DESC`, with max-normalisation in
+  Python. User input goes through `_escape_fts_query`
+  which wraps every term in double-quotes so FTS5 syntax
+  (`AND`/`OR`/`*`/parens/colons) stays literal.
+  `hybrid_search` always declared (schema is provisioned
+  in `from_path()`).
+- chunk 3 (about-to-commit): feat-022 spec gains a
+  "v0.2 follow-up: native Postgres + SQLite lexical
+  paths" subsection with per-chunk table + deviations
+  list. Catalogue row + roadmap pointer extended. CHANGELOG
+  entry. State files updated.
+
+Tooling notes:
+
+- aiosqlite's `fetchall()` returns `Iterable[Row]`; mypy
+  --strict rejects indexing. Wrap in `list(...)` to
+  materialise.
+- ruff PLR0911 ("too many return statements") fires on
+  `PostgresFakeRunner._dispatch_execute` once the
+  `ALTER TABLE ... ADD COLUMN ... embedding_tsv` early
+  return is added. Tagged `# noqa: PLR0911` — the
+  function is essentially a switch over SQL prefixes and
+  splitting it would obfuscate the simple dispatch logic.
+- Postgres `embedding_tsv tsvector GENERATED ALWAYS AS
+  (...) STORED` requires Postgres 12+. We don't gate on
+  the version explicitly; the pgvector dependency already
+  implies a modern Postgres.

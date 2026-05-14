@@ -362,11 +362,37 @@ across 5 commits:
 
 ### Out-of-scope (deferred)
 
-- Postgres `tsvector` / SQLite FTS5 native `lexical_search`
-  — separate PRs per driver package.
+- ~~Postgres `tsvector` / SQLite FTS5 native `lexical_search`
+  — separate PRs per driver package.~~ **Shipped** in the
+  v0.2 follow-up bundle (see below).
 - Stemming / stopwords / language tokenisers — opt-in hook
   v0.3+.
 - TypeScript port — v0.4.
+
+### v0.2 follow-up — native Postgres + SQLite lexical paths
+
+Closes the deferred native-driver work in one bundled PR.
+Both drivers now declare `"hybrid_search"` and pass
+`run_hybrid_search_conformance` end-to-end.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `69a450e` | **Postgres native lexical_search.** `init_schema()` is now idempotent and adds an `embedding_tsv tsvector` generated column over `to_tsvector('english', text)` + a GIN index. Query uses `ts_rank_cd(embedding_tsv, plainto_tsquery('english', $1))` with metadata JSONB containment + max-normalisation at the SQL boundary. Capability `hybrid_search` joins `native_ann` post-init (same gating pattern); calling `lexical_search` before init raises a clear `RuntimeError`. Unit-test fake runner uses `_BM25Index` for directionally identical ordering. |
+| 2 | `55c5a38` | **SQLite native lexical_search via FTS5.** `_SCHEMA_SQL` extended with a `vectors_fts` virtual table over `vectors.text` (`unicode61` tokeniser) + three triggers that keep the FTS index in sync on every `INSERT`/`UPDATE`/`DELETE`. Query uses `bm25(vectors_fts)` (negated for DESC ordering, max-normalised). Always declares `hybrid_search` since the schema is provisioned in `from_path()`. User input passes through `_escape_fts_query` so FTS5 special syntax stays literal. |
+| 3 | this commit | Spec subsection + catalogue + roadmap flips + CHANGELOG + state. |
+
+### v0.2 follow-up deviations
+
+- **English-only text-search config.** Postgres uses
+  `to_tsvector('english', ...)`; SQLite uses the
+  language-neutral but unstemmed `unicode61` tokeniser.
+  Future config knob (`language: english | german | none`)
+  is out-of-scope; documented in the runbook.
+- **Postgres capability gating** mirrors `native_ann` — the
+  capability is only declared after `init_schema()` runs.
+  Without bootstrap the `embedding_tsv` column doesn't
+  exist; calling `lexical_search` would silently produce no
+  results, so the driver raises instead.
 
 ## 12. Runbook
 
