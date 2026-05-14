@@ -51,7 +51,7 @@ members = [
 
 [[package]]
 name = "agentforge"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge" }
 dependencies = [
     { name = "agentforge-core" },
@@ -72,7 +72,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-a2a"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-a2a" }
 dependencies = [
     { name = "agentforge" },
@@ -113,7 +113,7 @@ provides-extras = ["anthropic"]
 
 [[package]]
 name = "agentforge-bedrock"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-bedrock" }
 dependencies = [
     { name = "agentforge-core" },
@@ -130,7 +130,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-chat" }
 dependencies = [
     { name = "agentforge" },
@@ -152,7 +152,7 @@ provides-extras = ["sqlite"]
 
 [[package]]
 name = "agentforge-chat-history-postgres"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-chat-history-postgres" }
 dependencies = [
     { name = "agentforge-core" },
@@ -167,7 +167,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-history-redis"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-chat-history-redis" }
 dependencies = [
     { name = "agentforge-chat" },
@@ -184,7 +184,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-http"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-chat-http" }
 dependencies = [
     { name = "agentforge" },
@@ -207,7 +207,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-slack"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-chat-slack" }
 dependencies = [
     { name = "agentforge-chat" },
@@ -226,7 +226,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-core" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -243,7 +243,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-eval-geval"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-eval-geval" }
 dependencies = [
     { name = "agentforge-core" },
@@ -258,7 +258,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-evidently"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-evidently" }
 dependencies = [
     { name = "agentforge-core" },
@@ -278,7 +278,7 @@ provides-extras = ["evidently"]
 
 [[package]]
 name = "agentforge-guard-llamaguard"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-guard-llamaguard" }
 dependencies = [
     { name = "agentforge-core" },
@@ -289,7 +289,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-llmguard"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-guard-llmguard" }
 dependencies = [
     { name = "agentforge-core" },
@@ -300,7 +300,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-nemo"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-guard-nemo" }
 dependencies = [
     { name = "agentforge-core" },
@@ -311,7 +311,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-presidio"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-guard-presidio" }
 dependencies = [
     { name = "agentforge-core" },
@@ -322,7 +322,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-langfuse"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-langfuse" }
 dependencies = [
     { name = "agentforge-core" },
@@ -362,7 +362,7 @@ provides-extras = ["litellm"]
 
 [[package]]
 name = "agentforge-mcp"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-mcp" }
 dependencies = [
     { name = "agentforge-core" },
@@ -382,7 +382,7 @@ provides-extras = ["mcp"]
 
 [[package]]
 name = "agentforge-memory-neo4j"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-memory-neo4j" }
 dependencies = [
     { name = "agentforge-core" },
@@ -397,7 +397,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-postgres"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-memory-postgres" }
 dependencies = [
     { name = "agentforge-core" },
@@ -414,7 +414,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-sqlite"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-memory-sqlite" }
 dependencies = [
     { name = "agentforge-core" },
@@ -429,7 +429,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-surrealdb"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-memory-surrealdb" }
 dependencies = [
     { name = "agentforge-core" },
@@ -484,7 +484,7 @@ provides-extras = ["openai"]
 
 [[package]]
 name = "agentforge-otel"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-otel" }
 dependencies = [
     { name = "agentforge-core" },
@@ -501,7 +501,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-phoenix"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-phoenix" }
 dependencies = [
     { name = "agentforge-core" },
@@ -521,7 +521,7 @@ provides-extras = ["phoenix"]
 
 [[package]]
 name = "agentforge-reranker-cohere"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-reranker-cohere" }
 dependencies = [
     { name = "agentforge-core" },
@@ -541,7 +541,7 @@ provides-extras = ["cohere"]
 
 [[package]]
 name = "agentforge-reranker-mixedbread"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-reranker-mixedbread" }
 dependencies = [
     { name = "agentforge-core" },
@@ -561,7 +561,7 @@ provides-extras = ["mixedbread"]
 
 [[package]]
 name = "agentforge-reranker-sentence-transformers"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-reranker-sentence-transformers" }
 dependencies = [
     { name = "agentforge-core" },
@@ -581,7 +581,7 @@ provides-extras = ["sentence-transformers"]
 
 [[package]]
 name = "agentforge-reranker-voyage"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-reranker-voyage" }
 dependencies = [
     { name = "agentforge-core" },
@@ -601,7 +601,7 @@ provides-extras = ["voyage"]
 
 [[package]]
 name = "agentforge-statsd"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-statsd" }
 dependencies = [
     { name = "agentforge-core" },
@@ -621,7 +621,7 @@ provides-extras = ["statsd"]
 
 [[package]]
 name = "agentforge-testing"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/agentforge-testing" }
 dependencies = [
     { name = "agentforge" },

@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-phoenix"
-version = "0.1.0"
+version = "0.2.0"
 description = "Arize Phoenix dashboard hook for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
