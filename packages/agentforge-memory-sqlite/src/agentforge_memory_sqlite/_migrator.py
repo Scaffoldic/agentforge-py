@@ -21,7 +21,7 @@ from agentforge_core.contracts.migrator import (
     MigrationChecksumError,
     MigrationStatus,
 )
-from agentforge_core.migrations import discover_migrations
+from agentforge_core.migrations import discover_migrations, render_migration_up
 
 
 def _default_migrations_path() -> Path:
@@ -35,10 +35,12 @@ class SqliteMigrator:
         self,
         connection: aiosqlite.Connection,
         *,
+        variables: dict[str, str] | None = None,
         migrations_path: Path | None = None,
     ) -> None:
         self._db = connection
         self._path = migrations_path or _default_migrations_path()
+        self._variables = variables
         self._migrations: list[Migration] = discover_migrations(self._path, suffix="sql")
 
     @property
@@ -99,7 +101,8 @@ class SqliteMigrator:
             # `executescript` handles multi-statement migrations.
             # It implicitly commits, so we explicitly BEGIN before
             # and rely on the script's final state for the row write.
-            await self._db.executescript(migration.up)
+            rendered = render_migration_up(migration.up, self._variables)
+            await self._db.executescript(rendered)
             await self._db.execute(
                 "INSERT INTO agentforge_migrations(id, name, checksum) VALUES (?, ?, ?)",
                 (migration.id, migration.name, migration.checksum),

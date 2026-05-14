@@ -24,7 +24,7 @@ from agentforge_core.contracts.migrator import (
     MigrationChecksumError,
     MigrationStatus,
 )
-from agentforge_core.migrations import discover_migrations
+from agentforge_core.migrations import discover_migrations, render_migration_up
 
 from agentforge_memory_surrealdb._runner import SurrealRunner
 
@@ -54,10 +54,12 @@ class SurrealMigrator:
         self,
         runner: SurrealRunner,
         *,
+        variables: dict[str, str] | None = None,
         migrations_path: Path | None = None,
     ) -> None:
         self._r = runner
         self._path = migrations_path or _default_migrations_path()
+        self._variables = variables
         self._migrations: list[Migration] = discover_migrations(self._path, suffix="surql")
 
     @property
@@ -112,7 +114,8 @@ class SurrealMigrator:
         for migration in self._migrations:
             if migration.id in applied:
                 continue
-            await self._r.query(migration.up)
+            rendered = render_migration_up(migration.up, self._variables)
+            await self._r.query(rendered)
             await self._r.query(
                 f"CREATE type::thing('{_MIGRATIONS_TABLE}', $id) "  # nosec B608
                 "CONTENT { af_id: $id, name: $name, checksum: $checksum, "

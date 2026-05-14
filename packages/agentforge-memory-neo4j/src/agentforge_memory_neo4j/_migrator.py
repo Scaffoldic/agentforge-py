@@ -22,7 +22,7 @@ from agentforge_core.contracts.migrator import (
     MigrationChecksumError,
     MigrationStatus,
 )
-from agentforge_core.migrations import discover_migrations
+from agentforge_core.migrations import discover_migrations, render_migration_up
 
 from agentforge_memory_neo4j._runner import CypherRunner
 
@@ -57,10 +57,12 @@ class Neo4jMigrator:
         self,
         runner: CypherRunner,
         *,
+        variables: dict[str, str] | None = None,
         migrations_path: Path | None = None,
     ) -> None:
         self._r = runner
         self._path = migrations_path or _default_migrations_path()
+        self._variables = variables
         self._migrations: list[Migration] = discover_migrations(self._path, suffix="cypher")
 
     @property
@@ -118,7 +120,8 @@ class Neo4jMigrator:
         for migration in self._migrations:
             if migration.id in applied:
                 continue
-            for stmt in _split_statements(migration.up):
+            rendered = render_migration_up(migration.up, self._variables)
+            for stmt in _split_statements(rendered):
                 await self._r.execute_write(stmt, {})
             await self._r.execute_write(
                 f"CREATE (m:{_MIGRATION_LABEL} "

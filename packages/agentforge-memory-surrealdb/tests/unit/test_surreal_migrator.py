@@ -37,3 +37,30 @@ async def test_checksum_drift_raises(surreal_fake_runner) -> None:  # type: igno
     record["checksum"] = "deadbeef" * 8
     with pytest.raises(MigrationChecksumError, match="checksum drift"):
         await migrator.apply_pending()
+
+
+@pytest.mark.asyncio
+async def test_apply_pending_renders_dimension_placeholder(surreal_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """feat-024 v0.3 follow-up: with `variables={"dimensions": ...}`,
+    the vector migration's `${dimensions}` placeholder renders at
+    apply time. Checksum stays over the un-substituted template."""
+    from pathlib import Path  # noqa: PLC0415
+
+    vector_path = (
+        Path(__file__).parent.parent.parent
+        / "src"
+        / "agentforge_memory_surrealdb"
+        / "migrations"
+        / "vector"
+    )
+    migrator = SurrealMigrator(
+        surreal_fake_runner,
+        variables={"dimensions": "1024"},
+        migrations_path=vector_path,
+    )
+    await migrator.apply_pending()
+
+    qs = [q.surrealql for q in surreal_fake_runner.queries]
+    flat = " ".join(qs)
+    assert "DIMENSION 1024" in flat
+    assert "${dimensions}" not in flat
