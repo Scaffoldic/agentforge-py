@@ -11,6 +11,33 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-020 v0.3 polish — sentence-window streaming
+  output guardrails.** Closes the deferred safety gap from
+  the v0.2 chat-agents ship. Per-token streaming on
+  `ChatSession.stream()` now consults
+  `safety_mode` to decide how `OutputValidator`s gate the
+  emitted text:
+  - **`"buffer-then-stream"`** (default) — unchanged.
+  - **`"sentence-window"`** — new. Streamed text
+    accumulates in a `_SentenceWindowBuffer` until a
+    sentence boundary (`.!?` + whitespace, OR newline,
+    OR 200-char hard cap). Each completed sentence runs
+    through `check_output` before being emitted as a
+    `text` chunk. End-of-stream flushes residual.
+  - **`"stream-then-redact"`** — current alias for
+    `sentence-window`. A future v0.3+ pass may add
+    inline regex redaction without buffering.
+  - `SafetyMode` Literal re-exported from
+    `agentforge_chat`.
+  - `build_chat_session_from_config` reads
+    `modules.chat.session.safety_mode` and forwards it.
+
+### Changed
+
+- **`ChatSessionConfig.safety_mode`** Literal expanded:
+  `Literal["buffer-then-stream", "sentence-window",
+  "stream-then-redact"]`. Additive — default unchanged.
+
 - **feat-025 — Neo4jVectorStore + SurrealDB native
   `lexical_search`.** Completes hybrid_search coverage
   across every shipped `VectorStore` (InMemory / Postgres

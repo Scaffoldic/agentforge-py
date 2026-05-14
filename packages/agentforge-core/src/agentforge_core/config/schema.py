@@ -269,7 +269,24 @@ class ChatSessionConfig(BaseModel):
     per_session_budget_usd: float | None = Field(default=None, ge=0.0)
     idempotency_window_s: float = Field(default=60.0, ge=0.0)
     concurrency: Literal["queue", "reject", "replace"] = "queue"
-    safety_mode: Literal["buffer-then-stream", "stream-then-redact"] = "buffer-then-stream"
+    safety_mode: Literal["buffer-then-stream", "sentence-window", "stream-then-redact"] = (
+        "buffer-then-stream"
+    )
+    """Output-guardrail policy on streamed assistant turns:
+
+    - ``"buffer-then-stream"`` (default) — agent runs to completion;
+      output validators see the full text once; the assembled response
+      is then sentence-segmented for the wire. Existing v0.2 behaviour.
+    - ``"sentence-window"`` (feat-020 v0.3) — for real per-token
+      streaming, buffer tokens until a sentence boundary, run
+      ``check_output`` over each completed sentence, emit the
+      validated sentence as the next ``text`` chunk. Trades a small
+      latency hit (visible chunks at sentence boundaries) for
+      streaming-aware safety.
+    - ``"stream-then-redact"`` (deferred) — currently an alias for
+      ``sentence-window``. A future v0.3+ pass may add inline regex
+      redaction without buffering.
+    """
 
 
 class ChatConfig(BaseModel):

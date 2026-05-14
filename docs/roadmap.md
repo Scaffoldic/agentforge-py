@@ -172,7 +172,12 @@ Remaining for v0.3+:
   bundle (ReAct) and the v0.3.x strategy follow-ups bundle
   (the other three).
 - Multi-cluster Redlock for `RedisSessionLock`.
-- Sentence-window streaming output guardrails.
+- ~~Sentence-window streaming output guardrails.~~ — **shipped**
+  in feat-020 v0.3 polish. `ChatSession(safety_mode="sentence-window")`
+  buffers streamed tokens until a sentence boundary, runs
+  `OutputValidator.check_output` per completed sentence, and emits
+  the validated text downstream. Wired through YAML via
+  `modules.chat.session.safety_mode`.
 - Migration framework for the Postgres schema.
 
 ### feat-009 vendor observability sub-feats
