@@ -2036,3 +2036,68 @@ Tooling notes:
   per round-then-aggregate path.
 - Extract-method refactors keep the `with` block clean —
   preferable to in-place indent shifts on 30+ line bodies.
+
+---
+
+## 2026-05-14T12:00 — feat-022 BM25 + vector hybrid search in review
+
+Closes one of the three un-numbered v0.2 retrieval sub-feats
+per the user's "Full spec in one PR" scope choice.
+
+Branch: `feat/022-hybrid-search`.
+
+Chunked across 5 commits:
+
+- chunk 1 (`e42dbbc`): canonical spec at
+  `docs/features/feat-022-hybrid-search.md` + catalogue
+  row + roadmap pointer (strikes the un-numbered Hybrid
+  Search bullet).
+- chunk 2 (`588c532`):
+  `VectorStore.lexical_search` default-method on the ABC
+  (raises `NotImplementedError` by default; drivers that
+  declare `"hybrid_search"` MUST override). Pure-Python
+  `_BM25Index` helper at `agentforge_core/_bm25.py` with
+  Robertson defaults (k1=1.5, b=0.75). InMemoryVectorStore
+  declares `"hybrid_search"` and ships a native lexical
+  impl backed by a lazy `_BM25Index` rebuilt on demand
+  after any `upsert`/`delete`. `run_hybrid_search_conformance`
+  opt-in suite added to `agentforge-core` and re-exported
+  through `agentforge.testing`. Unit tests for _BM25Index +
+  InMemoryVectorStore hybrid path.
+- chunk 3 (`f5af6c1`): `Retriever.mode` +
+  `Retriever.rrf_k` constructor kwargs. Constructor
+  validates the store declares `"hybrid_search"` when
+  `mode="hybrid"`. New private `_rrf_fuse(vec, lex, *,
+  limit)` implementing Reciprocal Rank Fusion (Cormack
+  2009 default k=60). `retrieve()` dispatches to
+  `_retrieve_hybrid` when `mode="hybrid"` —
+  `asyncio.gather` of `store.search()` and
+  `store.lexical_search()`, then RRF, then optional
+  reranker post-fusion. Tests cover constructor
+  validation, fused ordering, top_k truncation, vector
+  mode regression, post-fusion reranker.
+- chunk 4 (`b2917dd`): RetrievalConfig gains `mode` +
+  `rrf_k`. `build_retriever_from_config` forwards both.
+  Integration test asserts the YAML round-trips end-to-end
+  and the resulting Retriever fuses both paths.
+- chunk 5 (about-to-commit): spec implementation-status
+  flip to shipped + catalogue row flip + roadmap pointer
+  flip + CHANGELOG entry + state files.
+
+Design notes:
+
+- Picked `Literal["vector", "hybrid"]` on a single
+  `Retriever` class rather than a separate
+  `HybridRetriever`. The mode flag keeps the build path
+  simpler and avoids two near-duplicate constructors.
+- BM25 lives as a *private* `_bm25.py` module (single
+  class + helper) — not part of the public API yet.
+  Drivers consume it as an implementation detail; the
+  public surface is `VectorStore.lexical_search`.
+- RRF fuses by **rank**, sidestepping the score
+  calibration problem entirely. Locked v0.2; future v0.3+
+  may add weighted-score fusion behind a config knob.
+- Conformance suite is *opt-in* (`run_hybrid_search_conformance`,
+  not `run_vector_conformance`). Existing drivers that
+  don't declare `"hybrid_search"` keep passing the main
+  suite unchanged.
