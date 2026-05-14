@@ -11,6 +11,42 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-024 v0.3 polish — parameterized migrations.** Closes
+  the deferred dim-parameterized item from PR #45. Migration
+  bodies may now contain `${var}` placeholders, rendered at
+  apply time via the new
+  `render_migration_up(body, variables)` helper at
+  `agentforge_core.migrations.template`. Checksums are
+  computed over the un-substituted template — re-deploys
+  with different variable values don't trigger drift.
+  - **`render_migration_up`** uses Python's
+    `string.Template` with `safe_substitute` semantics
+    (unknown placeholders pass through so template-key
+    typos surface as apply-time SQL errors).
+  - **All four per-driver migrators** (`PostgresMigrator`,
+    `SqliteMigrator`, `Neo4jMigrator`, `SurrealMigrator`)
+    gain an optional `variables: dict[str, str] | None
+    = None` constructor kwarg.
+  - **Postgres + SurrealDB** get per-store migration
+    subdirectories. Vector migrations move to
+    `migrations/vector/0100_vectors.{sql,surql}` (id
+    range 0100-0199 avoids colliding with memory's
+    0001 in the shared tracking table).
+  - **`PostgresVectorStore.migrator()`** /
+    **`SurrealVectorStore.migrator()`** pre-configure
+    with `variables={"dimensions": str(self._dim)}` and
+    point at the vector subdirectory.
+  - **`_build_init_schema_sql`** / **`_build_init_schema`**
+    helpers removed; `init_schema()` on both vector stores
+    delegates to the migration framework.
+
+### Changed
+
+- **All four per-driver migrators** (`PostgresMigrator` /
+  `SqliteMigrator` / `Neo4jMigrator` / `SurrealMigrator`)
+  gain an optional `variables=` constructor kwarg. Default
+  `None` keeps existing migrations working unchanged.
+
 - **feat-024 — Schema migrations framework.** New canonical
   feature closing the last un-numbered v0.2 persistence
   sub-feat. Ships as a single PR across all four

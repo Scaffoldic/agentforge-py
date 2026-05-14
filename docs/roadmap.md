@@ -253,8 +253,8 @@ targeted for v0.2:
   **shipped** in v0.2 (`Migration` value + `Migrator` Protocol +
   `discover_migrations` helper + per-driver migrators for
   Postgres / SQLite / Neo4j / SurrealDB +
-  `agentforge db migrate` / `migrate-status` CLI). Dim-parameterized
-  vector schemas (Postgres `vector(N)`, SurrealDB `HNSW DIMENSION N`)
-  stay under the existing `init_schema()` until parameterized
-  migrations land in v0.3+. `down` migrations / schema rollback
-  deferred to v0.3.
+  `agentforge db migrate` / `migrate-status` CLI). v0.3 polish
+  bundle adds template support (`${var}` placeholders in migration
+  bodies) so Postgres `vector(N)` + SurrealDB `HNSW DIMENSION N`
+  schemas now live under the migration framework too. `down`
+  migrations / schema rollback deferred to v0.3+.
