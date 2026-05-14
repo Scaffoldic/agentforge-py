@@ -2313,3 +2313,61 @@ Tooling notes:
 - pytest collection conflicts on `test_migrator.py`
   across two packages — rename one (we renamed both:
   `test_postgres_migrator.py` + `test_sqlite_migrator.py`).
+
+---
+
+## 2026-05-14T16:00 — feat-024 v0.3 polish (parameterized migrations) in review
+
+Closes the dim-parameterized item deferred from PR #45
+per the user's "Parameterized migrations (feat-024
+v0.3+)" + "Full bundle: core + Postgres + SurrealDB"
+choices.
+
+Branch: `feat/024-parameterized-migrations-vectors`.
+
+Chunked across 3 commits:
+
+- chunk 1 (`ce3141a`): `render_migration_up(body,
+  variables)` at `agentforge_core/migrations/template.py`.
+  Uses `string.Template.safe_substitute` so unknown
+  placeholders pass through. Re-exported via
+  `agentforge_core.migrations`. 6 new unit tests
+  including a checksum-over-template invariant test.
+- chunk 2 (`a25193a`): all four per-driver migrators
+  gain `variables=` kwarg. Postgres + SurrealDB get
+  per-store migration subdirectories: vector migrations
+  move to `migrations/vector/0100_vectors.{sql,surql}`
+  (id range 0100+ avoids colliding with memory's 0001
+  in the shared tracking table).
+  `Postgres/SurrealVectorStore.migrator()` returns a
+  migrator configured with `variables={"dimensions":
+  str(self._dim)}` + the vector subdir path.
+  `_build_init_schema_sql` / `_build_init_schema`
+  helpers removed; both vector stores' `init_schema()`
+  delegate to the migration framework.
+- chunk 3 (about-to-commit): spec subsection + roadmap
+  flip + CHANGELOG + state.
+
+Design notes:
+
+- Per-store subdirectories use `path.glob(pattern)`
+  which is non-recursive, so the memory store's
+  migrator at `migrations/` doesn't pick up files in
+  `migrations/vector/`. Same for SurrealDB.
+- The `0000_migrations_table.{sql,surql}` is duplicated
+  in both the root and the vector subdir (identical
+  content). Same SHA-256 checksum, so the second store
+  to run sees `0000` already applied and skips. The
+  shared tracking table works for both stores.
+- ID ranges per store (Postgres + SurrealDB): memory =
+  0001-0099, vector = 0100-0199, graph = 0200-0299
+  (future). Future stores follow the same pattern to
+  keep ids unique across the shared tracking table.
+- SQLite + Neo4j get the `variables=` kwarg as
+  passthrough — no functional change today, but
+  unblocks future driver-specific parameterized
+  migrations without another framework bump.
+- Checksum-over-template is the load-bearing decision:
+  re-deploying with a different dim value produces the
+  same checksum, so drift detection stays correct.
+  Verified with a dedicated unit test in chunk 1.
