@@ -36,6 +36,7 @@ from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.observability.tracing import get_tracer
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import LLMResponse, Message, ToolSpec
 from agentforge_core.values.state import AgentState, Step, StepKind
 from pydantic import ValidationError
@@ -48,6 +49,23 @@ DEFAULT_TOOL_TIMEOUT_S = 30.0
 `agent.tool_options.timeout_s` in `agentforge.yaml`."""
 
 log = logging.getLogger(__name__)
+
+
+def _events_for_new_steps(steps: list[Step], before: int) -> list[StreamingEvent]:
+    """Build ``step`` `StreamingEvent`s for every step appended since
+    the ``before`` index. Keeps the streaming-side rendering of state
+    deltas separate from the strategy's recording semantics."""
+    return [
+        StreamingEvent(
+            kind="step",
+            content=step.content,
+            metadata={
+                "iteration": step.iteration,
+                "kind": step.kind,
+            },
+        )
+        for step in steps[before:]
+    ]
 
 
 def get_runtime(state: AgentState) -> RuntimeContext:
