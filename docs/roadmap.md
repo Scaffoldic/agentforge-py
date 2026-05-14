@@ -235,7 +235,17 @@ targeted for v0.2:
   opt-in `run_hybrid_search_conformance` suite). Native
   Postgres (`tsvector` + `ts_rank_cd`) and SQLite (FTS5 +
   `bm25`) lexical paths shipped in the v0.2 follow-up
-  bundle.
+  bundle. SurrealDB native `lexical_search` (via
+  `DEFINE ANALYZER` + `SEARCH ANALYZER ... BM25`) lands
+  alongside the new `Neo4jVectorStore` in
+  [feat-025](./features/feat-025-neo4j-vector-store.md) so
+  every shipped `VectorStore` then passes
+  `run_hybrid_search_conformance`.
+- **feat-025** —
+  [`Neo4jVectorStore`](./features/feat-025-neo4j-vector-store.md)
+  + hybrid_search via Neo4j 5.13+ `CREATE VECTOR INDEX` +
+  `CREATE FULLTEXT INDEX`. Bundled with the SurrealDB
+  native FTS follow-up above.
 - ~~**Reranker contract**~~ — promoted to canonical
   [feat-021](./features/feat-021-reranker.md); ABC + default
   SentenceTransformers concrete + `Retriever` integration
