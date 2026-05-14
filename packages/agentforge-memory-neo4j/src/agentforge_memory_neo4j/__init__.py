@@ -11,7 +11,13 @@ from __future__ import annotations
 
 from agentforge_memory_neo4j.graph import Neo4jGraphStore
 from agentforge_memory_neo4j.memory import Neo4jMemoryStore
+from agentforge_memory_neo4j.vector import Neo4jVectorStore
 
 __version__ = "0.0.0"
 
-__all__ = ["Neo4jGraphStore", "Neo4jMemoryStore", "__version__"]
+__all__ = [
+    "Neo4jGraphStore",
+    "Neo4jMemoryStore",
+    "Neo4jVectorStore",
+    "__version__",
+]

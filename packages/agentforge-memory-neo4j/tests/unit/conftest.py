@@ -335,3 +335,141 @@ def graph_fake_runner() -> GraphFakeRunner:
 @pytest.fixture
 def memory_fake_runner() -> MemoryFakeRunner:
     return MemoryFakeRunner()
+
+
+# ----------------------------------------------------------------------
+# VectorFakeRunner — feat-025
+# ----------------------------------------------------------------------
+
+from agentforge.memory import InMemoryVectorStore  # noqa: E402
+from agentforge_core._bm25 import _BM25Index  # noqa: E402
+from agentforge_core.values.vector import VectorItem  # noqa: E402
+
+
+@dataclass
+class VectorFakeRunner:
+    """Cypher fake for `Neo4jVectorStore`.
+
+    Routes the Cypher shapes the vector store emits to in-memory
+    backings: `InMemoryVectorStore` for upsert/search/delete, a
+    `_BM25Index` for the fulltext path. The migrator's tracking-
+    table queries are recognised too.
+    """
+
+    backing: InMemoryVectorStore = field(default_factory=lambda: InMemoryVectorStore(dimensions=8))
+    queries: list[_Query] = field(default_factory=list)
+    closed: bool = False
+    _bm25: _BM25Index | None = None
+    _applied_migrations: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    async def execute_read(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        self.queries.append(_Query(cypher, params))
+        return await self._dispatch(cypher, params)
+
+    async def execute_write(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        self.queries.append(_Query(cypher, params))
+        return await self._dispatch(cypher, params)
+
+    async def close(self) -> None:
+        self.closed = True
+
+    async def _dispatch(  # noqa: PLR0911
+        self, cypher: str, params: dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        c = " ".join(cypher.split())
+        # Migrations (constraints, vector index, fulltext index, etc.)
+        if (
+            c.startswith("CREATE CONSTRAINT")
+            or c.startswith("CREATE VECTOR INDEX")
+            or c.startswith("CREATE FULLTEXT INDEX")
+            or c.startswith("CREATE INDEX")
+        ):
+            return []
+        # feat-024 migration tracking
+        if "MATCH (m:AgentforgeMigration)" in c:
+            return list(self._applied_migrations.values())
+        if "CREATE (m:AgentforgeMigration" in c:
+            self._applied_migrations[params["id"]] = {
+                "id": params["id"],
+                "name": params["name"],
+                "checksum": params["checksum"],
+                "applied_at": None,
+            }
+            return []
+        # Vector upsert
+        if "MERGE (n:AfVector" in c:
+            self._bm25 = None  # invalidate
+            return await self._do_upsert(params)
+        # Delete probe
+        if c.startswith("MATCH (n:AfVector) WHERE n.af_id IN $ids RETURN"):
+            ids = list(params["ids"])
+            present: list[dict[str, Any]] = [
+                {"id": nid} for nid in ids if await self._backing_has(nid)
+            ]
+            return present
+        # Delete actual
+        if c.startswith("MATCH (n:AfVector) WHERE n.af_id IN $ids DETACH DELETE"):
+            self._bm25 = None
+            await self.backing.delete(list(params["ids"]))
+            return []
+        # Vector search
+        if "db.index.vector.queryNodes" in c:
+            return await self._do_vector_search(params)
+        # Lexical search
+        if "db.index.fulltext.queryNodes" in c:
+            return await self._do_lexical_search(params)
+        msg = f"VectorFakeRunner: unrecognised Cypher: {cypher!r}"
+        raise AssertionError(msg)
+
+    async def _backing_has(self, nid: str) -> bool:
+        # InMemoryVectorStore doesn't have a `get`; probe via search.
+        # We use the internal dict directly for accuracy.
+        return nid in self.backing._items  # type: ignore[attr-defined]
+
+    async def _do_upsert(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        await self.backing.upsert(
+            [
+                VectorItem(
+                    id=params["id"],
+                    vector=tuple(params["embedding"]),
+                    text=params["text"],
+                    metadata=dict(params["metadata"]),
+                )
+            ]
+        )
+        return []
+
+    async def _do_vector_search(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        limit = int(params["limit"])
+        matches = await self.backing.search(tuple(params["query"]), limit=limit)
+        return [
+            {"id": m.id, "text": m.text, "metadata": dict(m.metadata), "score": m.score}
+            for m in matches
+        ]
+
+    async def _do_lexical_search(self, params: dict[str, Any]) -> list[dict[str, Any]]:
+        limit = int(params["limit"])
+        query = str(params["query"])
+        # Build a BM25 index lazily over the backing store's text.
+        if self._bm25 is None:
+            self._bm25 = _BM25Index()
+            for nid, (_vec, text, _meta) in self.backing._items.items():  # type: ignore[attr-defined]
+                self._bm25.add(nid, text)
+        scored = self._bm25.score(query, limit=max(limit, 1))
+        out: list[dict[str, Any]] = []
+        for nid, raw in scored:
+            _vec, text, meta = self.backing._items[nid]  # type: ignore[attr-defined]
+            out.append(
+                {
+                    "id": nid,
+                    "text": text,
+                    "metadata": dict(meta),
+                    "raw": raw,
+                }
+            )
+        return out
+
+
+@pytest.fixture
+def vector_fake_runner() -> VectorFakeRunner:
+    return VectorFakeRunner()

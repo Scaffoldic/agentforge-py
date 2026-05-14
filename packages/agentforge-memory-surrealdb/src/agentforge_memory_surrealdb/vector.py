@@ -174,6 +174,48 @@ class SurrealVectorStore(VectorStore):
             for score, item_id, text, meta in scored[:limit]
         ]
 
+    async def lexical_search(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorMatch]:
+        if limit < 1:
+            msg = f"limit must be >= 1, got {limit}"
+            raise ValueError(msg)
+        if not query.strip():
+            return []
+        over_fetch = limit if filter_metadata is None else limit * 4
+        rows = await self._r.query(
+            "SELECT *, search::score(0) AS raw "  # nosec B608
+            "FROM af_vector WHERE text @0@ $query "
+            "ORDER BY raw DESC LIMIT $limit",
+            {"query": query, "limit": max(over_fetch, 1)},
+        )
+        records = _flatten(rows)
+        if not records:
+            return []
+        top_raw = max((float(r.get("raw", 0.0) or 0.0) for r in records), default=0.0)
+        out: list[VectorMatch] = []
+        for r in records:
+            meta = dict(r.get("metadata", {}))
+            if filter_metadata is not None and not _matches_filter(meta, filter_metadata):
+                continue
+            raw = float(r.get("raw", 0.0) or 0.0)
+            score = raw / top_raw if top_raw > 0 else 0.0
+            out.append(
+                VectorMatch(
+                    id=str(r["af_id"]),
+                    text=str(r.get("text", "")),
+                    metadata=meta,
+                    score=score,
+                )
+            )
+            if len(out) >= limit:
+                break
+        return out
+
     async def delete(self, ids: list[str]) -> int:
         if not ids:
             return 0
@@ -185,7 +227,14 @@ class SurrealVectorStore(VectorStore):
         return len(existing)
 
     def capabilities(self) -> set[str]:
-        return {"native_ann"} if self._ann else set()
+        """`native_ann` + `hybrid_search` are declared together after
+        `init_schema()` — both indexes ship in the bundled vector
+        migrations (HNSW + FTS analyzer + SEARCH index)."""
+        caps: set[str] = set()
+        if self._ann:
+            caps.add("native_ann")
+            caps.add("hybrid_search")
+        return caps
 
 
 def _flatten(rows: list[Any]) -> list[dict[str, Any]]:
