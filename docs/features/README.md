@@ -88,7 +88,7 @@
 | ID | Title | Status | Target | Languages | Module(s) |
 |---|---|---|---|---|---|
 | **feat-021** | Reranker — cross-encoder reranking on top of vector retrieval; `Reranker` ABC + `Retriever(reranker=...)` integration with configurable over-fetch + SentenceTransformers default concrete impl | shipped (Python) | 0.2 | both | `agentforge-core` (ABC), `agentforge` (Retriever integration), `agentforge-reranker-sentence-transformers` |
-| **feat-022** | Hybrid search — `VectorStore.lexical_search` ABC extension + pure-Python BM25 (`_BM25Index`) + `Retriever(mode="hybrid")` with RRF fusion + `InMemoryVectorStore` native impl + opt-in `run_hybrid_search_conformance` suite | proposed | 0.2 | both | `agentforge-core` (ABC + BM25 + conformance), `agentforge` (Retriever hybrid mode + InMemoryVectorStore impl) |
+| **feat-022** | Hybrid search — `VectorStore.lexical_search` ABC extension + pure-Python BM25 (`_BM25Index`) + `Retriever(mode="hybrid")` with RRF fusion + `InMemoryVectorStore` native impl + opt-in `run_hybrid_search_conformance` suite | shipped (Python) | 0.2 | both | `agentforge-core` (ABC + BM25 + conformance), `agentforge` (Retriever hybrid mode + InMemoryVectorStore impl) |
 
 ---
 
