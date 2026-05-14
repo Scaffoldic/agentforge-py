@@ -215,6 +215,8 @@ def build_retriever_from_config(config: AgentForgeConfig) -> Retriever | None:
         top_k=r.top_k,
         over_fetch_factor=r.over_fetch_factor,
         batch_size=r.batch_size,
+        mode=r.mode,
+        rrf_k=r.rrf_k,
     )
 
 

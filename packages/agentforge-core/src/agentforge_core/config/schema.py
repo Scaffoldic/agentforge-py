@@ -138,6 +138,14 @@ class RetrievalConfig(BaseModel):
     top_k: int = Field(default=5, ge=1)
     over_fetch_factor: int = Field(default=3, ge=1)
     batch_size: int = Field(default=32, ge=1)
+    mode: Literal["vector", "hybrid"] = "vector"
+    """Retrieval mode (feat-022): ``"vector"`` for cosine-only or
+    ``"hybrid"`` for BM25 + cosine fused via RRF. Hybrid requires the
+    underlying ``VectorStore`` to declare the ``"hybrid_search"``
+    capability."""
+    rrf_k: int = Field(default=60, ge=1)
+    """RRF constant (Cormack 2009 default 60). Ignored when ``mode``
+    is ``"vector"``."""
 
 
 class EvaluatorEntry(BaseModel):
