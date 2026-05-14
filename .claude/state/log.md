@@ -1971,3 +1971,68 @@ Tooling notes:
   `("field", "bad_value")` instead.
 - ruff RUF012 fires on `class _NoAuth: headers: dict = {}`
   — mutable default at class level. Move to `__init__`.
+
+---
+
+## 2026-05-14T11:00 — feat-002 + feat-009 v0.3.x strategy follow-ups bundle in review
+
+Closes the two deferred items from PR #40 in one bundled
+PR per the user's "Strategy follow-ups bundle" choice:
+
+1. `strategy.iteration` OTel spans on TreeOfThoughts +
+   MultiAgentSupervisor (the two deferred at the end of
+   PR #40 — their loop bodies were too large for an
+   in-place `with`-block addition).
+2. `stream()` overrides on PlanExecuteLoop, TreeOfThoughts,
+   and MultiAgentSupervisor — closes the feat-002 v0.3+
+   follow-up that was deferred case-by-case at the spec
+   level.
+
+Branch: `chore/feat-002-feat-009-strategy-streams-iteration-spans`.
+
+Chunked across 6 commits:
+
+- chunk 1 (`57e66ce`): lift `_events_for_new_steps` from
+  `react.py` into `strategies/_base.py` so the three
+  follow-up strategies' `stream()` overrides can reuse it.
+- chunk 2 (`9f7ca68`): ToT `strategy.iteration` via
+  extract-method. New `_iterate_depth(state, by_id,
+  survivors, current_depth) -> list[_Node]` holds the
+  inner depth-iteration body; `run()` (and later
+  `stream()`) wrap the helper call in
+  `tracer.start_as_current_span("strategy.iteration", ...)`.
+  Extended `agentforge-otel/tests/unit/test_hook.py`
+  asserts the span tree.
+- chunk 3 (`5890b8a`): MultiAgent `strategy.iteration` via
+  extract-method. New `_iterate_round(state, runtime,
+  round_idx, prior_results) -> tuple[list[_WorkerResult],
+  bool]` holds the round body; the bool flags both
+  "no valid assignments" and "every worker errored" exits.
+  Same span pattern; extended test asserts.
+- chunk 4 (`3b654cf`): PlanExecuteLoop.stream() override.
+  Mirrors `run()` but yields `_events_for_new_steps` after
+  each phase: plan-build (which records `think` + `plan`),
+  `_execute_plan` (batched think-only or tool steps —
+  yields after the helper returns since `asyncio.gather`
+  packs the batch), then synthesize.
+- chunk 5 (`87b9d9a`): ToT.stream() override. Mirrors
+  `run()` but yields `_events_for_new_steps` after each
+  `_iterate_depth` call (flushing all branch steps for
+  that depth) and again after synthesize.
+- chunk 6 (about-to-commit): MultiAgentSupervisor.stream()
+  override + docs (feat-002 + feat-009 specs) + roadmap
+  cleanup (flips three v0.3+ items that PR #40 actually
+  shipped to ~shipped~) + CHANGELOG entry + state files.
+
+Tooling notes:
+
+- Confirmed the PlanExecute step-kind sequence: each
+  think-only step records `act` (via
+  `_call_llm(kind="act")` inside `_run_step`) followed by
+  an explicit `observe` record. The supervisor delegation
+  call records `plan` not `think` (via
+  `_call_llm(kind="plan")` in `_delegate`). MultiAgent's
+  stream emits `[plan, delegate × N, synthesize, done]`
+  per round-then-aggregate path.
+- Extract-method refactors keep the `with` block clean —
+  preferable to in-place indent shifts on 30+ line bodies.

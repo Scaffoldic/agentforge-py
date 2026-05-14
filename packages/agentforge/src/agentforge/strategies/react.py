@@ -20,10 +20,10 @@ from agentforge_core.contracts.tool import Tool
 from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
-from agentforge_core.values.state import AgentState, Step
+from agentforge_core.values.state import AgentState
 
 from agentforge.resolver_register import register_strategy
-from agentforge.strategies._base import StrategyBase, get_runtime
+from agentforge.strategies._base import StrategyBase, _events_for_new_steps, get_runtime
 
 DEFAULT_SYSTEM_PROMPT = (
     "You are a helpful AI assistant. You can use tools when they help "
@@ -228,23 +228,6 @@ class ReActLoop(StrategyBase):
                 "cost_usd": float(runtime.budget.spent_usd),
             },
         )
-
-
-def _events_for_new_steps(steps: list[Step], before: int) -> list[StreamingEvent]:
-    """Build ``step`` `StreamingEvent`s for every step appended since
-    the ``before`` index. Keeps the streaming-side rendering of state
-    deltas separate from the strategy's recording semantics."""
-    return [
-        StreamingEvent(
-            kind="step",
-            content=step.content,
-            metadata={
-                "iteration": step.iteration,
-                "kind": step.kind,
-            },
-        )
-        for step in steps[before:]
-    ]
 
 
 def _find_tool(tools: tuple[Tool, ...], name: str) -> Tool | None:
