@@ -26,6 +26,7 @@ import asyncpg
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.vector import VectorItem, VectorMatch
 
+from agentforge_memory_postgres._migrator import PostgresMigrator
 from agentforge_memory_postgres._runner import PostgresRunner, _AsyncpgPoolRunner
 
 # Table is a framework constant; all SQL composed from it is
@@ -69,34 +70,6 @@ _LEXICAL_SEARCH_SQL = (
     f"  FROM ranked "
     f" ORDER BY raw DESC"
 )
-
-
-def _build_init_schema_sql(dimensions: int) -> str:
-    """Compose schema-bootstrap SQL. `dimensions` is validated as an
-    `int` by the constructor — never a free-form string — so the
-    interpolation is safe. Tagged S608 / B608 nonetheless to keep the
-    lint surface honest.
-
-    Includes the feat-022 lexical-search column (``embedding_tsv``)
-    + GIN index. Upgrade from a pre-feat-022 schema: re-run
-    ``init_schema()`` to gain the column + index.
-    """
-    return (
-        "CREATE EXTENSION IF NOT EXISTS vector;"
-        f"CREATE TABLE IF NOT EXISTS {_VECTORS_TABLE} ("  # nosec B608
-        "    id        TEXT PRIMARY KEY,"
-        f"    embedding vector({int(dimensions)}) NOT NULL,"
-        "    text      TEXT NOT NULL,"
-        "    metadata  JSONB NOT NULL DEFAULT '{}'::jsonb"
-        ");"
-        f"CREATE INDEX IF NOT EXISTS idx_{_VECTORS_TABLE}_embedding "
-        f"    ON {_VECTORS_TABLE} USING hnsw (embedding vector_cosine_ops);"
-        f"ALTER TABLE {_VECTORS_TABLE} "  # nosec B608
-        f"    ADD COLUMN IF NOT EXISTS embedding_tsv tsvector "
-        f"    GENERATED ALWAYS AS (to_tsvector('english', coalesce(text, ''))) STORED;"
-        f"CREATE INDEX IF NOT EXISTS idx_{_VECTORS_TABLE}_tsv "
-        f"    ON {_VECTORS_TABLE} USING gin (embedding_tsv);"
-    )
 
 
 class PostgresVectorStore(VectorStore):
@@ -154,14 +127,42 @@ class PostgresVectorStore(VectorStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> PostgresMigrator:
+        """Return a `PostgresMigrator` pre-configured with the
+        ``dimensions`` template variable + the vector-store
+        migrations subdirectory (feat-024 v0.3 follow-up).
+
+        The vector migrations use ``vector(${dimensions})`` placeholders
+        that the migrator renders at apply time. Checksums are
+        computed over the un-substituted template, so re-deploying
+        with a different `dimensions` value doesn't trigger drift
+        detection.
+
+        Migration files live under
+        ``migrations/vector/`` (vector-store specific; id range
+        0100-0199); the shared ``0000_migrations_table`` bootstraps
+        the tracking table the first time any store applies it.
+        """
+        from pathlib import Path  # noqa: PLC0415
+
+        path = Path(__file__).parent / "migrations" / "vector"
+        return PostgresMigrator(
+            self._r,
+            variables={"dimensions": str(self._dim)},
+            migrations_path=path,
+        )
+
     async def init_schema(self) -> None:
-        """Provision the vectors table + HNSW index. Idempotent.
+        """Provision the vectors table + HNSW index + feat-022
+        tsvector column via the migration framework (feat-024).
+        Idempotent.
 
         After this returns, the store declares the `"native_ann"`
-        capability — the HNSW index is in place. Skip this for
-        read-only workloads or when the schema is managed externally.
+        and `"hybrid_search"` capabilities — the indexes are in
+        place. Skip this for read-only workloads or when the schema
+        is managed externally.
         """
-        await self._r.execute(_build_init_schema_sql(self._dim))
+        await self.migrator().apply_pending()
         self._ann = True
 
     async def close(self) -> None:

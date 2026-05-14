@@ -20,6 +20,7 @@ from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.vector import VectorItem, VectorMatch
 from surrealdb import AsyncSurreal
 
+from agentforge_memory_surrealdb._migrator import SurrealMigrator
 from agentforge_memory_surrealdb._runner import SurrealRunner, _SurrealClientRunner
 
 # Table name is a framework constant. S608 noqa annotations below are
@@ -33,19 +34,6 @@ _UPSERT_VECTOR_QUERY = (
 _SELECT_ALL_VECTORS = f"SELECT * FROM {_VECTOR_TABLE}"  # noqa: S608  # nosec B608
 _SELECT_VECTORS_BY_IDS = f"SELECT af_id FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608  # nosec B608
 _DELETE_VECTORS_BY_IDS = f"DELETE FROM {_VECTOR_TABLE} WHERE af_id IN $ids"  # noqa: S608  # nosec B608
-
-
-def _build_init_schema(dimensions: int) -> str:
-    """Compose the schema-bootstrap query. `dimensions` is validated as
-    `int` by the constructor — never a free-form string."""
-    return (
-        f"DEFINE TABLE IF NOT EXISTS {_VECTOR_TABLE} SCHEMALESS;"
-        f"DEFINE INDEX IF NOT EXISTS {_VECTOR_TABLE}_id_idx "
-        f"ON {_VECTOR_TABLE} FIELDS af_id UNIQUE;"
-        f"DEFINE INDEX IF NOT EXISTS {_VECTOR_TABLE}_hnsw_idx "
-        f"ON {_VECTOR_TABLE} FIELDS embedding HNSW DIMENSION {int(dimensions)} "
-        "DIST COSINE;"
-    )
 
 
 class SurrealVectorStore(VectorStore):
@@ -92,9 +80,24 @@ class SurrealVectorStore(VectorStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> SurrealMigrator:
+        """Return a `SurrealMigrator` pre-configured with the
+        ``dimensions`` template variable + the vector-store
+        migrations subdirectory (feat-024 v0.3 follow-up).
+        """
+        from pathlib import Path  # noqa: PLC0415
+
+        path = Path(__file__).parent / "migrations" / "vector"
+        return SurrealMigrator(
+            self._r,
+            variables={"dimensions": str(self._dim)},
+            migrations_path=path,
+        )
+
     async def init_schema(self) -> None:
-        """Provision the HNSW index. Idempotent."""
-        await self._r.query(_build_init_schema(self._dim))
+        """Provision the af_vector table + HNSW index via the
+        migration framework (feat-024). Idempotent."""
+        await self.migrator().apply_pending()
         self._ann = True
 
     async def close(self) -> None:
