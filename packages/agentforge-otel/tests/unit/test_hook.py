@@ -365,6 +365,65 @@ async def test_child_span_tree_via_tot_strategy():
     assert attrs["agentforge.iteration"] == 0
 
 
+@pytest.mark.asyncio
+async def test_child_span_tree_via_multi_agent_strategy():
+    """Drive an Agent with the built-in ``MultiAgentSupervisor`` and
+    assert ``strategy.iteration`` spans land with
+    ``agentforge.strategy=multi_agent``.
+    """
+    from agentforge._testing import FakeLLMClient  # noqa: PLC0415
+    from agentforge.strategies._base import get_runtime  # noqa: PLC0415
+    from agentforge.strategies.multi_agent import MultiAgentSupervisor  # noqa: PLC0415
+    from agentforge_core.contracts.strategy import ReasoningStrategy  # noqa: PLC0415
+    from agentforge_core.values.messages import LLMResponse, TokenUsage  # noqa: PLC0415
+    from agentforge_core.values.state import Step as StepCls  # noqa: PLC0415
+
+    exporter = _install_inmemory_provider()
+
+    class _Worker(ReasoningStrategy):
+        async def run(self, state):
+            get_runtime(state).budget.check()
+            state.steps.append(StepCls(iteration=1, kind="synthesize", content="ok", cost_usd=0.0))
+            return state
+
+    def _resp(content: str) -> LLMResponse:
+        return LLMResponse(
+            content=content,
+            stop_reason="end_turn",
+            usage=TokenUsage(input_tokens=5, output_tokens=3),
+            cost_usd=0.0,
+            model="fake",
+            provider="fake",
+        )
+
+    fake = FakeLLMClient(
+        responses=[
+            _resp('{"assignments": [{"worker": "a", "task": "subtask 1"}]}'),
+            _resp("aggregated answer."),
+        ]
+    )
+    otel = OpenTelemetryHook(service_name="test", endpoint="http://localhost:4317")
+    async with Agent(
+        model=fake,
+        tools=[],
+        strategy=MultiAgentSupervisor(workers={"a": _Worker()}, max_rounds=1),
+        on_step=otel,
+        on_finish=otel,
+    ) as agent:
+        await agent.run("big task")
+
+    finished = exporter.get_finished_spans()
+    by_name: dict[str, list] = {}
+    for s in finished:
+        by_name.setdefault(s.name, []).append(s)
+
+    assert len(by_name["agent.run"]) == 1
+    assert len(by_name["strategy.iteration"]) == 1
+    attrs = dict(by_name["strategy.iteration"][0].attributes or {})
+    assert attrs["agentforge.strategy"] == "multi_agent"
+    assert attrs["agentforge.iteration"] == 0
+
+
 # --- content-based PII redaction (feat-009 v0.3 polish) --------
 
 
