@@ -34,6 +34,24 @@ CREATE TABLE IF NOT EXISTS vector_meta (
     key         TEXT PRIMARY KEY,
     value       TEXT NOT NULL
 );
+CREATE VIRTUAL TABLE IF NOT EXISTS vectors_fts USING fts5(
+    text,
+    content='vectors',
+    content_rowid='rowid',
+    tokenize='unicode61'
+);
+CREATE TRIGGER IF NOT EXISTS vectors_ai AFTER INSERT ON vectors BEGIN
+    INSERT INTO vectors_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
+CREATE TRIGGER IF NOT EXISTS vectors_ad AFTER DELETE ON vectors BEGIN
+    INSERT INTO vectors_fts(vectors_fts, rowid, text)
+        VALUES ('delete', old.rowid, old.text);
+END;
+CREATE TRIGGER IF NOT EXISTS vectors_au AFTER UPDATE ON vectors BEGIN
+    INSERT INTO vectors_fts(vectors_fts, rowid, text)
+        VALUES ('delete', old.rowid, old.text);
+    INSERT INTO vectors_fts(rowid, text) VALUES (new.rowid, new.text);
+END;
 """
 
 
@@ -154,6 +172,60 @@ class SqliteVectorStore(VectorStore):
             for score, item_id, text, meta in scored[:limit]
         ]
 
+    async def lexical_search(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorMatch]:
+        if limit < 1:
+            raise ValueError(f"limit must be >= 1, got {limit}")
+        escaped = _escape_fts_query(query)
+        if not escaped:
+            return []
+        # Over-fetch when metadata filter is set so post-filter has
+        # room to work; the in-memory store uses the same pattern.
+        over_fetch = limit if filter_metadata is None else limit * 4
+        async with self._db.execute(
+            "SELECT v.id, v.text, v.metadata, "
+            "       -bm25(vectors_fts) AS raw "
+            "  FROM vectors_fts "
+            "  JOIN vectors v ON v.rowid = vectors_fts.rowid "
+            " WHERE vectors_fts MATCH ? "
+            " ORDER BY raw DESC "
+            " LIMIT ?",
+            (escaped, max(over_fetch, 1)),
+        ) as cur:
+            rows = list(await cur.fetchall())
+        if not rows:
+            return []
+
+        top_raw = float(rows[0]["raw"])
+        matches: list[VectorMatch] = []
+        for row in rows:
+            metadata = json.loads(row["metadata"])
+            if filter_metadata is not None and not _matches_filter(metadata, filter_metadata):
+                continue
+            raw = float(row["raw"])
+            score = raw / top_raw if top_raw > 0 else 0.0
+            matches.append(
+                VectorMatch(
+                    id=str(row["id"]),
+                    text=str(row["text"]),
+                    metadata=metadata,
+                    score=score,
+                )
+            )
+            if len(matches) >= limit:
+                break
+        return matches
+
+    def capabilities(self) -> set[str]:
+        """SQLite ships native FTS5; hybrid_search is always available
+        once the schema is set up in `from_path()`."""
+        return {"hybrid_search"}
+
     async def delete(self, ids: list[str]) -> int:
         if not ids:
             return 0
@@ -195,6 +267,14 @@ def _l2_normalise(vector: tuple[float, ...]) -> tuple[float, ...]:
 
 def _matches_filter(metadata: dict[str, Any], filter_md: dict[str, Any]) -> bool:
     return all(metadata.get(k) == v for k, v in filter_md.items())
+
+
+def _escape_fts_query(query: str) -> str:
+    """Wrap every term in double-quotes so user input that contains
+    FTS5 special syntax (``AND`` / ``OR`` / ``*`` / parens / colons)
+    is treated literally. Empty input yields an empty string."""
+    terms = ['"' + term.replace('"', '""') + '"' for term in query.split() if term]
+    return " ".join(terms)
 
 
 __all__ = ["SqliteVectorStore"]
