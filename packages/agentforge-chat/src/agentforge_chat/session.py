@@ -25,7 +25,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import AsyncIterator, Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from agentforge.agent import Agent
@@ -43,10 +43,17 @@ from agentforge_chat._locks import (
     default_session_lock_factory,
 )
 from agentforge_chat._segment import segment_for_stream
+from agentforge_chat._window import _SentenceWindowBuffer
 from agentforge_chat.history import InMemoryChatHistory
 from agentforge_chat.truncation import SlidingWindow
 
 OnTurnHook = Callable[[ChatTurn], None]
+
+SafetyMode = Literal["buffer-then-stream", "sentence-window", "stream-then-redact"]
+"""Output-guardrail policy on streamed assistant turns. See
+:class:`agentforge_core.config.schema.ChatSessionConfig` for
+per-value semantics. ``"stream-then-redact"`` is currently an
+alias for ``"sentence-window"`` (feat-020 v0.3 polish)."""
 
 
 class ChatSession:
@@ -66,6 +73,7 @@ class ChatSession:
         idempotency_window_s: float = 60.0,
         on_turn: OnTurnHook | None = None,
         session_lock_factory: SessionLockFactory | None = None,
+        safety_mode: SafetyMode = "buffer-then-stream",
     ) -> None:
         self._agent = agent
         self._session_id = session_id if session_id is not None else uuid4().hex
@@ -88,6 +96,7 @@ class ChatSession:
         self._total_cost = 0.0
         self._turn_count = 0
         self._closed = False
+        self._safety_mode: SafetyMode = safety_mode
 
     # ------------------------------------------------------------------
     # Public properties
@@ -334,7 +343,7 @@ class ChatSession:
             async for chunk in self._chunks_for(response):
                 yield chunk
 
-    async def _stream_per_token(
+    async def _stream_per_token(  # noqa: PLR0912
         self,
         message: str,
         *,
@@ -344,6 +353,13 @@ class ChatSession:
         `StreamingEvent` as a `ChatChunk`. Persists the user + final
         assistant turns and updates per-session budgets the same way
         `_run_turn` does.
+
+        When ``safety_mode == "sentence-window"`` (or its current
+        alias ``"stream-then-redact"``), `text` events are buffered
+        until a sentence boundary; each completed sentence runs
+        through ``check_output`` before being emitted to the wire.
+        Non-text events (``tool_call``, ``step``, ``error``) pass
+        through unbuffered.
         """
         ctx = self._guard_context()
         validated_msg = await self._agent._guardrails.check_input(message, ctx)
@@ -355,6 +371,8 @@ class ChatSession:
         cumulative = ""
         run_summary: dict[str, Any] | None = None
         start = time.monotonic()
+        buffered = self._safety_mode in ("sentence-window", "stream-then-redact")
+        window = _SentenceWindowBuffer() if buffered else None
         async for event in self._agent.stream(task):
             if event.kind == "done":
                 if isinstance(event.content, dict):
@@ -364,8 +382,32 @@ class ChatSession:
                 # `finally: reset_run(token)` fires deterministically.
                 continue
             if event.kind == "text" and isinstance(event.content, str):
+                if window is not None:
+                    for sentence in window.push(event.content):
+                        validated = await self._agent._guardrails.check_output(sentence, ctx)
+                        cumulative += validated
+                        yield ChatChunk(
+                            kind="text",
+                            content=validated,
+                            cumulative_text=cumulative,
+                            turn_id=assistant_turn_id,
+                            metadata=dict(event.metadata),
+                        )
+                    continue
                 cumulative += event.content
             yield self._chunk_from_event(event, assistant_turn_id)
+        if window is not None:
+            residual = window.flush()
+            if residual:
+                validated = await self._agent._guardrails.check_output(residual, ctx)
+                cumulative += validated
+                yield ChatChunk(
+                    kind="text",
+                    content=validated,
+                    cumulative_text=cumulative,
+                    turn_id=assistant_turn_id,
+                    metadata={},
+                )
         duration_ms = int((time.monotonic() - start) * 1000)
         if run_summary is None:
             run_summary = {
@@ -377,12 +419,18 @@ class ChatSession:
                 "finish_reason": "completed",
                 "duration_ms": duration_ms,
             }
-        final_text = (
-            str(run_summary.get("output", cumulative))
-            if isinstance(run_summary.get("output"), str)
-            else cumulative
-        )
-        validated_out = await self._agent._guardrails.check_output(final_text, ctx)
+        if buffered:
+            # Each sentence already passed through `check_output`;
+            # `cumulative` is the validated text. Skip the terminal
+            # double-validation.
+            validated_out = cumulative
+        else:
+            final_text = (
+                str(run_summary.get("output", cumulative))
+                if isinstance(run_summary.get("output"), str)
+                else cumulative
+            )
+            validated_out = await self._agent._guardrails.check_output(final_text, ctx)
         assistant_turn = ChatTurn(
             id=assistant_turn_id,
             session_id=self._session_id,
