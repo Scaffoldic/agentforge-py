@@ -23,24 +23,7 @@ from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.values.claim import Claim
 
-_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS claims (
-    id          TEXT PRIMARY KEY,
-    project     TEXT NOT NULL,
-    agent       TEXT NOT NULL,
-    run_id      TEXT NOT NULL,
-    category    TEXT NOT NULL,
-    payload     TEXT NOT NULL,
-    supersedes  TEXT,
-    created_at  TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_claims_project_agent
-    ON claims(project, agent);
-CREATE INDEX IF NOT EXISTS idx_claims_run_id
-    ON claims(run_id);
-CREATE INDEX IF NOT EXISTS idx_claims_category
-    ON claims(category);
-"""
+from agentforge_memory_sqlite._migrator import SqliteMigrator
 
 
 class SqliteMemoryStore(MemoryStore):
@@ -67,9 +50,26 @@ class SqliteMemoryStore(MemoryStore):
         """
         connection = await aiosqlite.connect(str(path))
         connection.row_factory = aiosqlite.Row
-        await connection.executescript(_SCHEMA_SQL)
-        await connection.commit()
+        # feat-024: schema bootstrap is now versioned via the
+        # migration framework. Idempotent: re-opening an existing
+        # database is a no-op after migrations are applied.
+        await SqliteMigrator(connection).apply_pending()
         return cls(connection=connection)
+
+    def migrator(self) -> SqliteMigrator:
+        """Return a `SqliteMigrator` configured against the
+        package's bundled migrations directory (feat-024)."""
+        return SqliteMigrator(self._db)
+
+    async def init_schema(self) -> None:
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework. `from_path`
+        already calls this implicitly; standalone callers (or
+        tests that construct the store from a raw connection) can
+        invoke it directly.
+        """
+        await self.migrator().apply_pending()
 
     async def __aenter__(self) -> SqliteMemoryStore:
         return self
