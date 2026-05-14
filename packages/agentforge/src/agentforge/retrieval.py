@@ -22,14 +22,19 @@ caller. Multi-retriever-over-one-store setups should not call
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import defaultdict
 from typing import Any, Literal
 
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.vector_store import VectorStore
+from agentforge_core.values.graph import Path as GraphPath
+from agentforge_core.values.retrieval import GraphExpansion
 from agentforge_core.values.vector import VectorItem, VectorMatch
 from ulid import ULID
+
+log = logging.getLogger(__name__)
 
 RetrieverMode = Literal["vector", "hybrid"]
 """Retrieval mode: ``"vector"`` (default; cosine search only) or
@@ -80,6 +85,7 @@ class Retriever:
         over_fetch_factor: int = 3,
         mode: RetrieverMode = "vector",
         rrf_k: int = 60,
+        graph_expansion: GraphExpansion | None = None,
     ) -> None:
         if top_k < 1:
             raise ValueError(f"top_k must be >= 1, got {top_k}")
@@ -110,6 +116,7 @@ class Retriever:
         self._over_fetch_factor = over_fetch_factor
         self._mode: RetrieverMode = mode
         self._rrf_k = rrf_k
+        self._graph_expansion = graph_expansion
 
     @property
     def store(self) -> VectorStore:
@@ -130,6 +137,10 @@ class Retriever:
     @property
     def rrf_k(self) -> int:
         return self._rrf_k
+
+    @property
+    def graph_expansion(self) -> GraphExpansion | None:
+        return self._graph_expansion
 
     async def add_documents(
         self,
@@ -212,35 +223,69 @@ class Retriever:
         if limit < 1:
             raise ValueError(f"top_k must be >= 1, got {limit}")
 
+        # Stage 1 — base retrieval (vector or hybrid). Over-fetch when
+        # a reranker is set so the reranker has a wider candidate pool;
+        # otherwise pull exactly `limit` seeds.
+        candidate_width = limit * self._over_fetch_factor if self._reranker is not None else limit
         if self._mode == "hybrid":
-            return await self._retrieve_hybrid(query, limit=limit, filter_metadata=filter_metadata)
+            candidates = await self._retrieve_hybrid_candidates(
+                query, candidate_width=candidate_width, filter_metadata=filter_metadata
+            )
+        else:
+            candidates = await self._retrieve_vector_candidates(
+                query, candidate_width=candidate_width, filter_metadata=filter_metadata
+            )
 
-        response = await self._embedder.embed([query])
-        query_vector = tuple(response.vectors[0])
-        over_fetch = limit * self._over_fetch_factor if self._reranker is not None else limit
-        candidates = await self._store.search(
-            query_vector,
-            limit=over_fetch,
-            filter_metadata=filter_metadata,
-        )
+        # Stage 2 — optional graph expansion. Augments the candidate
+        # set with N-hop neighbours of the seed hits. When no reranker
+        # is configured, the expanded set is returned as-is (top_k is
+        # treated as a minimum direct-hit count, not a hard cap).
+        if self._graph_expansion is not None:
+            candidates = await self._expand_via_graph(
+                candidates,
+                expansion=self._graph_expansion,
+            )
+
+        # Stage 3 — optional rerank narrows to top_k. Without a
+        # reranker the candidate set is returned in seed-then-expansion
+        # order; when no graph_expansion is set the slice is exactly
+        # top_k, when graph_expansion is set the expansion neighbours
+        # are appended after the top_k seeds.
         if self._reranker is None:
+            if self._graph_expansion is None:
+                return candidates[:limit]
             return candidates
         return await self._reranker.rerank(query, candidates, top_k=limit)
 
-    async def _retrieve_hybrid(
+    async def _retrieve_vector_candidates(
         self,
         query: str,
         *,
-        limit: int,
+        candidate_width: int,
+        filter_metadata: dict[str, Any] | None,
+    ) -> list[VectorMatch]:
+        """Pure vector top-`candidate_width` retrieval (no rerank)."""
+        response = await self._embedder.embed([query])
+        query_vector = tuple(response.vectors[0])
+        return await self._store.search(
+            query_vector,
+            limit=candidate_width,
+            filter_metadata=filter_metadata,
+        )
+
+    async def _retrieve_hybrid_candidates(
+        self,
+        query: str,
+        *,
+        candidate_width: int,
         filter_metadata: dict[str, Any] | None,
     ) -> list[VectorMatch]:
         """Hybrid retrieval: vector + lexical fused via RRF.
 
-        Pulls ``limit * over_fetch_factor`` from each path in
-        parallel, fuses by rank, optionally reranks the fused
-        candidate set, returns top-``limit``.
+        Pulls ``candidate_width`` from each path in parallel and fuses
+        by rank. Reranking is the caller's responsibility (deferred to
+        the unified pipeline in :meth:`retrieve`).
         """
-        candidate_width = limit * self._over_fetch_factor
         response = await self._embedder.embed([query])
         query_vector = tuple(response.vectors[0])
         vec_task = self._store.search(
@@ -250,10 +295,78 @@ class Retriever:
             query, limit=candidate_width, filter_metadata=filter_metadata
         )
         vec_matches, lex_matches = await asyncio.gather(vec_task, lex_task)
-        fused = self._rrf_fuse(vec_matches, lex_matches, limit=candidate_width)
-        if self._reranker is None:
-            return fused[:limit]
-        return await self._reranker.rerank(query, fused, top_k=limit)
+        return self._rrf_fuse(vec_matches, lex_matches, limit=candidate_width)
+
+    async def _expand_via_graph(
+        self,
+        seeds: list[VectorMatch],
+        *,
+        expansion: GraphExpansion,
+    ) -> list[VectorMatch]:
+        """Expand each seed by traversing the graph up to
+        ``expansion.max_hops`` hops; merge results with the seeds.
+
+        Direct seeds keep their score + order at the head; expansion
+        nodes follow, sorted by decayed score desc. Dedup is by id —
+        the seed wins.
+        """
+        if not seeds:
+            return []
+
+        async def _traverse(seed: VectorMatch) -> tuple[VectorMatch, list[GraphPath]]:
+            try:
+                paths = await expansion.store.traverse(
+                    start_id=seed.id,
+                    edge_types=expansion.edge_types,
+                    max_depth=expansion.max_hops,
+                    limit=max(len(seeds), 1) * expansion.max_hops * 4,
+                )
+            except Exception:
+                log.debug("graph traverse failed for seed %s", seed.id, exc_info=True)
+                return seed, []
+            return seed, paths
+
+        results = await asyncio.gather(*(_traverse(s) for s in seeds))
+
+        seed_ids = {s.id for s in seeds}
+        # Keyed by node id; track best (highest) decayed score per id.
+        expanded_by_id: dict[str, tuple[float, int, VectorMatch]] = {}
+        for seed, paths in results:
+            if not paths:
+                log.debug("no graph paths found for seed %s", seed.id)
+                continue
+            for path in paths:
+                # path.nodes[0] is the seed; nodes[i] is at depth i.
+                for depth, node in enumerate(path.nodes):
+                    if depth == 0:
+                        continue
+                    if node.id in seed_ids:
+                        continue
+                    score = float(seed.score) * (float(expansion.decay) ** depth)
+                    prior = expanded_by_id.get(node.id)
+                    if prior is not None and prior[0] >= score:
+                        continue
+                    text = str(node.properties.get(expansion.text_property, ""))
+                    merged_meta: dict[str, Any] = dict(node.properties)
+                    merged_meta["agentforge.expanded_from"] = seed.id
+                    merged_meta["agentforge.hop"] = depth
+                    expanded_by_id[node.id] = (
+                        score,
+                        depth,
+                        VectorMatch(
+                            id=node.id,
+                            text=text,
+                            metadata=merged_meta,
+                            score=score,
+                        ),
+                    )
+
+        expansion_matches = sorted(
+            (m for _, _, m in expanded_by_id.values()),
+            key=lambda m: m.score,
+            reverse=True,
+        )
+        return list(seeds) + expansion_matches
 
     def _rrf_fuse(
         self,

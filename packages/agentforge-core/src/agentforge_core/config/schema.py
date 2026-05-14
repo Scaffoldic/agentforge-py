@@ -115,6 +115,29 @@ class RerankerEntry(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+class GraphExpansionConfig(BaseModel):
+    """`retrieval.graph_expansion:` — wiring for GraphRAG hybrid
+    retrieval (feat-023).
+
+    The `store` field resolves against the `graph_stores`
+    entry-point category. When set on a `RetrievalConfig`, the
+    builder constructs a `GraphExpansion` value and forwards it
+    into the `Retriever` constructor so vector / hybrid hits get
+    augmented with N-hop graph neighbours.
+    """
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    store: ModuleEntry
+    max_hops: int = Field(default=2, ge=1)
+    edge_types: list[str] | None = None
+    """Edge-type filter. YAML lists deserialize to `list[str]`;
+    converted to a tuple by `build_retriever_from_config` before
+    constructing the `GraphExpansion` value."""
+    text_property: str = "text"
+    decay: float = Field(default=0.5, gt=0.0, le=1.0)
+
+
 class RetrievalConfig(BaseModel):
     """Top-level `retrieval:` block (feat-021 follow-up).
 
@@ -146,6 +169,12 @@ class RetrievalConfig(BaseModel):
     rrf_k: int = Field(default=60, ge=1)
     """RRF constant (Cormack 2009 default 60). Ignored when ``mode``
     is ``"vector"``."""
+    graph_expansion: GraphExpansionConfig | None = None
+    """Optional graph-augmented retrieval (feat-023). When set the
+    builder resolves the graph store, constructs a
+    :class:`GraphExpansion`, and forwards it to ``Retriever`` so
+    vector / hybrid hits get expanded with N-hop graph neighbours.
+    Composes orthogonally with ``mode`` and ``reranker``."""
 
 
 class EvaluatorEntry(BaseModel):

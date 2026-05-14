@@ -48,6 +48,7 @@ from agentforge_core.values.messages import (
 )
 from agentforge_core.values.module import ModuleInfo
 from agentforge_core.values.pipeline import PipelineResult
+from agentforge_core.values.retrieval import GraphExpansion
 from agentforge_core.values.state import (
     AgentState,
     FinishReason,
@@ -72,6 +73,7 @@ __all__ = [
     "EnvVarEntry",
     "FinishReason",
     "GraphEdge",
+    "GraphExpansion",
     "GraphNode",
     "GraphPattern",
     "GraphSegment",

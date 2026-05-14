@@ -27,12 +27,14 @@ from agentforge_core.config.loader import load_config
 from agentforge_core.config.schema import AgentForgeConfig
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import Evaluator
+from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.resolver import Resolver
+from agentforge_core.values.retrieval import GraphExpansion
 
 from agentforge.agent import Agent
 from agentforge.memory import InMemoryStore
@@ -208,6 +210,25 @@ def build_retriever_from_config(config: AgentForgeConfig) -> Retriever | None:
             raise ModuleError(msg)
         reranker = reranker_instance
 
+    graph_expansion: GraphExpansion | None = None
+    if r.graph_expansion is not None:
+        ge_cfg = r.graph_expansion
+        graph_store_cls = _resolve_class("graph_stores", ge_cfg.store.driver)
+        graph_store_instance = _instantiate(graph_store_cls, ge_cfg.store.config)
+        if not isinstance(graph_store_instance, GraphStore):
+            msg = (
+                f"Resolved graph_store {ge_cfg.store.driver!r} "
+                f"({graph_store_cls.__name__}) does not implement GraphStore."
+            )
+            raise ModuleError(msg)
+        graph_expansion = GraphExpansion(
+            store=graph_store_instance,
+            max_hops=ge_cfg.max_hops,
+            edge_types=tuple(ge_cfg.edge_types) if ge_cfg.edge_types is not None else None,
+            text_property=ge_cfg.text_property,
+            decay=ge_cfg.decay,
+        )
+
     return Retriever(
         store=store,
         embedder=embedder,
@@ -217,6 +238,7 @@ def build_retriever_from_config(config: AgentForgeConfig) -> Retriever | None:
         batch_size=r.batch_size,
         mode=r.mode,
         rrf_k=r.rrf_k,
+        graph_expansion=graph_expansion,
     )
 
 
