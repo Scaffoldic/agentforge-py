@@ -46,17 +46,19 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.production.budget import BudgetPolicy
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agentforge.resolver_register import register_strategy
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
-from agentforge.strategies._base import StrategyBase, get_runtime
+from agentforge.strategies._base import StrategyBase, _events_for_new_steps, get_runtime
 
 log = logging.getLogger(__name__)
 
@@ -192,6 +194,53 @@ class MultiAgentSupervisor(StrategyBase):
         # PHASE 3 — AGGREGATE
         await self._aggregate(state, round_idx + 1, all_results)
         return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        """Per-round streaming override (feat-002 v0.3 polish).
+
+        Mirrors :meth:`run` but yields a ``step`` `StreamingEvent`
+        for each step recorded inside a round (delegate plan +
+        per-worker outputs; flushed after the round completes),
+        then the final aggregate step, then the terminal ``done``.
+        """
+        runtime = get_runtime(state)
+        round_idx = 0
+        all_results: list[_WorkerResult] = []
+        tracer = get_tracer()
+        before = len(state.steps)
+
+        while round_idx < self._max_rounds:
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": round_idx,
+                    "agentforge.strategy": "multi_agent",
+                },
+            ):
+                new_results, should_break = await self._iterate_round(
+                    state, runtime, round_idx, all_results
+                )
+            for ev in _events_for_new_steps(state.steps, before):
+                yield ev
+            before = len(state.steps)
+            all_results.extend(new_results)
+            round_idx += 1
+            if should_break:
+                break
+
+        # PHASE 3 — AGGREGATE
+        await self._aggregate(state, round_idx + 1, all_results)
+        for ev in _events_for_new_steps(state.steps, before):
+            yield ev
+
+        yield StreamingEvent(
+            kind="done",
+            content={
+                "run_id": state.run_id,
+                "cost_usd": float(runtime.budget.spent_usd),
+            },
+            metadata={},
+        )
 
     async def _iterate_round(
         self,

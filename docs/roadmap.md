@@ -166,7 +166,11 @@ Remaining for v0.3+:
 
 - A2A per-token streaming using `ReasoningStrategy.stream()`
   — **shipped** in feat-014 v0.3 follow-up.
-- Concrete `stream()` overrides on `ReActLoop`.
+- Concrete `stream()` overrides on all four built-in strategies
+  (`ReActLoop`, `PlanExecuteLoop`, `TreeOfThoughts`,
+  `MultiAgentSupervisor`) — **shipped** on the v0.3 polish
+  bundle (ReAct) and the v0.3.x strategy follow-ups bundle
+  (the other three).
 - Multi-cluster Redlock for `RedisSessionLock`.
 - Sentence-window streaming output guardrails.
 - Migration framework for the Postgres schema.
@@ -197,10 +201,14 @@ the package importable without the SDK.
 
 What remains for v0.3+ (per feat-009 spec):
 
-- Child OTel spans (`strategy.iteration`, `llm.call`,
-  `tool.<name>`, `evaluator.<name>`).
-- A2A trace propagation via OTel context.
-- Content-based PII redaction.
+- ~~Child OTel spans (`strategy.iteration`, `llm.call`,
+  `tool.<name>`, `evaluator.<name>`).~~ **Shipped** in the
+  v0.3 polish bundle (PR #40 — ReActLoop + PlanExecute) and
+  the v0.3.x strategy follow-ups bundle (ToT + MultiAgent).
+- ~~A2A trace propagation via OTel context.~~ **Shipped** in
+  the v0.3 polish bundle (PR #40).
+- ~~Content-based PII redaction.~~ **Shipped** in the v0.3
+  polish bundle (PR #40).
 - Evidently real-time drift dashboards via Cloud.
 
 ### Sub-feat backlog (no canonical number yet)
