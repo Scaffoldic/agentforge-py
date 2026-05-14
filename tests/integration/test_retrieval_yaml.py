@@ -169,6 +169,52 @@ async def test_yaml_to_retriever_end_to_end(registered: None, tmp_path: Path) ->
     assert len(results) == 2
 
 
+_HYBRID_YAML = """
+agent:
+  strategy: react
+retrieval:
+  mode: hybrid
+  vector_store:
+    driver: integration-store
+    config:
+      dimensions: 4
+  embedder:
+    driver: integration-embedder
+    config:
+      dim: 4
+  top_k: 2
+  over_fetch_factor: 1
+  rrf_k: 60
+"""
+
+
+@pytest.mark.asyncio
+async def test_yaml_hybrid_mode_to_retriever_end_to_end(registered: None, tmp_path: Path) -> None:
+    """feat-022: `retrieval.mode: hybrid` round-trips through the
+    config loader and produces a hybrid-mode Retriever that fuses
+    vector + lexical paths."""
+    del registered
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text(_HYBRID_YAML)
+
+    cfg = load_config(yaml_path)
+    assert cfg.retrieval is not None
+    assert cfg.retrieval.mode == "hybrid"
+    assert cfg.retrieval.rrf_k == 60
+
+    retriever = build_retriever_from_config(cfg)
+    assert retriever is not None
+    assert retriever.mode == "hybrid"
+    assert retriever.rrf_k == 60
+
+    await retriever.add_documents(
+        ["Paris is the capital of France", "The Eiffel Tower is iconic in Paris"],
+    )
+    results = await retriever.retrieve("Eiffel", top_k=2)
+    # Both docs surface — hybrid fuses vector + lexical paths.
+    assert len(results) == 2
+
+
 @pytest.mark.asyncio
 async def test_build_agent_from_config_threads_retriever(registered: None, tmp_path: Path) -> None:
     """feat-021 follow-up: `build_agent_from_config` now threads the
