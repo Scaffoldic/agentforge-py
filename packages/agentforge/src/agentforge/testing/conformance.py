@@ -18,6 +18,7 @@ Typical usage:
 from __future__ import annotations
 
 from agentforge_core.testing.conformance import (
+    run_hybrid_search_conformance,
     run_input_validator_conformance,
     run_memory_conformance,
     run_output_validator_conformance,
@@ -28,6 +29,7 @@ from agentforge_core.testing.conformance import (
 )
 
 __all__ = [
+    "run_hybrid_search_conformance",
     "run_input_validator_conformance",
     "run_memory_conformance",
     "run_output_validator_conformance",

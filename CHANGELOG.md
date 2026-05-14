@@ -11,6 +11,34 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-022 — BM25 + vector hybrid search.** New canonical
+  feature closing one of the three un-numbered v0.2
+  retrieval sub-feats. Ships as a single PR:
+  - `VectorStore.lexical_search(query, *, limit,
+    filter_metadata)` default-method on the core ABC (raises
+    `NotImplementedError` by default; drivers that declare
+    the `"hybrid_search"` capability MUST override).
+  - Pure-Python BM25 helper (`_BM25Index`) in
+    `agentforge_core/_bm25.py`. Robertson defaults
+    (`k1=1.5`, `b=0.75`); zero new dependencies.
+  - `InMemoryVectorStore` declares `"hybrid_search"` and
+    ships a native `lexical_search` impl backed by a lazy
+    `_BM25Index` rebuilt on demand after any
+    `upsert` / `delete`.
+  - `Retriever(mode="hybrid", rrf_k=60)` fuses
+    `store.search()` and `store.lexical_search()` via
+    Reciprocal Rank Fusion (Cormack 2009). Constructor
+    validates the store declares the `"hybrid_search"`
+    capability. Reranker (when set) applies post-fusion.
+  - `RetrievalConfig` gains
+    `mode: Literal["vector", "hybrid"] = "vector"` and
+    `rrf_k: int = 60`. `build_retriever_from_config`
+    forwards both. YAML round-trip end-to-end.
+  - Opt-in `run_hybrid_search_conformance(store)` suite in
+    `agentforge_core.testing`; re-exported from
+    `agentforge.testing`. Existing
+    `run_vector_conformance` is unchanged.
+
 - **feat-002 + feat-009 v0.3.x strategy follow-ups bundle.**
   Closes the two deferred items from the v0.3 polish bundle:
   - **`strategy.iteration` OTel spans on ToT + MultiAgent.**
