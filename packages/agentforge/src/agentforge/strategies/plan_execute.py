@@ -27,16 +27,18 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import AsyncIterator
 from typing import Any
 
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.observability.tracing import get_tracer
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState
 from pydantic import ValidationError
 
 from agentforge.resolver_register import register_strategy
-from agentforge.strategies._base import StrategyBase, get_runtime
+from agentforge.strategies._base import StrategyBase, _events_for_new_steps, get_runtime
 from agentforge.strategies._plan import Plan, PlanStep, _topological_batches
 
 PLAN_SYSTEM_PROMPT = (
@@ -174,6 +176,106 @@ class PlanExecuteLoop(StrategyBase):
         )
 
         return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        """Per-phase streaming override (feat-002 v0.3 polish).
+
+        Mirrors :meth:`run` but yields ``step`` `StreamingEvent`s
+        after each phase that records steps: ``plan`` after the plan
+        is built, ``observe`` after each batch of execute steps,
+        ``synthesize`` after the final synthesis call. Replan cycles
+        emit a fresh plan event per attempt.
+        """
+        get_runtime(state)
+        replans = 0
+        plan_messages: list[Message] = [Message(role="user", content=state.task)]
+        tracer = get_tracer()
+        runtime = get_runtime(state)
+        before = len(state.steps)
+
+        while True:
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": replans,
+                    "agentforge.strategy": "plan_execute",
+                },
+            ):
+                plan = await self._build_plan(state, plan_messages, replans_done=replans)
+                self._record_step(
+                    state,
+                    iteration=0,
+                    kind="plan",
+                    content={"steps": [step.model_dump() for step in plan.steps]},
+                )
+                for ev in _events_for_new_steps(state.steps, before):
+                    yield ev
+                before = len(state.steps)
+
+                try:
+                    observations = await self._execute_plan(state, plan)
+                    for ev in _events_for_new_steps(state.steps, before):
+                        yield ev
+                    before = len(state.steps)
+                    break
+                except _StepFailure as failure:
+                    if not self._replan_on_failure or replans >= self._max_replans:
+                        observations = failure.observations_so_far
+                        self._record_step(
+                            state,
+                            iteration=len(plan.steps),
+                            kind="observe",
+                            content=(
+                                f"Plan execution failed at step {failure.failed_step.id!r}: "
+                                f"{failure.error}. No further re-plan attempts."
+                            ),
+                        )
+                        for ev in _events_for_new_steps(state.steps, before):
+                            yield ev
+                        before = len(state.steps)
+                        break
+                    replans += 1
+                    plan_messages.append(Message(role="assistant", content=plan.model_dump_json()))
+                    plan_messages.append(
+                        Message(
+                            role="user",
+                            content=(
+                                f"The plan failed at step {failure.failed_step.id!r} "
+                                f"({failure.failed_step.description!r}): {failure.error}. "
+                                f"Please re-plan."
+                            ),
+                        )
+                    )
+
+        # PHASE 3 — Synthesize
+        synth_messages: list[Message] = [
+            Message(role="user", content=state.task),
+            Message(
+                role="assistant",
+                content=(
+                    "Plan executed with the following observations:\n"
+                    + "\n".join(f"- {step_id}: {obs}" for step_id, obs in observations.items())
+                ),
+            ),
+        ]
+        await self._call_llm(
+            state,
+            iteration=len(plan.steps) + 1,
+            system=SYNTHESIS_SYSTEM_PROMPT,
+            messages=synth_messages,
+            kind="synthesize",
+        )
+        for ev in _events_for_new_steps(state.steps, before):
+            yield ev
+
+        yield StreamingEvent(
+            kind="done",
+            content={
+                "run_id": state.run_id,
+                "cost_usd": float(runtime.budget.spent_usd),
+            },
+            metadata={},
+        )
 
     # ------------------------------------------------------------------
     # Phase helpers
