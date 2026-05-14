@@ -401,12 +401,41 @@ in `src/`).
 
 ### Out-of-scope (deferred to v0.3+)
 
-- Child OTel spans (strategy.iteration, llm.call,
-  tool.<name>, evaluator.<name>).
-- A2A trace propagation via OTel context.
-- Content-based PII redaction (regex over arg values).
+- ~~Child OTel spans (strategy.iteration, llm.call,
+  tool.<name>, evaluator.<name>).~~ **Shipped in the v0.3
+  polish bundle** — see the subsection below.
+- ~~A2A trace propagation via OTel context.~~ **Shipped in
+  the v0.3 polish bundle.**
+- ~~Content-based PII redaction (regex over arg values).~~
+  **Shipped in the v0.3 polish bundle.**
 - Evidently real-time drift dashboards via Cloud.
 - TypeScript port.
+
+### v0.3 polish — child spans + A2A propagation + content redaction
+
+Shipped on the v0.1 → v0.2 line. Closes the three feat-009
+items v0.2 deferred. Bundled with feat-002's ReActLoop.stream
+override and feat-021's retriever-wiring follow-up.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 2 | `ebf7af3` | Child OTel spans across the framework. `llm.call` wrapped in `StrategyBase._call_llm` (single point — every strategy inherits). `tool.<name>` wrapped in `StrategyBase._dispatch_tool` (same). `strategy.iteration` spans in ReActLoop (run + stream) and PlanExecuteLoop. `evaluator.<name>` spans in `Agent._run_evaluators`. End-to-end test in `agentforge-otel/tests/unit/test_hook.py` asserts the full span tree (root + strategy.iteration × N + llm.call × M + tool.<name> × P). |
+| 3 | `d8419c1` | W3C TraceContext propagation. Client side injects `traceparent` (+ `tracestate`) via `TraceContextTextMapPropagator().inject()` after the existing run-id / budget headers (no-op when no active span). Server side extracts the same on both `_handle_call` and `_stream_call` and opens an `a2a.call` span with the extracted context as parent — the callee's `agent.run` becomes a child. Tests in `agentforge-a2a/tests/unit/test_trace_propagation.py` cover inject + extract + cross-process trace_id stitching. |
+| 4 | `e347c35` | Content-based PII redaction. `OpenTelemetryHook.__init__` gains optional `redact_value_patterns: tuple[str, ...]` kwarg; patterns compile once, scan stringified value text. Key-based redaction still wins precedence. Default `None` keeps v0.1 behaviour identical. |
+
+### v0.3 polish deviations
+
+- **`strategy.iteration` spans on ToT + MultiAgent deferred**
+  to a v0.3.x patch. Their nested loop structure needs a
+  modest refactor (extract-method to keep indent legible
+  inside the `with tracer.start_as_current_span(...)` block).
+  ReActLoop + PlanExecute are the two most-used strategies
+  and ship with spans now.
+- **`a2a.call` span on the streaming path uses manual
+  `__enter__` / `__exit__`** since `_stream_call` is an async
+  generator (a `with` block doesn't compose cleanly with
+  `yield`). The behaviour matches a context-managed
+  invocation.
 
 ---
 

@@ -1,68 +1,58 @@
 ---
-feature: feat-021 v0.2 follow-up — vendor reranker sister packages
+feature: feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle
 state: in_review
-branch: chore/feat-021-vendor-rerankers-cohere-voyage-mixedbread
+branch: chore/feat-002-009-021-streaming-otel-spans-a2a-tracecontext-retriever-wiring
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-021 v0.2 follow-up (retrieval: YAML block + build_retriever_from_config) shipped via PR #38 (merged 2026-05-14)
+last_shipped: feat-021 vendor reranker sister packages shipped via PR #39 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-[`feat-021 — Reranker`](../../docs/features/feat-021-reranker.md)
-v0.2 follow-up — vendor reranker sister packages bundled
-into one PR per user-chosen scope. All three follow the
-sentence-transformers package template (Runner Protocol +
-production wrapper + in-memory fake in `src/`).
+Bundled v0.3 polish PR closing five surfaces in one go per
+user-chosen "Full bundle as described" scope:
 
-- **`agentforge-reranker-cohere`** — Cohere Rerank API.
-  Default model `rerank-english-v3.0`.
-- **`agentforge-reranker-voyage`** — Voyage AI Rerank API.
-  Default model `rerank-2`.
-- **`agentforge-reranker-mixedbread`** — Mixedbread AI
-  Rerank API. Default model
-  `mixedbread-ai/mxbai-rerank-large-v1`.
-
-Each vendor SDK is an optional `[<vendor>]` extra; bare
-install keeps the package importable for tests with the
-fake runner. Live tests scoped to developer machines
-(skipped on missing API-key env var).
+- **feat-002** — `ReActLoop.stream()` per-iteration override.
+- **feat-009 v0.3** — child OTel spans
+  (`strategy.iteration` / `llm.call` / `tool.<name>` /
+  `evaluator.<name>`), A2A W3C TraceContext propagation,
+  content-based PII redaction.
+- **feat-021** — `Agent(retriever=...)` auto-wired from
+  `build_agent_from_config`.
 
 ## Last shipped
 
-[`feat-021 v0.2 follow-up`](../../docs/features/feat-021-reranker.md)
-`retrieval:` YAML block + `build_retriever_from_config()`
-shipped via PR #38 (merged 2026-05-14).
+feat-021 vendor reranker sister packages
+(`agentforge-reranker-cohere`, `-voyage`, `-mixedbread`)
+shipped via PR #39 (merged 2026-05-14).
 
 ### Previously
 
-- feat-021 — Reranker ABC + SentenceTransformers default
-  + Retriever integration (PR #37, 2026-05-13).
+- feat-021 v0.2 follow-up — `retrieval:` YAML block +
+  `build_retriever_from_config` (PR #38).
+- feat-021 — Reranker ABC + sentence-transformers default
+  + Retriever integration (PR #37).
 - feat-009 v0.2 — Langfuse + Phoenix + Evidently + StatsD
-  vendor observability backends (PR #36, 2026-05-13).
+  vendor observability backends (PR #36).
 - feat-014 v0.3 — A2A per-token streaming + unified
-  `StreamingChunkKind` (PR #35, 2026-05-13).
+  `StreamingChunkKind` (PR #35).
 - feat-020 v0.2 — postgres + redis history + slack adapter
-  + per-token streaming foundation (PR #34, 2026-05-13).
+  + per-token streaming foundation (PR #34).
 
 ## Next pick candidates
 
-We're mid-v0.2.0 cycle. Sequence continues v0.3 → v0.4 → 1.0
-per [ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
-
-**Remaining backlog:**
+Remaining v0.2 backlog:
 
 - **Sub-feat backlog (still un-numbered)** — GraphRAG
   hybrid retrieval, BM25 + vector hybrid search, schema
   migrations.
-- **Strategy-level streaming overrides** — concrete
-  `ReasoningStrategy.stream` impls on `ReActLoop` etc.
-- **feat-009 v0.3 polish** — child OTel spans, A2A trace
-  propagation, content-based PII redaction.
-- **`Agent(retriever=...)` constructor kwarg** — bumped to
-  v0.3 if usage patterns warrant.
+- **ToT + MultiAgent `stream()` overrides** — feat-002
+  follow-up; each strategy's iteration shape is different.
+- **`strategy.iteration` spans on ToT + MultiAgent** —
+  feat-009 v0.3.x; needs a small extract-method refactor.
+- **Plan-Execute `stream()` override** — feat-002 follow-up.
 
 **Already shipped on the v0.1 → v0.2 line:**
 
@@ -79,7 +69,9 @@ per [ADR-0015](../../docs/adr/0015-coordinated-release-train.md).
 - feat-021 v0.2 follow-up — `retrieval:` YAML block +
   builder (PR #38).
 - feat-021 v0.2 follow-up — vendor reranker sister
-  packages (in review).
+  packages (PR #39).
+- feat-002 + feat-009 v0.3 polish + feat-021 follow-up
+  bundle (in review).
 
 ## Reading order on session resume
 

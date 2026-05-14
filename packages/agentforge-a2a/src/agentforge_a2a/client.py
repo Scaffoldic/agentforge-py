@@ -286,7 +286,30 @@ def _build_headers(auth: ClientAuth, budget_usd: float | None) -> dict[str, str]
         headers["X-AgentForge-Run-Id"] = ctx.run_id
     if budget_usd is not None:
         headers["X-AgentForge-Budget-Usd"] = f"{budget_usd:.6f}"
+    # feat-009 v0.3 polish: W3C TraceContext propagation. The
+    # propagator is a no-op when no active OTel span is bound,
+    # so this is safe to call unconditionally.
+    _trace_propagator().inject(headers)
     return headers
+
+
+def _trace_propagator() -> Any:
+    """Lazily import OTel's W3C TraceContext propagator.
+
+    Cached at module level via ``_PROPAGATOR_CACHE`` so the import
+    only runs once. OpenTelemetry is a required dependency of
+    `agentforge-core`, so this import is always safe.
+    """
+    if _PROPAGATOR_CACHE[0] is None:
+        from opentelemetry.trace.propagation.tracecontext import (  # noqa: PLC0415
+            TraceContextTextMapPropagator,
+        )
+
+        _PROPAGATOR_CACHE[0] = TraceContextTextMapPropagator()
+    return _PROPAGATOR_CACHE[0]
+
+
+_PROPAGATOR_CACHE: list[Any] = [None]
 
 
 def _raise_for_error_body(peer_name: str, raw: dict[str, Any]) -> None:

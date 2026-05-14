@@ -35,6 +35,7 @@ from typing import Any
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.values.messages import LLMResponse, Message, ToolSpec
 from agentforge_core.values.state import AgentState, Step, StepKind
 from pydantic import ValidationError
@@ -150,8 +151,25 @@ class StrategyBase(ReasoningStrategy):
         runtime = get_runtime(state)
         llm: LLMClient = runtime.llm
 
+        tracer = get_tracer()
         started_ms = time.monotonic()
-        response = await llm.call(system=system, messages=messages, tools=tools)
+        with tracer.start_as_current_span(
+            "llm.call",
+            attributes={
+                "agentforge.iteration": iteration,
+                "agentforge.llm.has_tools": tools is not None and len(tools) > 0,
+            },
+        ) as llm_span:
+            response = await llm.call(system=system, messages=messages, tools=tools)
+            llm_span.set_attribute("agentforge.llm.provider", response.provider)
+            llm_span.set_attribute("agentforge.llm.model", response.model)
+            llm_span.set_attribute("agentforge.llm.tokens_in", response.usage.input_tokens)
+            llm_span.set_attribute("agentforge.llm.tokens_out", response.usage.output_tokens)
+            llm_span.set_attribute("agentforge.llm.cost_usd", float(response.cost_usd))
+            llm_span.set_attribute(
+                "agentforge.llm.stop_reason",
+                str(response.stop_reason),
+            )
         duration_ms = int((time.monotonic() - started_ms) * 1000)
 
         # Record cost on the shared BudgetPolicy.
@@ -215,13 +233,30 @@ class StrategyBase(ReasoningStrategy):
         except ValidationError as exc:
             return f"Error: invalid arguments for {tool_name!r}: {exc}"
         kwargs = validated.model_dump()
-        try:
-            if timeout_s is None:
-                raw = await tool.run(**kwargs)
-            else:
-                raw = await asyncio.wait_for(tool.run(**kwargs), timeout=timeout_s)
-        except TimeoutError:
-            return f"Error: tool {tool_name!r} exceeded timeout_s={timeout_s}."
-        except Exception as exc:
-            return f"Error: {type(exc).__name__}: {exc}"
+
+        tracer = get_tracer()
+        started_ms = time.monotonic()
+        with tracer.start_as_current_span(
+            f"tool.{tool_name}",
+            attributes={
+                "agentforge.tool.name": tool_name,
+                "agentforge.tool.timeout_s": (float(timeout_s) if timeout_s is not None else -1.0),
+            },
+        ) as tool_span:
+            try:
+                if timeout_s is None:
+                    raw = await tool.run(**kwargs)
+                else:
+                    raw = await asyncio.wait_for(tool.run(**kwargs), timeout=timeout_s)
+            except TimeoutError:
+                tool_span.set_attribute("agentforge.tool.error", "TimeoutError")
+                return f"Error: tool {tool_name!r} exceeded timeout_s={timeout_s}."
+            except Exception as exc:
+                tool_span.set_attribute("agentforge.tool.error", type(exc).__name__)
+                return f"Error: {type(exc).__name__}: {exc}"
+            finally:
+                tool_span.set_attribute(
+                    "agentforge.tool.duration_ms",
+                    int((time.monotonic() - started_ms) * 1000),
+                )
         return raw if isinstance(raw, str) else str(raw)
