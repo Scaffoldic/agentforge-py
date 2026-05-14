@@ -1,0 +1,64 @@
+# agentforge-openai — OpenAI LLM + embedding provider for AgentForge.
+#
+# Tier-3 module per ADR-0003. Registers under
+# `agentforge.providers:openai` and `agentforge.embeddings:openai`.
+# Production runner wraps the `openai` Python SDK
+# (`AsyncOpenAI`) under `# pragma: no cover`; unit tests inject a
+# fake runner that records every call.
+
+[project]
+name = "agentforge-openai"
+version = "0.2.0"
+description = "OpenAI LLM + embeddings provider for AgentForge — gpt-4o / o-series + text-embedding-3-*"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "llm", "openai", "gpt", "embeddings"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+]
+
+[project.optional-dependencies]
+openai = ["openai>=1.50"]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.providers"]
+openai = "agentforge_openai:OpenAIClient"
+
+[project.entry-points."agentforge.embeddings"]
+openai = "agentforge_openai:OpenAIEmbeddingClient"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_openai"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_openai",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
