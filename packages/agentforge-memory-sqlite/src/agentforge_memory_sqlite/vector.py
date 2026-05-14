@@ -23,36 +23,7 @@ import aiosqlite
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.values.vector import VectorItem, VectorMatch
 
-_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS vectors (
-    id          TEXT PRIMARY KEY,
-    vector      BLOB NOT NULL,
-    text        TEXT NOT NULL,
-    metadata    TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS vector_meta (
-    key         TEXT PRIMARY KEY,
-    value       TEXT NOT NULL
-);
-CREATE VIRTUAL TABLE IF NOT EXISTS vectors_fts USING fts5(
-    text,
-    content='vectors',
-    content_rowid='rowid',
-    tokenize='unicode61'
-);
-CREATE TRIGGER IF NOT EXISTS vectors_ai AFTER INSERT ON vectors BEGIN
-    INSERT INTO vectors_fts(rowid, text) VALUES (new.rowid, new.text);
-END;
-CREATE TRIGGER IF NOT EXISTS vectors_ad AFTER DELETE ON vectors BEGIN
-    INSERT INTO vectors_fts(vectors_fts, rowid, text)
-        VALUES ('delete', old.rowid, old.text);
-END;
-CREATE TRIGGER IF NOT EXISTS vectors_au AFTER UPDATE ON vectors BEGIN
-    INSERT INTO vectors_fts(vectors_fts, rowid, text)
-        VALUES ('delete', old.rowid, old.text);
-    INSERT INTO vectors_fts(rowid, text) VALUES (new.rowid, new.text);
-END;
-"""
+from agentforge_memory_sqlite._migrator import SqliteMigrator
 
 
 class SqliteVectorStore(VectorStore):
@@ -81,7 +52,8 @@ class SqliteVectorStore(VectorStore):
             raise ValueError(f"dimensions must be >= 1, got {dimensions}")
         connection = await aiosqlite.connect(str(path))
         connection.row_factory = aiosqlite.Row
-        await connection.executescript(_SCHEMA_SQL)
+        # feat-024: schema bootstrap via the migration framework.
+        await SqliteMigrator(connection).apply_pending()
         # Pin dimensions on first use; verify on re-open.
         async with connection.execute(
             "SELECT value FROM vector_meta WHERE key = 'dimensions'"
@@ -116,6 +88,11 @@ class SqliteVectorStore(VectorStore):
 
     def dimensions(self) -> int:
         return self._dim
+
+    def migrator(self) -> SqliteMigrator:
+        """Return a `SqliteMigrator` configured against the
+        package's bundled migrations directory (feat-024)."""
+        return SqliteMigrator(self._db)
 
     async def upsert(self, items: list[VectorItem]) -> None:
         rows: list[tuple[str, bytes, str, str]] = []

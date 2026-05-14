@@ -15,6 +15,12 @@ from agentforge_core.contracts.finding import Finding
 from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.migrator import (
+    Migration,
+    MigrationChecksumError,
+    MigrationStatus,
+    Migrator,
+)
 from agentforge_core.contracts.renderer import FindingRenderer
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.strategy import ReasoningStrategy
@@ -34,6 +40,10 @@ __all__ = [
     "HistoryTruncationStrategy",
     "LLMClient",
     "MemoryStore",
+    "Migration",
+    "MigrationChecksumError",
+    "MigrationStatus",
+    "Migrator",
     "ReasoningStrategy",
     "Reranker",
     "Task",

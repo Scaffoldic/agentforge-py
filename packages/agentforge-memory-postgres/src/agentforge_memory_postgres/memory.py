@@ -26,6 +26,7 @@ from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.values.claim import Claim
 
+from agentforge_memory_postgres._migrator import PostgresMigrator
 from agentforge_memory_postgres._runner import PostgresRunner, _AsyncpgPoolRunner
 
 # Table names are framework constants — never derived from user input.
@@ -34,25 +35,6 @@ from agentforge_memory_postgres._runner import PostgresRunner, _AsyncpgPoolRunne
 # B608 noqa annotations below are explicit acknowledgements of that
 # fact, not relaxations of the lint surface.
 _CLAIMS_TABLE = "claims"
-
-_INIT_SCHEMA_SQL = (
-    f"CREATE TABLE IF NOT EXISTS {_CLAIMS_TABLE} ("  # nosec B608
-    "    id         TEXT PRIMARY KEY,"
-    "    project    TEXT NOT NULL,"
-    "    agent      TEXT NOT NULL,"
-    "    run_id     TEXT NOT NULL,"
-    "    category   TEXT NOT NULL,"
-    "    payload    JSONB NOT NULL,"
-    "    supersedes TEXT,"
-    "    created_at TIMESTAMPTZ NOT NULL"
-    ");"
-    f"CREATE INDEX IF NOT EXISTS idx_{_CLAIMS_TABLE}_project_agent "
-    f"    ON {_CLAIMS_TABLE}(project, agent);"
-    f"CREATE INDEX IF NOT EXISTS idx_{_CLAIMS_TABLE}_run_id "
-    f"    ON {_CLAIMS_TABLE}(run_id);"
-    f"CREATE INDEX IF NOT EXISTS idx_{_CLAIMS_TABLE}_category "
-    f"    ON {_CLAIMS_TABLE}(category);"
-)
 
 _UPSERT_CLAIM_SQL = (
     f"INSERT INTO {_CLAIMS_TABLE} "  # noqa: S608  # nosec B608
@@ -105,13 +87,23 @@ class PostgresMemoryStore(MemoryStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> PostgresMigrator:
+        """Return a `PostgresMigrator` configured against the
+        package's bundled migrations directory (feat-024)."""
+        return PostgresMigrator(self._r)
+
     async def init_schema(self) -> None:
-        """Create the `claims` table + indices (idempotent). Opt-in.
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework — schema
+        provisioning is now versioned + checksum-tracked. Older
+        deployments that previously called this method continue to
+        work; subsequent calls only apply pending migrations.
 
         Skip for read-only workloads or when the schema is managed
         externally; required before first write for full correctness.
         """
-        await self._r.execute(_INIT_SCHEMA_SQL)
+        await self.migrator().apply_pending()
 
     async def close(self) -> None:
         await self._r.close()

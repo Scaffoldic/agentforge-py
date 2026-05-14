@@ -45,6 +45,9 @@ class GraphFakeRunner:
     backing: InMemoryGraphStore = field(default_factory=InMemoryGraphStore)
     queries: list[_Query] = field(default_factory=list)
     closed: bool = False
+    # feat-024 migration tracking — mirrors the
+    # `:AgentforgeMigration` node label.
+    _applied_migrations: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     async def execute_read(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         self.queries.append(_Query(cypher, params))
@@ -62,6 +65,18 @@ class GraphFakeRunner:
     ) -> list[dict[str, Any]]:
         c = " ".join(cypher.split())
         if c.startswith("CREATE CONSTRAINT") or c.startswith("CREATE INDEX"):
+            return []
+        # feat-024 migration tracking — recognise the MATCH/CREATE
+        # shapes the migrator emits against `:AgentforgeMigration`.
+        if "MATCH (m:AgentforgeMigration)" in c:
+            return list(self._applied_migrations.values())
+        if "CREATE (m:AgentforgeMigration" in c:
+            self._applied_migrations[params["id"]] = {
+                "id": params["id"],
+                "name": params["name"],
+                "checksum": params["checksum"],
+                "applied_at": None,
+            }
             return []
         if "MERGE (n:AfNode" in c and "SET n = $properties" in c:
             await self.backing.add_node(
@@ -221,6 +236,9 @@ class MemoryFakeRunner:
     queries: list[_Query] = field(default_factory=list)
     supersede_edges: list[tuple[str, str]] = field(default_factory=list)
     closed: bool = False
+    # feat-024 migration tracking — mirrors the
+    # `:AgentforgeMigration` node label.
+    _applied_migrations: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     async def execute_read(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         self.queries.append(_Query(cypher, params))
@@ -235,6 +253,9 @@ class MemoryFakeRunner:
 
     async def _dispatch_read(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         c = " ".join(cypher.split())
+        # feat-024 migration tracking
+        if "MATCH (m:AgentforgeMigration)" in c:
+            return list(self._applied_migrations.values())
         if c == "MATCH (c:Claim {id: $id}) RETURN c":
             claim = await self.backing.get(params["id"])
             if claim is None:
@@ -255,6 +276,15 @@ class MemoryFakeRunner:
     async def _dispatch_write(self, cypher: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         c = " ".join(cypher.split())
         if c.startswith("CREATE CONSTRAINT") or c.startswith("CREATE INDEX"):
+            return []
+        # feat-024 migration tracking
+        if "CREATE (m:AgentforgeMigration" in c:
+            self._applied_migrations[params["id"]] = {
+                "id": params["id"],
+                "name": params["name"],
+                "checksum": params["checksum"],
+                "applied_at": None,
+            }
             return []
         if c.startswith("MERGE (c:Claim {id: $id})"):
             claim = Claim(

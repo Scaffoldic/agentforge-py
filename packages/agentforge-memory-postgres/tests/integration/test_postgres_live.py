@@ -87,3 +87,21 @@ async def test_live_hybrid_search_conformance(vector_store: PostgresVectorStore)
     hybrid-search conformance suite against real Postgres + the
     `embedding_tsv` generated column."""
     await run_hybrid_search_conformance(vector_store)
+
+
+@pytest.mark.asyncio
+async def test_live_migrations_apply_and_are_idempotent(
+    memory_store: PostgresMemoryStore,
+) -> None:
+    """feat-024: the migration framework applies bundled migrations
+    against a real Postgres + re-running is a no-op."""
+    migrator = memory_store.migrator()
+    # `init_schema()` already ran in the fixture, so applying again
+    # should be a no-op.
+    applied = await migrator.apply_pending()
+    assert applied == []
+    # And the status of every bundled migration is "applied" with a
+    # matching checksum.
+    statuses = await migrator.status()
+    assert all(s.applied for s in statuses)
+    assert all(s.checksum_match for s in statuses)

@@ -1,0 +1,10 @@
+DEFINE TABLE IF NOT EXISTS af_claim SCHEMALESS;
+DEFINE INDEX IF NOT EXISTS af_claim_id_idx
+    ON af_claim FIELDS af_id UNIQUE;
+DEFINE INDEX IF NOT EXISTS af_claim_proj_agent_idx
+    ON af_claim FIELDS project, agent;
+
+DEFINE TABLE IF NOT EXISTS af_node SCHEMALESS;
+DEFINE TABLE IF NOT EXISTS af_edge TYPE RELATION SCHEMALESS;
+DEFINE INDEX IF NOT EXISTS af_node_id_idx
+    ON af_node FIELDS af_id UNIQUE;
