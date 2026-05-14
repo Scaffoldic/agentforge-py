@@ -2454,3 +2454,61 @@ Design notes:
   attribute). Acceptable for a test fixture since the
   fake is co-located with the package; production
   code never touches `_items`.
+
+---
+
+## 2026-05-14T18:00 — feat-020 v0.3 polish (sentence-window streaming output guardrails) in review
+
+Closes the deferred safety gap from feat-020 v0.2 per
+the user's "Sentence-window streaming guardrails" pick.
+
+Branch: `chore/feat-020-sentence-window-guardrails`.
+
+Chunked across 2 commits:
+
+- chunk 1: `_SentenceWindowBuffer` at
+  `agentforge_chat/_window.py` (push + flush;
+  punctuation-then-whitespace OR newline OR 200-char
+  hard cap boundary heuristic). `ChatSessionConfig.safety_mode`
+  Literal expanded to add `"sentence-window"`. `SafetyMode`
+  type alias re-exported from `agentforge_chat`.
+  `ChatSession.__init__` gains
+  `safety_mode: SafetyMode = "buffer-then-stream"`.
+  `_stream_per_token` dispatches: in sentence-window
+  mode every `text` event accumulates in the buffer;
+  each completed sentence runs through
+  `_agent._guardrails.check_output(sentence, ctx)`
+  before being emitted as a `ChatChunk(kind="text")`.
+  Non-text events pass through unbuffered. End-of-stream
+  flushes residual through the same validator. Terminal
+  `check_output` is skipped in sentence-window mode
+  since each sentence was already validated.
+  `build_chat_session_from_config` reads
+  `chat_cfg.session.safety_mode` and forwards into
+  `ChatSession(safety_mode=...)`. 7 buffer unit tests +
+  4 session-level safety-mode tests; 48 existing chat
+  tests pass without regression.
+- chunk 2 (about-to-commit): feat-020 spec §11 flips
+  the "post-stream guardrails" deviation + "sentence-
+  window streaming guardrails" deferred item to
+  shipped; adds a "v0.3 polish" subsection describing
+  the pipeline. Roadmap line flipped. CHANGELOG entry
+  for the new safety_mode value + the additive
+  Literal change. State files updated.
+
+Design notes:
+
+- `stream-then-redact` is kept as an accepted Literal
+  value but aliases sentence-window for v0.3. A future
+  v0.3+ pass may implement true inline regex redaction
+  without buffering — the schema field stays valid so
+  YAMLs can opt into the (eventually distinct)
+  behaviour without a config-schema bump later.
+- The terminal `check_output` is intentionally skipped
+  in sentence-window mode: each sentence was already
+  validated, and re-running over the validated
+  cumulative could trigger surprising results for
+  non-idempotent validators.
+- Per-token `text` events in sentence-window mode
+  don't emit `ChatChunk` until a sentence boundary
+  fires. This is the intended latency trade-off.
