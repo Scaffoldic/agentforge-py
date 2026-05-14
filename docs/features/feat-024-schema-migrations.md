@@ -320,6 +320,29 @@ choice. Chunked across 7 commits:
 - Migration squashing — when the list grows long.
 - TypeScript port — v0.4.
 
+### v0.3 polish — parameterized migrations (Postgres + SurrealDB vectors)
+
+Closes the deferred dim-parameterized item from the v0.2
+ship. Migration bodies now support `${var}` placeholders
+via Python's `string.Template` semantics; per-driver
+migrator constructors gain an optional `variables:
+dict[str, str]` kwarg. Checksums are computed over the
+un-substituted template body — re-deploying with a
+different value (e.g. swapping a 768-dim embedder for
+1536) produces the same checksum, so drift detection
+stays correct.
+
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `ce3141a` | `render_migration_up(body, variables)` helper at `agentforge_core/migrations/template.py`. Uses `safe_substitute` so unknown placeholders pass through (template-key typos surface as apply-time SQL errors). Re-exported via `agentforge_core.migrations`. 6 new unit tests covering substitution, `$$` escape, and checksum-over-template invariant. |
+| 2 | `a25193a` | `PostgresMigrator` / `SqliteMigrator` / `Neo4jMigrator` / `SurrealMigrator` constructors all gain optional `variables=` kwarg. Postgres + SurrealDB get per-store migration subdirectories: vector migrations move to `migrations/vector/0100_vectors.{sql,surql}` (id range 0100-0199 to avoid colliding with memory's 0001). `PostgresVectorStore.migrator()` and `SurrealVectorStore.migrator()` pre-configure with `variables={"dimensions": str(self._dim)}` + the vector subdir path. `_build_init_schema_sql` / `_build_init_schema` helpers removed; `init_schema()` on both vector stores delegates to the migration framework. SQLite + Neo4j migrators get the same passthrough kwarg for future-proofing (no functional change today). |
+| 3 | this commit | Spec subsection + catalogue + roadmap flip + CHANGELOG + state. |
+
+The dim parameter is the only one in v0.2. Future
+follow-ups can use the same mechanism for embedding
+provider names, custom table prefixes, or per-tenant
+schema namespacing.
+
 ## 12. Runbook
 
 Audience: agent developers + operators upgrading deployments.

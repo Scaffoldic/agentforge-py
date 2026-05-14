@@ -22,7 +22,7 @@ from agentforge_core.contracts.migrator import (
     MigrationChecksumError,
     MigrationStatus,
 )
-from agentforge_core.migrations import discover_migrations
+from agentforge_core.migrations import discover_migrations, render_migration_up
 
 from agentforge_memory_postgres._runner import PostgresRunner
 
@@ -58,10 +58,12 @@ class PostgresMigrator:
         self,
         runner: PostgresRunner,
         *,
+        variables: dict[str, str] | None = None,
         migrations_path: Path | None = None,
     ) -> None:
         self._r = runner
         self._path = migrations_path or _default_migrations_path()
+        self._variables = variables
         self._migrations: list[Migration] = discover_migrations(self._path, suffix="sql")
 
     @property
@@ -120,7 +122,8 @@ class PostgresMigrator:
         for migration in self._migrations:
             if migration.id in applied:
                 continue
-            await self._r.execute(migration.up)
+            rendered = render_migration_up(migration.up, self._variables)
+            await self._r.execute(rendered)
             await self._r.execute(
                 _INSERT_APPLIED_SQL,
                 migration.id,
