@@ -1,43 +1,48 @@
 ---
-feature: feat-023 — GraphRAG hybrid retrieval
+feature: feat-024 — Schema migrations framework
 state: in_review
-branch: feat/023-graphrag-hybrid-retrieval
+branch: feat/024-schema-migrations
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-022 v0.2 follow-up — native hybrid for Postgres + SQLite shipped via PR #43 (merged 2026-05-14)
+last_shipped: feat-023 — GraphRAG hybrid retrieval shipped via PR #44 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Bundled feat-023 PR per user-chosen "Full spec in one PR"
-scope. Closes the second of the three un-numbered v0.2
-retrieval sub-feats from `docs/roadmap.md`.
+Bundled feat-024 PR per user-chosen "Spec + framework +
+all four drivers" scope. Closes the last un-numbered v0.2
+persistence sub-feat from `docs/roadmap.md`.
 
 - New canonical spec at
-  `docs/features/feat-023-graphrag-hybrid.md`.
-- `GraphExpansion` Pydantic value type at
-  `agentforge_core/values/retrieval.py` bundling
-  `store` + `max_hops` + `edge_types` + `text_property` +
-  `decay`.
-- `Retriever(graph_expansion=...)` constructor kwarg.
-  Composes orthogonally with `mode="vector"` /
-  `mode="hybrid"` and optional `Reranker`. Pipeline:
-  `(base retrieve) → (graph expand) → (rerank)`.
-- `RetrievalConfig.graph_expansion` +
-  `GraphExpansionConfig` schema block;
-  `build_retriever_from_config` wires the graph store
-  under the existing `graph_stores` entry-point category.
-- Missing-graph-node tolerance + DEBUG logging.
+  `docs/features/feat-024-schema-migrations.md`.
+- `Migration` Pydantic value + `MigrationStatus` +
+  `Migrator` Protocol +
+  `MigrationChecksumError` at
+  `agentforge_core/contracts/migrator.py`.
+- `discover_migrations(path, *, suffix)` helper at
+  `agentforge_core/migrations/discover.py`.
+- Per-driver migrators:
+  - `PostgresMigrator` + 2 migration files
+  - `SqliteMigrator` + 3 migration files (incl. feat-022
+    FTS5 as `0002`)
+  - `Neo4jMigrator` + 2 Cypher migration files
+  - `SurrealMigrator` + 2 SurrealQL migration files
+- `agentforge db migrate` + `agentforge db migrate-status`
+  CLI subcommands.
+- All four drivers' `init_schema()` continues to work,
+  now delegating to the migration framework.
 
 ## Last shipped
 
-feat-022 v0.2 follow-up — native hybrid for Postgres +
-SQLite shipped via PR #43 (merged 2026-05-14).
+feat-023 — GraphRAG hybrid retrieval shipped via PR #44
+(merged 2026-05-14).
 
 ### Previously
 
+- feat-022 v0.2 follow-up — native hybrid for Postgres +
+  SQLite (PR #43).
 - feat-022 — BM25 + vector hybrid search (PR #42).
 - feat-002 + feat-009 v0.3.x strategy follow-ups bundle
   (PR #41).
@@ -45,34 +50,32 @@ SQLite shipped via PR #43 (merged 2026-05-14).
   bundle (PR #40).
 - feat-021 vendor reranker sister packages (PR #39).
 - feat-021 v0.2 follow-up — `retrieval:` YAML block +
-  `build_retriever_from_config` (PR #38).
-- feat-021 — Reranker ABC + sentence-transformers default
-  + Retriever integration (PR #37).
-- feat-009 v0.2 — Langfuse + Phoenix + Evidently + StatsD
-  vendor observability backends (PR #36).
-- feat-014 v0.3 — A2A per-token streaming + unified
-  `StreamingChunkKind` (PR #35).
-- feat-020 v0.2 — postgres + redis history + slack
-  adapter + per-token streaming foundation (PR #34).
+  builder (PR #38).
+- feat-021 — Reranker ABC + Retriever integration
+  (PR #37).
+- feat-009 v0.2 — vendor observability backends (PR #36).
+- feat-014 v0.3 — A2A per-token streaming (PR #35).
+- feat-020 v0.2 — postgres + redis history + slack +
+  streaming (PR #34).
 
 ## Next pick candidates
 
-Remaining v0.2 backlog:
+Remaining v0.2 backlog (sister-package follow-ups + v0.3+
+items):
 
-- **Schema migrations framework** for persistent stores
-  (un-numbered).
 - **Native `lexical_search` on Neo4j / SurrealDB**
-  (sister-package follow-up to feat-022; deferred until
-  requested).
+  (feat-022 sister-package follow-up).
 - **Native single-query graph-augmented retrieval inside
-  Neo4j / SurrealDB** (single Cypher / SurrealQL query
-  combining vector + graph; sister-package follow-up to
-  feat-023).
+  Neo4j / SurrealDB** (feat-023 sister-package follow-up).
+- **Parameterized migrations** for Postgres `vector(N)` +
+  SurrealDB `HNSW DIMENSION N` (feat-024 v0.3+ open
+  item).
+- **`down` migrations / schema rollback** (feat-024 v0.3+).
 - **Evidently real-time drift dashboards via Cloud**
-  (feat-009 v0.3+ open item).
+  (feat-009 v0.3+).
 - **Multi-cluster Redlock for `RedisSessionLock`** and
   **sentence-window streaming output guardrails**
-  (feat-020 v0.3+ open items).
+  (feat-020 v0.3+).
 
 **Already shipped on the v0.1 → v0.2 line:**
 
@@ -81,11 +84,10 @@ Remaining v0.2 backlog:
   streaming (PR #33).
 - feat-020 v0.2 — chat history + adapters + streaming
   (PR #34).
-- feat-014 v0.3 — A2A per-token streaming + unified
-  `StreamingChunkKind` (PR #35).
+- feat-014 v0.3 — A2A per-token streaming (PR #35).
 - feat-009 v0.2 — vendor observability backends (PR #36).
-- feat-021 — Reranker ABC + sentence-transformers default
-  + Retriever integration (PR #37).
+- feat-021 — Reranker ABC + Retriever integration
+  (PR #37).
 - feat-021 v0.2 follow-up — `retrieval:` YAML block +
   builder (PR #38).
 - feat-021 v0.2 follow-up — vendor reranker sister
@@ -97,7 +99,8 @@ Remaining v0.2 backlog:
 - feat-022 — BM25 + vector hybrid search (PR #42).
 - feat-022 v0.2 follow-up — native hybrid for Postgres +
   SQLite (PR #43).
-- feat-023 — GraphRAG hybrid retrieval (in review).
+- feat-023 — GraphRAG hybrid retrieval (PR #44).
+- feat-024 — Schema migrations framework (in review).
 
 ## Reading order on session resume
 

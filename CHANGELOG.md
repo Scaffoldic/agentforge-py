@@ -11,6 +11,54 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-024 — Schema migrations framework.** New canonical
+  feature closing the last un-numbered v0.2 persistence
+  sub-feat. Ships as a single PR across all four
+  persistent-store drivers:
+  - **`Migration` value** + **`MigrationStatus`** at
+    `agentforge_core.contracts.migrator` (frozen, strict;
+    `id` is the 4-digit prefix, `up` is the migration body,
+    `checksum` is SHA-256 over LF-normalised UTF-8).
+  - **`Migrator` runtime Protocol** with
+    `apply_pending` / `status` / `current_version`.
+  - **`discover_migrations(path, *, suffix)`** at
+    `agentforge_core.migrations.discover` — globs
+    `NNNN_<name>.<suffix>`, computes checksums, returns
+    sorted by id. Ignores non-matching files; raises on
+    duplicate ids.
+  - **`MigrationChecksumError`** (subclass of
+    `ModuleError`) — raised on recorded-vs-file checksum
+    drift.
+  - **`PostgresMigrator`** + 2 SQL files (claims schema —
+    the vectors table stays parameterized under
+    `init_schema()`).
+  - **`SqliteMigrator`** + 3 SQL files
+    (`0000_migrations_table`, `0001_initial` claims +
+    vectors + vector_meta, `0002_fts5` feat-022 FTS5 +
+    triggers).
+  - **`Neo4jMigrator`** + 2 Cypher files + statement
+    splitting for Neo4j 5.x's
+    one-statement-per-`run()` rule. Applied migrations
+    tracked as `:AgentforgeMigration` nodes.
+  - **`SurrealMigrator`** + 2 SurrealQL files. SurrealDB
+    v1.x lacks multi-statement transactions; documented.
+  - **`agentforge db migrate`** routes through the
+    framework when the configured store exposes a
+    `migrator()` method (falls back to legacy
+    `init_schema()` otherwise).
+  - **`agentforge db migrate-status`** new subcommand
+    lists applied + pending migrations per driver with
+    checksum-match indicators.
+
+### Changed
+
+- **`init_schema()` on every persistent-store driver
+  now delegates to the migration framework's
+  `apply_pending()`.** Behaviour-preserving for callers;
+  first invocation post-upgrade creates the tracking
+  table and marks the bundled `0001_initial` migration as
+  applied via the existing `IF NOT EXISTS` predicates.
+
 - **feat-023 — GraphRAG hybrid retrieval.** New canonical
   feature closing the second of the three un-numbered v0.2
   retrieval sub-feats. Ships as a single PR:
