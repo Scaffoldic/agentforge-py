@@ -7,7 +7,10 @@ import math
 
 import pytest
 from agentforge import InMemoryVectorStore
-from agentforge_core.testing import run_vector_conformance
+from agentforge_core.testing import (
+    run_hybrid_search_conformance,
+    run_vector_conformance,
+)
 from agentforge_core.values.vector import VectorItem
 
 
@@ -238,11 +241,12 @@ async def test_close_clears_index() -> None:
 # ---- Capabilities (default) ----
 
 
-def test_default_capabilities_empty() -> None:
+def test_default_capabilities() -> None:
+    """InMemoryVectorStore ships native hybrid search (feat-022)."""
     store = InMemoryVectorStore(dimensions=4)
-    assert store.capabilities() == set()
+    assert store.capabilities() == {"hybrid_search"}
     assert store.supports("native_ann") is False
-    assert store.supports("hybrid_search") is False
+    assert store.supports("hybrid_search") is True
 
 
 # ---- Conformance suite ----
@@ -254,6 +258,14 @@ async def test_passes_vector_conformance_suite() -> None:
     driver will be checked against."""
     store = InMemoryVectorStore(dimensions=8)
     await run_vector_conformance(store)
+
+
+@pytest.mark.asyncio
+async def test_passes_hybrid_search_conformance_suite() -> None:
+    """The reference impl declares `hybrid_search` and must pass the
+    opt-in hybrid-search conformance suite (feat-022)."""
+    store = InMemoryVectorStore(dimensions=8)
+    await run_hybrid_search_conformance(store)
 
 
 # ---- Auto-normalisation (calling code doesn't have to pre-normalise) ----
