@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 from uuid import uuid4
 
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -175,6 +176,7 @@ class TreeOfThoughts(StrategyBase):
     async def run(self, state: AgentState) -> AgentState:
         runtime = get_runtime(state)
         by_id: dict[str, _Node] = {}
+        tracer = get_tracer()
 
         # Root — start from the task itself; no LLM call yet.
         root = _Node(id=str(uuid4()), parent_id=None, depth=0, content=state.task, score=1.0)
@@ -196,55 +198,14 @@ class TreeOfThoughts(StrategyBase):
                 )
                 break
 
-            new_survivors: list[_Node] = []
-            for parent in survivors:
-                self._check_guardrails(state)
-
-                # GENERATE candidates for this parent
-                candidates = await self._generate(state, parent, current_depth)
-                if not candidates:
-                    continue
-
-                # SCORE candidates
-                scored = await self._score(state, candidates, current_depth)
-
-                # Build child nodes + record branch step
-                for thought, score in scored:
-                    child = _Node(
-                        id=thought.id,
-                        parent_id=parent.id,
-                        depth=current_depth + 1,
-                        content=thought.content,
-                        score=score,
-                    )
-                    parent.children.append(child)
-                    by_id[child.id] = child
-                    self._record_step(
-                        state,
-                        iteration=current_depth + 1,
-                        kind="branch",
-                        content={
-                            "branch_id": child.id,
-                            "parent_id": parent.id,
-                            "score": score,
-                            "thought": thought.content,
-                        },
-                    )
-
-                # PRUNE: above threshold; optionally top-K (beam_width)
-                kept = [by_id[t.id] for (t, s) in scored if s >= self._score_threshold]
-                kept.sort(key=lambda n: n.score, reverse=True)
-                if self._beam_width is not None:
-                    kept = kept[: self._beam_width]
-                new_survivors.extend(kept)
-
-            # Across all parents at this level, also bound the global
-            # beam if set.
-            new_survivors.sort(key=lambda n: n.score, reverse=True)
-            if self._beam_width is not None:
-                new_survivors = new_survivors[: self._beam_width]
-
-            survivors = new_survivors
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": current_depth,
+                    "agentforge.strategy": "tot",
+                },
+            ):
+                survivors = await self._iterate_depth(state, by_id, survivors, current_depth)
             current_depth += 1
 
         # Pick the best leaf overall — the best surviving node, or the
@@ -273,6 +234,68 @@ class TreeOfThoughts(StrategyBase):
     # ------------------------------------------------------------------
     # Phase helpers
     # ------------------------------------------------------------------
+
+    async def _iterate_depth(
+        self,
+        state: AgentState,
+        by_id: dict[str, _Node],
+        survivors: list[_Node],
+        current_depth: int,
+    ) -> list[_Node]:
+        """Run one depth-level of generate/score/prune.
+
+        Returns the survivors of this level after threshold filtering
+        and (optional) global beam-width truncation. Records one
+        ``branch`` step per generated child.
+        """
+        new_survivors: list[_Node] = []
+        for parent in survivors:
+            self._check_guardrails(state)
+
+            # GENERATE candidates for this parent
+            candidates = await self._generate(state, parent, current_depth)
+            if not candidates:
+                continue
+
+            # SCORE candidates
+            scored = await self._score(state, candidates, current_depth)
+
+            # Build child nodes + record branch step
+            for thought, score in scored:
+                child = _Node(
+                    id=thought.id,
+                    parent_id=parent.id,
+                    depth=current_depth + 1,
+                    content=thought.content,
+                    score=score,
+                )
+                parent.children.append(child)
+                by_id[child.id] = child
+                self._record_step(
+                    state,
+                    iteration=current_depth + 1,
+                    kind="branch",
+                    content={
+                        "branch_id": child.id,
+                        "parent_id": parent.id,
+                        "score": score,
+                        "thought": thought.content,
+                    },
+                )
+
+            # PRUNE: above threshold; optionally top-K (beam_width)
+            kept = [by_id[t.id] for (t, s) in scored if s >= self._score_threshold]
+            kept.sort(key=lambda n: n.score, reverse=True)
+            if self._beam_width is not None:
+                kept = kept[: self._beam_width]
+            new_survivors.extend(kept)
+
+        # Across all parents at this level, also bound the global
+        # beam if set.
+        new_survivors.sort(key=lambda n: n.score, reverse=True)
+        if self._beam_width is not None:
+            new_survivors = new_survivors[: self._beam_width]
+        return new_survivors
 
     async def _generate(
         self, state: AgentState, parent: _Node, current_depth: int
