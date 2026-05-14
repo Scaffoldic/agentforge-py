@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-023 |
 | **Title** | GraphRAG hybrid retrieval — vector top-k + N-hop graph expansion |
-| **Status** | in progress |
+| **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-14 |
 | **Target version** | 0.2 |
@@ -313,16 +313,16 @@ language-agnostic; the TS port mirrors this surface 1:1.
 
 ## 11. Implementation status (Python)
 
-**Status: in progress.** Landing as a single PR per the
-user's "Full spec in one PR" scope choice. Chunked across
-4 commits:
+**Status: shipped (Python).** Landed as a single PR per
+the user's "Full spec in one PR" scope choice. Chunked
+across 4 commits:
 
-| Chunk | What lands |
-|---|---|
-| 1 | This spec + catalogue row + roadmap pointer. |
-| 2 | `GraphExpansion` value type + `Retriever(graph_expansion=...)` + traversal pipeline + unit tests. |
-| 3 | `RetrievalConfig.graph_expansion` + `GraphExpansionConfig` + `build_retriever_from_config` wiring + YAML integration test. |
-| 4 | Spec implementation-status flip + catalogue + roadmap + CHANGELOG + state. |
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `5192abf` | This spec + catalogue row + roadmap pointer. |
+| 2 | `5f4ce61` | `GraphExpansion` value at `agentforge_core/values/retrieval.py` (frozen, strict, `arbitrary_types_allowed=True` for the `GraphStore` field). `Retriever.__init__` gains `graph_expansion: GraphExpansion \| None = None`. `retrieve()` refactored into a unified pipeline `(base retrieve) → (graph expand) → (rerank)`; new `_expand_via_graph` runs `store.traverse()` per seed in parallel, synthesises a `VectorMatch` per neighbour node (text from `node.properties[text_property]`; `score = seed.score * decay**depth`; metadata carries `agentforge.expanded_from` + `agentforge.hop`), dedup by id with direct hits winning. Unit tests cover validation, single/multi-hop, edge-type filter, score decay, dedup, missing-graph-node tolerance, reranker post-expansion, hybrid composition. |
+| 3 | `d588e1b` | New `GraphExpansionConfig` Pydantic block under `RetrievalConfig.graph_expansion`. `build_retriever_from_config` resolves the graph store under the `graph_stores` category, converts `edge_types` (list[str]) to tuple at the boundary, constructs the `GraphExpansion` value, forwards into `Retriever`. Integration test exercises a YAML with `graph_expansion: { max_hops: 2, edge_types: [CITES] }`. |
+| 4 | this commit | Spec implementation-status flip + catalogue + roadmap + CHANGELOG + state. |
 
 ### Out-of-scope (deferred)
 
