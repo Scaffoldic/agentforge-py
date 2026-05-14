@@ -11,22 +11,33 @@
 # agentforge.yaml
 providers:
   default:
-    type: bedrock
-    model: us.anthropic.claude-sonnet-4-5-20250929
+    type: anthropic                                    # native Anthropic API
+    model: claude-sonnet-4-7
   judge:
-    type: bedrock
-    model: us.anthropic.claude-haiku-4-5-20250929    # cheaper judge
+    type: anthropic
+    model: claude-haiku-4-5                            # cheaper judge
   embed:
     type: voyage
-    model: voyage-3
+    model: voyage-3-large
 agent:
-  model: bedrock:us.anthropic.claude-sonnet-4-5-20250929
+  model: anthropic:claude-sonnet-4-7
 modules:
   evaluators:
     - name: faithfulness
       config:
         judge_provider: judge
 ```
+
+**Available provider drivers (v0.2):**
+
+| `type:` | Package | Capabilities |
+|---|---|---|
+| `bedrock` | `agentforge-bedrock` | tools, json_mode, caching, thinking, streaming |
+| `anthropic` | `agentforge-anthropic` | tools, json_mode, caching, thinking, streaming |
+| `openai` | `agentforge-openai` | tools, json_mode, streaming, vision (gpt-4o*) |
+| `ollama` | `agentforge-ollama` | tools, streaming (local; zero cost) |
+| `litellm` | `agentforge-litellm` | tools (router → 100+ backends) |
+| `voyage` | `agentforge-voyage` | embedding-only; matryoshka |
 
 ## Step by step
 
