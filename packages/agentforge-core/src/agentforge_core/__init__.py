@@ -39,11 +39,16 @@ from agentforge_core.contracts import (
     GraphStore,
     LLMClient,
     MemoryStore,
+    Migration,
+    MigrationChecksumError,
+    MigrationStatus,
+    Migrator,
     ReasoningStrategy,
     Reranker,
     Tool,
     VectorStore,
 )
+from agentforge_core.migrations import discover_migrations
 from agentforge_core.observability import SCOPE_NAME as OBSERVABILITY_SCOPE_NAME
 from agentforge_core.observability import get_tracer
 from agentforge_core.production import (
@@ -162,6 +167,10 @@ __all__ = [
     "MemoryStore",
     "Message",
     "MessageRole",
+    "Migration",
+    "MigrationChecksumError",
+    "MigrationStatus",
+    "Migrator",
     "ModelNotFoundError",
     "ModuleEntry",
     "ModuleError",
@@ -201,6 +210,7 @@ __all__ = [
     "bind_run",
     "current_run",
     "discover_entry_points",
+    "discover_migrations",
     "get_tracer",
     "install_json_formatter",
     "install_run_id_filter",
