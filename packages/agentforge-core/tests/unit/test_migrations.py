@@ -10,6 +10,7 @@ from agentforge_core import (
     MigrationChecksumError,
     discover_migrations,
 )
+from agentforge_core.migrations import render_migration_up
 from agentforge_core.migrations.discover import _checksum
 from agentforge_core.production.exceptions import ModuleError
 
@@ -130,6 +131,56 @@ def test_discover_computes_checksum_from_file_contents(tmp_path: Path) -> None:
     (tmp_path / "0001_init.sql").write_text(body)
     migrations = discover_migrations(tmp_path, suffix="sql")
     assert migrations[0].checksum == _checksum(body)
+
+
+# ---- render_migration_up (template) ----
+
+
+def test_render_passes_through_when_variables_none() -> None:
+    body = "CREATE TABLE foo (id INT);"
+    assert render_migration_up(body, None) == body
+
+
+def test_render_passes_through_when_variables_empty() -> None:
+    body = "CREATE TABLE foo (id INT);"
+    assert render_migration_up(body, {}) == body
+
+
+def test_render_substitutes_named_placeholders() -> None:
+    body = "CREATE TABLE vectors (embedding vector(${dimensions}));"
+    rendered = render_migration_up(body, {"dimensions": "768"})
+    assert "vector(768)" in rendered
+    assert "${dimensions}" not in rendered
+
+
+def test_render_leaves_unknown_placeholders_untouched() -> None:
+    body = "CREATE TABLE vectors (col ${unknown});"
+    rendered = render_migration_up(body, {"dimensions": "768"})
+    # Unknown ${unknown} passes through; caller sees SQL syntax
+    # error at apply time rather than a silently empty replacement.
+    assert "${unknown}" in rendered
+
+
+def test_render_dollar_escape_works() -> None:
+    body = "SELECT '$$' AS price"
+    rendered = render_migration_up(body, {"dimensions": "768"})
+    assert rendered == "SELECT '$' AS price"
+
+
+def test_checksum_is_over_unrendered_body() -> None:
+    """Checksum must NOT vary with substitution — that's the
+    whole point of the template invariant."""
+    template = "CREATE TABLE vectors (embedding vector(${dimensions}));"
+    checksum_template = _checksum(template)
+    # The rendered body produces a *different* checksum (it
+    # includes the substituted value); the framework records the
+    # template's checksum, not the rendered body's, so re-deploys
+    # with different `dimensions` don't trigger drift detection.
+    rendered_768 = render_migration_up(template, {"dimensions": "768"})
+    rendered_1536 = render_migration_up(template, {"dimensions": "1536"})
+    assert _checksum(template) == checksum_template
+    assert _checksum(rendered_768) != checksum_template
+    assert _checksum(rendered_1536) != checksum_template
 
 
 # ---- MigrationChecksumError ----
