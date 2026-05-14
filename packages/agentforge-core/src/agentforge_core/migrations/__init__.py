@@ -9,5 +9,6 @@ migration files at startup. The contract type :class:`Migration`
 from __future__ import annotations
 
 from agentforge_core.migrations.discover import _checksum, discover_migrations
+from agentforge_core.migrations.template import render_migration_up
 
-__all__ = ["_checksum", "discover_migrations"]
+__all__ = ["_checksum", "discover_migrations", "render_migration_up"]
