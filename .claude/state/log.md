@@ -1902,3 +1902,72 @@ Tooling notes:
 - Ruff PLR2004 (magic-number-comparison) fires on test
   assertions like `len(results) == 2`. Auto-fixed with
   `# noqa: PLR2004` on first pre-commit pass.
+
+---
+
+## 2026-05-14 — feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle shipped
+
+Big bundled PR closing the three remaining v0.2 cycle items
+in one go per user-chosen "Full bundle as described" scope.
+
+Chunks (each gated through `uv run pre-commit run
+--all-files` before commit):
+
+- chunk 1 (`d096b80`): ReActLoop.stream() per-iteration
+  override. Mirrors run()'s loop structure but yields a
+  `step` StreamingEvent each time state.steps is appended.
+  Terminal `done` event (carrying run_id + cost_usd) is
+  swallowed by Agent.stream which emits its own canonical
+  done with full RunResult shape.
+- chunk 2 (`ebf7af3`): child OTel spans. Single-point
+  instrumentation in StrategyBase._call_llm (llm.call span)
+  + StrategyBase._dispatch_tool (tool.<name> span) covers
+  every strategy. strategy.iteration spans added to
+  ReActLoop (run + stream) and PlanExecuteLoop;
+  ToT + MultiAgent deferred (their nested loop structure
+  needs extract-method refactor). evaluator.<name> span
+  added to Agent._run_evaluators. End-to-end test asserts
+  full span tree via InMemorySpanExporter.
+- chunk 3 (`d8419c1`): A2A W3C TraceContext propagation.
+  Client _build_headers calls TraceContextTextMapPropagator
+  .inject(headers) after existing run-id / budget headers.
+  Server _handle_call + _stream_call extract the
+  traceparent and open an `a2a.call` span with the extracted
+  context as parent. Streaming path uses manual
+  __enter__/__exit__ because async generators don't compose
+  with `with` blocks. 3 unit tests cover injection
+  (with/without span) + cross-process trace_id stitching.
+- chunk 4 (`e347c35`): content-based PII redaction +
+  Agent retriever wiring. OpenTelemetryHook gains
+  redact_value_patterns kwarg; patterns compile once, scan
+  stringified values after the key-based pass.
+  build_agent_from_config now calls
+  build_retriever_from_config and threads the result into
+  Agent(retriever=...). The kwarg + RuntimeContext storage
+  were already wired in feat-021 — only the builder hook
+  was missing.
+- chunk 5 (about-to-commit): docs across three specs
+  (feat-002 §"Implementation status" gets a v0.3 polish
+  subsection, feat-009 §11 flips three deferred items to
+  shipped, feat-021 §11 flips the
+  Agent(retriever=...) deviation), CHANGELOG entry,
+  state files.
+
+Tooling notes:
+
+- `with tracer.start_as_current_span(...):` requires the
+  body of the wrapped loop to be indented one level deeper.
+  For ToT's nested loop structure (depth × parents ×
+  candidates) this would mean cascading indent shifts of
+  ~50 lines; deferred to a v0.3.x patch that does the
+  extract-method refactor properly.
+- `async generator + context manager` don't compose cleanly
+  (`with`-block exit fires before the generator is
+  exhausted on the caller side). For `_stream_call` in the
+  a2a server, we use manual `__enter__()` / `__exit__()`
+  to keep the span open across yields.
+- ruff PT006 (parametrize names must be tuple) fires on
+  the comma-separated string form. Use the tuple form
+  `("field", "bad_value")` instead.
+- ruff RUF012 fires on `class _NoAuth: headers: dict = {}`
+  — mutable default at class level. Move to `__init__`.

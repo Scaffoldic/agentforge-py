@@ -426,6 +426,26 @@ the resolver from feat-001; e.g. `Agent(strategy="multi-agent")`.
 
 TypeScript port pending.
 
+### v0.3 polish — ReActLoop.stream() override
+
+Shipped on the v0.1 → v0.2 line. ReActLoop now overrides
+`ReasoningStrategy.stream()` (added in feat-020 v0.2) to
+emit a `step` `StreamingEvent` each time
+`state.steps` is appended. Out-of-the-box agents using the
+default strategy now emit per-iteration streaming without
+users having to write a custom strategy.
+
+- `agent.stream(task)` routes through the new override and
+  yields `[step × N, done]` where the canonical `done` is
+  emitted by `Agent.stream` (carries full RunResult shape).
+- Driving `strategy.stream(state)` directly (e.g. unit
+  tests) sees the strategy-level `done` with just
+  `run_id` + `cost_usd`.
+
+Plan-Execute, ToT, and Multi-Agent stream() overrides
+deferred to v0.3.x (case-by-case; each strategy's iteration
+shape is meaningfully different from ReActLoop's).
+
 ---
 
 ## Runbook

@@ -30,6 +30,7 @@ import time
 from typing import Any
 
 from agentforge_core.contracts.tool import Tool
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState
 from pydantic import ValidationError
@@ -102,48 +103,56 @@ class PlanExecuteLoop(StrategyBase):
         get_runtime(state)
         replans = 0
         plan_messages: list[Message] = [Message(role="user", content=state.task)]
+        tracer = get_tracer()
 
         while True:
-            # PHASE 1 — Plan (with retry on parse / validation failure)
-            plan = await self._build_plan(state, plan_messages, replans_done=replans)
-            self._record_step(
-                state,
-                iteration=0,
-                kind="plan",
-                content={"steps": [step.model_dump() for step in plan.steps]},
-            )
-
-            # PHASE 2 — Execute
-            try:
-                observations = await self._execute_plan(state, plan)
-                break
-            except _StepFailure as failure:
-                if not self._replan_on_failure or replans >= self._max_replans:
-                    # Surface the failure as a final observation; don't crash.
-                    observations = failure.observations_so_far
-                    self._record_step(
-                        state,
-                        iteration=len(plan.steps),
-                        kind="observe",
-                        content=(
-                            f"Plan execution failed at step {failure.failed_step.id!r}: "
-                            f"{failure.error}. No further re-plan attempts."
-                        ),
-                    )
-                    break
-                replans += 1
-                # Feed the failure context back so the LLM can revise the plan.
-                plan_messages.append(Message(role="assistant", content=plan.model_dump_json()))
-                plan_messages.append(
-                    Message(
-                        role="user",
-                        content=(
-                            f"The plan failed at step {failure.failed_step.id!r} "
-                            f"({failure.failed_step.description!r}): {failure.error}. "
-                            f"Please re-plan."
-                        ),
-                    )
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": replans,
+                    "agentforge.strategy": "plan_execute",
+                },
+            ):
+                # PHASE 1 — Plan (with retry on parse / validation failure)
+                plan = await self._build_plan(state, plan_messages, replans_done=replans)
+                self._record_step(
+                    state,
+                    iteration=0,
+                    kind="plan",
+                    content={"steps": [step.model_dump() for step in plan.steps]},
                 )
+
+                # PHASE 2 — Execute
+                try:
+                    observations = await self._execute_plan(state, plan)
+                    break
+                except _StepFailure as failure:
+                    if not self._replan_on_failure or replans >= self._max_replans:
+                        # Surface the failure as a final observation; don't crash.
+                        observations = failure.observations_so_far
+                        self._record_step(
+                            state,
+                            iteration=len(plan.steps),
+                            kind="observe",
+                            content=(
+                                f"Plan execution failed at step {failure.failed_step.id!r}: "
+                                f"{failure.error}. No further re-plan attempts."
+                            ),
+                        )
+                        break
+                    replans += 1
+                    # Feed the failure context back so the LLM can revise the plan.
+                    plan_messages.append(Message(role="assistant", content=plan.model_dump_json()))
+                    plan_messages.append(
+                        Message(
+                            role="user",
+                            content=(
+                                f"The plan failed at step {failure.failed_step.id!r} "
+                                f"({failure.failed_step.description!r}): {failure.error}. "
+                                f"Please re-plan."
+                            ),
+                        )
+                    )
 
         # PHASE 3 — Synthesize
         synth_messages: list[Message] = [

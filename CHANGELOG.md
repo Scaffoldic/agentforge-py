@@ -11,6 +11,33 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-002 + feat-009 v0.3 polish + feat-021 follow-up
+  bundle.** Closes the three remaining v0.2 cycle items in
+  one PR:
+  - **feat-002 — ReActLoop.stream() override.** Built-in
+    ReActLoop now emits a `step` StreamingEvent per
+    iteration (think/act/observe). Drops the "out-of-the-
+    box agents only emit a terminal done" gap. Plan-Execute
+    / ToT / MultiAgent overrides deferred to v0.3.x.
+  - **feat-009 v0.3 — child OTel spans.** `strategy.iteration`
+    in ReActLoop + PlanExecute, `llm.call` + `tool.<name>`
+    in StrategyBase (single point per category), and
+    `evaluator.<name>` in `Agent._run_evaluators`. The full
+    span tree now matches feat-009 spec §4.3.
+  - **feat-009 v0.3 — A2A trace propagation.** W3C
+    TraceContext (`traceparent` + `tracestate`) injected on
+    the A2A client and extracted on the A2A server. Multi-
+    agent calls now stitch into one end-to-end trace.
+  - **feat-009 v0.3 — content-based PII redaction.**
+    `OpenTelemetryHook(redact_value_patterns=...)` opt-in
+    regex scan over stringified values. Key-based
+    redaction wins precedence; default `None` is identical
+    to v0.1 behaviour.
+  - **feat-021 — Agent(retriever=...) wiring.**
+    `build_agent_from_config()` now calls
+    `build_retriever_from_config()` and threads the result.
+    YAML `retrieval:` block end-to-end.
+
 - **feat-021 v0.2 follow-up — vendor reranker sister
   packages.** Three managed-API rerankers ship in one
   bundle, all following the
