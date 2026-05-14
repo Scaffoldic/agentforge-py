@@ -1,40 +1,42 @@
 ---
-feature: feat-022 — BM25 + vector hybrid search
+feature: feat-022 v0.2 follow-up — native hybrid for Postgres + SQLite
 state: in_review
-branch: feat/022-hybrid-search
+branch: feat/022-hybrid-postgres-sqlite-native
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-002 + feat-009 v0.3.x strategy follow-ups bundle shipped via PR #41 (merged 2026-05-14)
+last_shipped: feat-022 — BM25 + vector hybrid search shipped via PR #42 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Bundled feat-022 PR per user-chosen "Full spec in one PR"
-scope. Closes one of the three un-numbered v0.2 retrieval
-sub-feats listed in `docs/roadmap.md`.
+Bundled feat-022 follow-up PR per user-chosen "Native
+hybrid for Postgres + SQLite" scope. Closes the two
+sister-package follow-ups feat-022 deferred:
 
-- New canonical spec at
-  `docs/features/feat-022-hybrid-search.md`.
-- `VectorStore.lexical_search` ABC default-method
-  (raises `NotImplementedError` by default; drivers that
-  declare the `"hybrid_search"` capability MUST override).
-- `_BM25Index` pure-Python BM25 helper (Robertson defaults).
-- `InMemoryVectorStore` declares `"hybrid_search"` + native
-  `lexical_search` impl with lazy index.
-- `Retriever(mode="hybrid", rrf_k=60)` with Reciprocal
-  Rank Fusion. Reranker (when set) applies post-fusion.
-- `RetrievalConfig.mode` + `rrf_k` + YAML wiring.
-- `run_hybrid_search_conformance` opt-in suite.
+- **`agentforge-memory-postgres`** —
+  `embedding_tsv tsvector` generated column + GIN index +
+  `lexical_search` via `ts_rank_cd` /
+  `plainto_tsquery('english', $1)`. `"hybrid_search"`
+  capability declared post-`init_schema()`.
+- **`agentforge-memory-sqlite`** — FTS5 virtual table +
+  sync triggers + `lexical_search` via `bm25()`.
+  `"hybrid_search"` capability always declared.
+
+Both pass `run_hybrid_search_conformance` end-to-end (live
+Postgres under `RUN_LIVE_POSTGRES=1`; SQLite via `:memory:`
+in CI).
 
 ## Last shipped
 
-feat-002 + feat-009 v0.3.x strategy follow-ups bundle
-shipped via PR #41 (merged 2026-05-14).
+feat-022 — BM25 + vector hybrid search shipped via PR #42
+(merged 2026-05-14).
 
 ### Previously
 
+- feat-002 + feat-009 v0.3.x strategy follow-ups bundle
+  (PR #41).
 - feat-002 + feat-009 v0.3 polish + feat-021 follow-up
   bundle (PR #40).
 - feat-021 vendor reranker sister packages (PR #39).
@@ -56,10 +58,9 @@ Remaining v0.2 backlog:
 - **GraphRAG-style hybrid retrieval** — vector top-k +
   graph edge traversal (un-numbered, likely feat-023).
 - **Schema migrations** for persistent stores (un-numbered).
-- **Native Postgres `lexical_search`** via `tsvector` —
-  sister-package follow-up to feat-022.
-- **Native SQLite FTS5 `lexical_search`** — sister-package
-  follow-up to feat-022.
+- **Native `lexical_search` on Neo4j / SurrealDB**
+  (sister-package follow-ups to feat-022; deferred until
+  requested).
 - **Evidently real-time drift dashboards via Cloud**
   (feat-009 v0.3+ open item).
 - **Multi-cluster Redlock for `RedisSessionLock`** and
@@ -86,7 +87,9 @@ Remaining v0.2 backlog:
   bundle (PR #40).
 - feat-002 + feat-009 v0.3.x strategy follow-ups bundle
   (PR #41).
-- feat-022 — BM25 + vector hybrid search (in review).
+- feat-022 — BM25 + vector hybrid search (PR #42).
+- feat-022 v0.2 follow-up — native hybrid for Postgres +
+  SQLite (in review).
 
 ## Reading order on session resume
 

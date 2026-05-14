@@ -6,7 +6,10 @@ from pathlib import Path
 
 import aiosqlite
 import pytest
-from agentforge_core.testing import run_vector_conformance
+from agentforge_core.testing import (
+    run_hybrid_search_conformance,
+    run_vector_conformance,
+)
 from agentforge_core.values.vector import VectorItem
 from agentforge_memory_sqlite import SqliteVectorStore
 
@@ -26,6 +29,62 @@ async def test_passes_vector_conformance_suite() -> None:
     store = await SqliteVectorStore.from_path(":memory:", dimensions=8)
     try:
         await run_vector_conformance(store)
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_passes_hybrid_search_conformance_suite() -> None:
+    """feat-022 follow-up: native FTS5 path passes the opt-in
+    hybrid-search conformance suite."""
+    store = await SqliteVectorStore.from_path(":memory:", dimensions=8)
+    try:
+        await run_hybrid_search_conformance(store)
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_capabilities_declares_hybrid_search() -> None:
+    store = await SqliteVectorStore.from_path(":memory:", dimensions=8)
+    try:
+        assert store.capabilities() == {"hybrid_search"}
+        assert store.supports("hybrid_search") is True
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_fts_index_stays_in_sync_with_upsert_and_delete() -> None:
+    """The FTS5 sync triggers fire on every upsert / update / delete
+    against `vectors`, so `vectors_fts` mirrors the content table."""
+    store = await SqliteVectorStore.from_path(":memory:", dimensions=4)
+    try:
+        await store.upsert(
+            [
+                VectorItem(id="a", vector=(1.0, 0.0, 0.0, 0.0), text="Paris capital France"),
+                VectorItem(id="b", vector=(0.0, 1.0, 0.0, 0.0), text="Berlin capital Germany"),
+            ]
+        )
+        # Paris matches only doc a.
+        paris = await store.lexical_search("Paris", limit=5)
+        assert [m.id for m in paris] == ["a"]
+
+        # Re-upsert a with different text — old FTS row must be gone.
+        await store.upsert(
+            [
+                VectorItem(id="a", vector=(1.0, 0.0, 0.0, 0.0), text="Madrid capital Spain"),
+            ]
+        )
+        paris_after = await store.lexical_search("Paris", limit=5)
+        assert [m.id for m in paris_after] == []
+        madrid = await store.lexical_search("Madrid", limit=5)
+        assert [m.id for m in madrid] == ["a"]
+
+        # Delete drops the FTS row too.
+        await store.delete(["a"])
+        madrid_after = await store.lexical_search("Madrid", limit=5)
+        assert [m.id for m in madrid_after] == []
     finally:
         await store.close()
 
@@ -176,10 +235,11 @@ async def test_delete_returns_actual_removal_count(
 # ---- Defaults ----
 
 
-def test_default_capabilities_empty() -> None:
-    """Today's impl is brute-force; no native ANN, no hybrid search.
-    A future v0.2 can declare `'native_ann'` after wiring sqlite-vec."""
+def test_default_capabilities() -> None:
+    """Today's impl ships native FTS5 hybrid_search. ANN is still
+    deferred to a future sqlite-vec wiring."""
     store = SqliteVectorStore.__new__(SqliteVectorStore)
     store._dim = 4  # type: ignore[attr-defined]
-    assert store.capabilities() == set()
+    assert store.capabilities() == {"hybrid_search"}
     assert store.supports("native_ann") is False
+    assert store.supports("hybrid_search") is True
