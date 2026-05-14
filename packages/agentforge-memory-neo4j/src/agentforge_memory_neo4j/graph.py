@@ -33,6 +33,7 @@ from agentforge_core.values.graph import (
 )
 from neo4j import AsyncGraphDatabase
 
+from agentforge_memory_neo4j._migrator import Neo4jMigrator
 from agentforge_memory_neo4j._runner import CypherRunner, _Neo4jDriverRunner
 
 _NODE_LABEL = "AfNode"
@@ -87,14 +88,18 @@ class Neo4jGraphStore(GraphStore):
     ) -> None:
         await self.close()
 
-    async def init_schema(self) -> None:
-        """Create constraints + indexes (idempotent). Opt-in.
+    def migrator(self) -> Neo4jMigrator:
+        """Return a `Neo4jMigrator` configured against the package's
+        bundled migrations directory (feat-024)."""
+        return Neo4jMigrator(self._r)
 
-        Skip for read-only workloads or when the schema is managed
-        externally; required before first write for full correctness.
+    async def init_schema(self) -> None:
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework — schema
+        provisioning is now versioned + checksum-tracked.
         """
-        for cypher in _INIT_SCHEMA_CYPHER:
-            await self._r.execute_write(cypher, {})
+        await self.migrator().apply_pending()
 
     async def close(self) -> None:
         await self._r.close()

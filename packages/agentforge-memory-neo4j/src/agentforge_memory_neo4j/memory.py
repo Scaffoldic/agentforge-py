@@ -22,17 +22,10 @@ from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.values.claim import Claim
 from neo4j import AsyncGraphDatabase
 
+from agentforge_memory_neo4j._migrator import Neo4jMigrator
 from agentforge_memory_neo4j._runner import CypherRunner, _Neo4jDriverRunner
 
 _CLAIM_LABEL = "Claim"
-
-_INIT_SCHEMA_CYPHER = (
-    f"CREATE CONSTRAINT claim_id IF NOT EXISTS FOR (c:{_CLAIM_LABEL}) REQUIRE c.id IS UNIQUE",
-    f"CREATE INDEX claim_project_agent IF NOT EXISTS "
-    f"FOR (c:{_CLAIM_LABEL}) ON (c.project, c.agent)",
-    f"CREATE INDEX claim_run_id IF NOT EXISTS FOR (c:{_CLAIM_LABEL}) ON (c.run_id)",
-    f"CREATE INDEX claim_category IF NOT EXISTS FOR (c:{_CLAIM_LABEL}) ON (c.category)",
-)
 
 
 class Neo4jMemoryStore(MemoryStore):
@@ -65,9 +58,17 @@ class Neo4jMemoryStore(MemoryStore):
     ) -> None:
         await self.close()
 
+    def migrator(self) -> Neo4jMigrator:
+        """Return a `Neo4jMigrator` configured against the package's
+        bundled migrations directory (feat-024)."""
+        return Neo4jMigrator(self._r)
+
     async def init_schema(self) -> None:
-        for cypher in _INIT_SCHEMA_CYPHER:
-            await self._r.execute_write(cypher, {})
+        """Apply every bundled migration (idempotent). Opt-in.
+
+        Delegates to the feat-024 migration framework.
+        """
+        await self.migrator().apply_pending()
 
     async def close(self) -> None:
         await self._r.close()
