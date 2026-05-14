@@ -61,3 +61,32 @@ async def test_checksum_drift_raises(postgres_fake_runner) -> None:  # type: ign
 
     with pytest.raises(MigrationChecksumError, match="checksum drift"):
         await migrator.apply_pending()
+
+
+@pytest.mark.asyncio
+async def test_apply_pending_renders_dimension_placeholder(postgres_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """feat-024 v0.3 follow-up: when `variables={"dimensions": ...}`
+    is set, the vector migration's `${dimensions}` placeholder is
+    rendered at apply time. Checksum stays over the unrendered
+    template so re-deploys with a different dim don't trigger
+    drift."""
+    from pathlib import Path  # noqa: PLC0415
+
+    vector_path = (
+        Path(__file__).parent.parent.parent
+        / "src"
+        / "agentforge_memory_postgres"
+        / "migrations"
+        / "vector"
+    )
+    migrator = PostgresMigrator(
+        postgres_fake_runner,
+        variables={"dimensions": "768"},
+        migrations_path=vector_path,
+    )
+    await migrator.apply_pending()
+
+    sqls = [q.sql for q in postgres_fake_runner.queries]
+    flat = " ".join(sqls)
+    assert "vector(768)" in flat
+    assert "${dimensions}" not in flat
