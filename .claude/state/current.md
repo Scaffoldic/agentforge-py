@@ -1,36 +1,42 @@
 ---
-feature: feat-002 + feat-009 v0.3.x strategy follow-ups bundle
+feature: feat-022 — BM25 + vector hybrid search
 state: in_review
-branch: chore/feat-002-feat-009-strategy-streams-iteration-spans
+branch: feat/022-hybrid-search
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle shipped via PR #40 (merged 2026-05-14)
+last_shipped: feat-002 + feat-009 v0.3.x strategy follow-ups bundle shipped via PR #41 (merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Bundled strategy follow-ups PR closing two deferred items
-from PR #40 per user-chosen "Strategy follow-ups bundle"
-scope:
+Bundled feat-022 PR per user-chosen "Full spec in one PR"
+scope. Closes one of the three un-numbered v0.2 retrieval
+sub-feats listed in `docs/roadmap.md`.
 
-- **feat-009 v0.3.x** — `strategy.iteration` OTel spans on
-  `TreeOfThoughts` + `MultiAgentSupervisor` via extract-method
-  refactor (`_iterate_depth`, `_iterate_round`).
-- **feat-002 v0.3.x** — `stream()` overrides on
-  `PlanExecuteLoop`, `TreeOfThoughts`, and
-  `MultiAgentSupervisor`. ReActLoop's override already
-  shipped in PR #40; the shared `_events_for_new_steps`
-  helper was lifted to `_base.py` for reuse.
+- New canonical spec at
+  `docs/features/feat-022-hybrid-search.md`.
+- `VectorStore.lexical_search` ABC default-method
+  (raises `NotImplementedError` by default; drivers that
+  declare the `"hybrid_search"` capability MUST override).
+- `_BM25Index` pure-Python BM25 helper (Robertson defaults).
+- `InMemoryVectorStore` declares `"hybrid_search"` + native
+  `lexical_search` impl with lazy index.
+- `Retriever(mode="hybrid", rrf_k=60)` with Reciprocal
+  Rank Fusion. Reranker (when set) applies post-fusion.
+- `RetrievalConfig.mode` + `rrf_k` + YAML wiring.
+- `run_hybrid_search_conformance` opt-in suite.
 
 ## Last shipped
 
-feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle
-shipped via PR #40 (merged 2026-05-14).
+feat-002 + feat-009 v0.3.x strategy follow-ups bundle
+shipped via PR #41 (merged 2026-05-14).
 
 ### Previously
 
+- feat-002 + feat-009 v0.3 polish + feat-021 follow-up
+  bundle (PR #40).
 - feat-021 vendor reranker sister packages (PR #39).
 - feat-021 v0.2 follow-up — `retrieval:` YAML block +
   `build_retriever_from_config` (PR #38).
@@ -47,9 +53,13 @@ shipped via PR #40 (merged 2026-05-14).
 
 Remaining v0.2 backlog:
 
-- **Sub-feat backlog (still un-numbered)** — GraphRAG
-  hybrid retrieval, BM25 + vector hybrid search, schema
-  migrations.
+- **GraphRAG-style hybrid retrieval** — vector top-k +
+  graph edge traversal (un-numbered, likely feat-023).
+- **Schema migrations** for persistent stores (un-numbered).
+- **Native Postgres `lexical_search`** via `tsvector` —
+  sister-package follow-up to feat-022.
+- **Native SQLite FTS5 `lexical_search`** — sister-package
+  follow-up to feat-022.
 - **Evidently real-time drift dashboards via Cloud**
   (feat-009 v0.3+ open item).
 - **Multi-cluster Redlock for `RedisSessionLock`** and
@@ -75,7 +85,8 @@ Remaining v0.2 backlog:
 - feat-002 + feat-009 v0.3 polish + feat-021 follow-up
   bundle (PR #40).
 - feat-002 + feat-009 v0.3.x strategy follow-ups bundle
-  (in review).
+  (PR #41).
+- feat-022 — BM25 + vector hybrid search (in review).
 
 ## Reading order on session resume
 

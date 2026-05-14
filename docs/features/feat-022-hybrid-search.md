@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-022 |
 | **Title** | Hybrid search — BM25 + vector retrieval fused via Reciprocal Rank Fusion |
-| **Status** | in progress |
+| **Status** | shipped (Python) |
 | **Owner** | kjoshi |
 | **Created** | 2026-05-14 |
 | **Target version** | 0.2 |
@@ -348,17 +348,17 @@ mirror this surface 1:1.
 
 ## 11. Implementation status (Python)
 
-**Status: in progress.** Landing as a single PR per the
-user's "Full spec in one PR" scope choice. Chunked across
-5 commits:
+**Status: shipped (Python).** Landed as a single PR per
+the user's "Full spec in one PR" scope choice. Chunked
+across 5 commits:
 
-| Chunk | What lands |
-|---|---|
-| 1 | This spec + catalogue row + roadmap pointer. |
-| 2 | `VectorStore.lexical_search` default-method + `_BM25Index` helper + `InMemoryVectorStore` native hybrid impl + `run_hybrid_search_conformance` + unit tests. |
-| 3 | `Retriever(mode="hybrid", rrf_k=60)` + `_rrf_fuse` + tests. |
-| 4 | `RetrievalConfig.mode` / `rrf_k` + `build_retriever_from_config` forwarding + YAML integration test. |
-| 5 | Spec implementation-status flip + catalogue row flip + CHANGELOG + state files. |
+| Chunk | Commit | What landed |
+|---|---|---|
+| 1 | `e42dbbc` | This spec + catalogue row + roadmap pointer. |
+| 2 | `588c532` | `VectorStore.lexical_search` default-method + `_BM25Index` helper + `InMemoryVectorStore` native hybrid impl + `run_hybrid_search_conformance` + unit tests. |
+| 3 | `f5af6c1` | `Retriever(mode="hybrid", rrf_k=60)` + `_rrf_fuse` (RRF Cormack 2009) + tests covering constructor validation, fused ordering, top_k truncation, vector-mode regression, post-fusion reranker application. |
+| 4 | `b2917dd` | `RetrievalConfig.mode` / `rrf_k` + `build_retriever_from_config` forwarding + YAML integration test. |
+| 5 | this commit | Spec implementation-status flip + catalogue row flip + roadmap flip + CHANGELOG + state files. |
 
 ### Out-of-scope (deferred)
 
