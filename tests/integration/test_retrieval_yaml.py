@@ -22,12 +22,13 @@ import math
 from pathlib import Path
 
 import pytest
-from agentforge import InMemoryVectorStore
+from agentforge import InMemoryGraphStore, InMemoryVectorStore
 from agentforge.cli._build import build_agent_from_config, build_retriever_from_config
 from agentforge_core.config import load_config
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.resolver import Resolver
+from agentforge_core.values.graph import GraphEdge, GraphNode
 from agentforge_core.values.messages import EmbeddingResponse, TokenUsage
 from agentforge_core.values.vector import VectorMatch
 
@@ -70,6 +71,24 @@ class _IntegrationVectorStore(InMemoryVectorStore):
     @classmethod
     def from_config(cls, *, dimensions: int = 4) -> _IntegrationVectorStore:
         return cls(dimensions=dimensions)
+
+
+class _IntegrationGraphStore(InMemoryGraphStore):
+    """Wraps the in-memory graph store so the resolver can build one.
+
+    Pre-loaded with a tiny CITES chain so the YAML integration test
+    can assert that graph expansion enriches the result set without
+    having to populate the store in the test body.
+    """
+
+    _seeded: bool = False
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    @classmethod
+    def from_config(cls) -> _IntegrationGraphStore:
+        return cls()
 
 
 class _ReverseReranker(Reranker):
@@ -137,6 +156,7 @@ def registered() -> None:
     r.register("vector_stores", "integration-store", _IntegrationVectorStore)
     r.register("embeddings", "integration-embedder", _FakeEmbedder)
     r.register("rerankers", "integration-reranker", _ReverseReranker)
+    r.register("graph_stores", "integration-graph", _IntegrationGraphStore)
 
 
 @pytest.mark.asyncio
@@ -213,6 +233,70 @@ async def test_yaml_hybrid_mode_to_retriever_end_to_end(registered: None, tmp_pa
     results = await retriever.retrieve("Eiffel", top_k=2)
     # Both docs surface — hybrid fuses vector + lexical paths.
     assert len(results) == 2
+
+
+_GRAPHRAG_YAML = """
+agent:
+  strategy: react
+retrieval:
+  vector_store:
+    driver: integration-store
+    config:
+      dimensions: 4
+  embedder:
+    driver: integration-embedder
+    config:
+      dim: 4
+  top_k: 1
+  over_fetch_factor: 1
+  graph_expansion:
+    store:
+      driver: integration-graph
+      config: {}
+    max_hops: 2
+    edge_types: [CITES]
+    text_property: text
+    decay: 0.5
+"""
+
+
+@pytest.mark.asyncio
+async def test_yaml_graph_expansion_to_retriever_end_to_end(
+    registered: None, tmp_path: Path
+) -> None:
+    """feat-023: `retrieval.graph_expansion` round-trips through the
+    config loader and produces a Retriever that augments vector hits
+    with N-hop graph neighbours."""
+    del registered
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text(_GRAPHRAG_YAML)
+
+    cfg = load_config(yaml_path)
+    assert cfg.retrieval is not None
+    assert cfg.retrieval.graph_expansion is not None
+    assert cfg.retrieval.graph_expansion.max_hops == 2
+    assert cfg.retrieval.graph_expansion.edge_types == ["CITES"]
+
+    retriever = build_retriever_from_config(cfg)
+    assert retriever is not None
+    assert retriever.graph_expansion is not None
+
+    # Seed the graph store (resolved by the builder; reachable via the
+    # retriever's GraphExpansion) with a CITES chain matching the
+    # vector ids we'll add below.
+    graph_store = retriever.graph_expansion.store
+    await graph_store.add_node(GraphNode(id="a", labels=("Doc",), properties={"text": "alpha"}))
+    await graph_store.add_node(GraphNode(id="b", labels=("Doc",), properties={"text": "beta"}))
+    await graph_store.add_node(GraphNode(id="c", labels=("Doc",), properties={"text": "gamma"}))
+    await graph_store.add_edge(GraphEdge(src="a", dst="b", edge_type="CITES"))
+    await graph_store.add_edge(GraphEdge(src="b", dst="c", edge_type="CITES"))
+
+    await retriever.add_documents(["alpha", "beta", "gamma"], ids=["a", "b", "c"])
+    results = await retriever.retrieve("alpha")
+    ids = {m.id for m in results}
+    # vector seed = `a`; graph expansion appends `b` (1 hop) and `c`
+    # (2 hops) via the CITES chain.
+    assert {"a", "b", "c"}.issubset(ids)
 
 
 @pytest.mark.asyncio
