@@ -1,0 +1,60 @@
+# agentforge-voyage — Voyage AI embedding provider for AgentForge.
+#
+# Tier-3 module per ADR-0003. Registers under
+# `agentforge.embeddings:voyage`. Production runner wraps the
+# `voyageai` Python SDK under `# pragma: no cover`; unit tests
+# inject a fake runner.
+
+[project]
+name = "agentforge-voyage"
+version = "0.2.0"
+description = "Voyage AI embedding provider for AgentForge — voyage-3 / voyage-large / voyage-code"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "embeddings", "voyage", "rag"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core",
+]
+
+[project.optional-dependencies]
+voyage = ["voyageai>=0.3"]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.embeddings"]
+voyage = "agentforge_voyage:VoyageEmbeddingClient"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_voyage"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_voyage",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
