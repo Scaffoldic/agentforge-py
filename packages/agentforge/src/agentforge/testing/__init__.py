@@ -36,6 +36,7 @@ from __future__ import annotations
 from agentforge._testing.fake_llm import FakeLLMClient, echo_response
 from agentforge._testing.fake_tool import FakeTool
 from agentforge.testing.conformance import (
+    run_hybrid_search_conformance,
     run_input_validator_conformance,
     run_memory_conformance,
     run_output_validator_conformance,
@@ -57,6 +58,7 @@ __all__ = [
     "echo_response",
     "load_recording",
     "record_llm",
+    "run_hybrid_search_conformance",
     "run_input_validator_conformance",
     "run_memory_conformance",
     "run_output_validator_conformance",

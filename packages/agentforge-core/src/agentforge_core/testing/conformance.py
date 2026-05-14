@@ -1043,3 +1043,96 @@ async def run_reranker_conformance(reranker: Reranker) -> None:
     assert reranker.supports("not-a-real-capability") is False, (
         "supports() must return False for unknown capability"
     )
+
+
+# ----------------------------------------------------------------------
+# Hybrid-search conformance — feat-022 (opt-in).
+# ----------------------------------------------------------------------
+
+
+async def run_hybrid_search_conformance(store: VectorStore) -> None:
+    """Verify the `lexical_search` contract for hybrid-capable drivers.
+
+    Only call this on stores that declare the ``"hybrid_search"``
+    capability — the function asserts the precondition. Empty store
+    in, empty store out (every item upserted is deleted).
+
+    Verifies:
+
+      1. ``store.supports("hybrid_search")`` is True.
+      2. Empty corpus returns ``[]``.
+      3. ``lexical_search`` returns at most ``limit`` matches sorted
+         by score desc, with scores in ``[0, 1]`` (max-normalised).
+      4. The top hit on an exact-token query is the document that
+         contains the rarest matching token.
+      5. ``filter_metadata`` AND-matches on the lexical path.
+      6. ``limit=0`` raises ``ValueError``.
+      7. Re-upserting an existing id with new text invalidates the
+         prior lexical hit (the new text wins).
+
+    Raises:
+        AssertionError: a contract was violated.
+    """
+    assert store.supports("hybrid_search"), (
+        "run_hybrid_search_conformance called on a store that does not declare 'hybrid_search'"
+    )
+
+    # 2. empty corpus
+    empty = await store.lexical_search("anything", limit=5)
+    assert empty == [], f"empty store must return [], got {empty!r}"
+
+    dim = store.dimensions()
+    base_vec = tuple([0.1] * dim)
+    items = [
+        VectorItem(
+            id="a", vector=base_vec, text="Paris is the capital of France", metadata={"k": 1}
+        ),
+        VectorItem(
+            id="b", vector=base_vec, text="Berlin is the capital of Germany", metadata={"k": 2}
+        ),
+        VectorItem(id="c", vector=base_vec, text="The Eiffel Tower is in Paris", metadata={"k": 1}),
+    ]
+    await store.upsert(items)
+
+    try:
+        # 6. limit < 1 must raise
+        raised_limit = False
+        try:
+            await store.lexical_search("Paris", limit=0)
+        except ValueError:
+            raised_limit = True
+        assert raised_limit, "lexical_search(limit=0) must raise ValueError"
+
+        # 3. ordering + score range
+        eiffel = await store.lexical_search("Eiffel Tower", limit=5)
+        assert len(eiffel) >= 1, "Eiffel Tower query must match at least one doc"
+        assert eiffel[0].id == "c", f"top hit on 'Eiffel Tower' must be doc c, got {eiffel[0].id}"
+        for prev, nxt in itertools.pairwise(eiffel):
+            assert prev.score >= nxt.score, "lexical_search results not sorted desc"
+        for m in eiffel:
+            assert 0.0 <= m.score <= 1.0, f"lexical score out of [0, 1]: {m.score}"
+
+        # 5. metadata filter
+        filtered = await store.lexical_search("capital", limit=5, filter_metadata={"k": 1})
+        ids = {m.id for m in filtered}
+        # docs with k=1 are a (Paris/capital) and c (Eiffel/Paris)
+        assert "b" not in ids, "filter_metadata={k: 1} must exclude doc b"
+
+        # 7. re-upsert invalidates prior text
+        await store.upsert(
+            [
+                VectorItem(
+                    id="a",
+                    vector=base_vec,
+                    text="Madrid is the capital of Spain",
+                    metadata={"k": 1},
+                ),
+            ]
+        )
+        paris_after = await store.lexical_search("Paris", limit=5)
+        paris_ids = {m.id for m in paris_after}
+        assert "a" not in paris_ids, (
+            "re-upserting doc a with new text must drop it from a 'Paris' query"
+        )
+    finally:
+        await store.delete(["a", "b", "c"])

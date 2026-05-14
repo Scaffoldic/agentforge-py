@@ -75,6 +75,47 @@ class VectorStore(ABC):
             ValueError: dimension mismatch or `limit < 1`.
         """
 
+    async def lexical_search(
+        self,
+        query: str,
+        *,
+        limit: int = 5,
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[VectorMatch]:
+        """Return the top-`limit` items by lexical (BM25-style) relevance.
+
+        Drivers that declare the ``"hybrid_search"`` capability MUST
+        override this. The default implementation raises
+        :class:`NotImplementedError` with a remediation message so
+        callers see a clear error rather than silently empty results.
+
+        Scores in the returned matches are normalised to ``[0, 1]`` by
+        max-score division within the result set (so the top match has
+        score 1.0; absolute BM25 magnitudes are not portable across
+        corpora). Cross-path comparability with `search()` scores is
+        NOT guaranteed — hybrid retrieval fuses by **rank**, not raw
+        score (see ``Retriever`` for RRF fusion).
+
+        Args:
+            query: The user's text query. Tokenisation is driver-specific
+                but typically lowercase + non-word split.
+            limit: Maximum results to return. Drivers may return fewer.
+            filter_metadata: Conjunctive equality filter on the items'
+                ``metadata`` dict. ``None`` means no filtering.
+
+        Raises:
+            NotImplementedError: This driver does not support hybrid
+                search (default behaviour).
+            ValueError: ``limit < 1``.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support hybrid search. "
+            "Either swap to a VectorStore that declares the "
+            "'hybrid_search' capability (e.g. the built-in "
+            "InMemoryVectorStore) or open an issue requesting native "
+            "lexical support for this driver."
+        )
+
     @abstractmethod
     async def delete(self, ids: list[str]) -> int:
         """Delete by id. Returns the number of items actually removed.
