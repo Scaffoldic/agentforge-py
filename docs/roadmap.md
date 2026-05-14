@@ -56,12 +56,11 @@ of each spec under [`docs/features/`](./features/).
 
 ## Release sequence
 
-We haven't tagged anything yet. The next release is **v0.1.0**
-(everything in the `## Shipped` table above lands in that
-tag). The release immediately after is **v0.2.0**, which
-contains every Backlog item listed below. After 0.2 the
-natural minor sequence continues — v0.3, v0.4, 1.0 —
-two-weekly during 0.x per
+**v0.1.0** is tagged. **v0.2.0** is the next release —
+contents listed in the v0.2.0 section below; tag cut on
+2026-05-14 alongside the first-party LLM provider sister
+packages. After 0.2 the natural minor sequence continues
+— v0.3, v0.4, 1.0 — two-weekly during 0.x per
 [ADR-0015](./adr/0015-coordinated-release-train.md).
 Spec metadata's `Target version` field is **aspirational**
 (set when the spec was written) and may differ from the tag
@@ -178,7 +177,11 @@ Remaining for v0.3+:
   `OutputValidator.check_output` per completed sentence, and emits
   the validated text downstream. Wired through YAML via
   `modules.chat.session.safety_mode`.
-- Migration framework for the Postgres schema.
+- ~~Migration framework for the Postgres schema.~~ —
+  **shipped** as canonical feat-024 (Schema migrations
+  framework) across all four persistent stores; v0.3
+  follow-up added parameterized migrations for the
+  dim-sensitive vector schemas.
 
 ### feat-009 vendor observability sub-feats
 
@@ -276,3 +279,67 @@ targeted for v0.2:
   bodies) so Postgres `vector(N)` + SurrealDB `HNSW DIMENSION N`
   schemas now live under the migration framework too. `down`
   migrations / schema rollback deferred to v0.3+.
+
+
+## v0.3.0 backlog (deferred from v0.2)
+
+All v0.2 follow-up items the framework explicitly deferred
+during the v0.1 → v0.2 line. None are blockers for the
+v0.2.0 tag.
+
+### Persistence & retrieval
+
+- **`down` migrations / schema rollback** (feat-024 v0.3+).
+  Adds a `down` slot to migration files + `agentforge db
+  migrate down` CLI. Per-driver rollback semantics
+  documented in the spec out-of-scope section.
+- **Native single-Cypher graph-augmented retrieval inside
+  Neo4j** (feat-023 sister-package follow-up). Combines
+  vector + graph traversal in a single query for
+  lower-latency hot paths; the current `Retriever(graph_expansion=...)`
+  is framework-side and works against any GraphStore.
+- **Native single-SurrealQL graph-augmented retrieval inside
+  SurrealDB** (feat-023 sister-package follow-up).
+
+### Streaming & resilience
+
+- **Multi-cluster Redlock for `RedisSessionLock`** (feat-020
+  v0.3+). The shipped v0.2 lock uses single-cluster `SET NX
+  PX` + UUID fencing; multi-cluster Redlock is for HA
+  deployments crossing Redis instances.
+- **True streaming-aware `stream-then-redact`** (feat-020
+  v0.3+). Currently aliases `sentence-window`; v0.3 may
+  add inline regex redaction without buffering.
+
+### Observability
+
+- **Evidently real-time drift dashboards via Cloud**
+  (feat-009 v0.3+). Wires the existing
+  `agentforge-evidently` package into Evidently Cloud's
+  real-time drift dashboards rather than the local JSON
+  report.
+
+### Optional eval sister packages
+
+Marked "optional" in the feat-006 catalogue; pick up
+on first request.
+
+- `agentforge-eval-ragas` — Ragas RAG-quality metrics.
+- `agentforge-eval-deepeval` — DeepEval suite.
+- `agentforge-eval-toxicity` — toxicity / bias scoring.
+- `agentforge-eval-codeexec` — code execution + test
+  pass-rate.
+
+### Provider polish (v0.2.1 candidates)
+
+If we want to scope down PR #50 further, these slip to
+v0.2.1 (or v0.3) per the same template:
+
+- `agentforge-cohere` (Cohere embeddings + chat).
+- Provider-aware tokenisers for Bedrock / Vertex / Mistral
+  models (one-line entries in `agentforge_chat.tokenisers`).
+
+### Cross-cutting
+
+- **TypeScript port** of the v0.2 surface. Tracked
+  separately under v0.4 per ADR-0015.
