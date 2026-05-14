@@ -11,6 +11,45 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-023 — GraphRAG hybrid retrieval.** New canonical
+  feature closing the second of the three un-numbered v0.2
+  retrieval sub-feats. Ships as a single PR:
+  - **`GraphExpansion` value type** at
+    `agentforge_core.values.retrieval`. Frozen, strict,
+    `arbitrary_types_allowed=True` for the `GraphStore`
+    field. Bundles `store` + `max_hops` (>= 1) +
+    `edge_types` + `text_property` + `decay` (in `(0, 1]`).
+  - **`Retriever(graph_expansion=...)`** new optional
+    constructor kwarg + `graph_expansion` property.
+    Composes orthogonally with `mode="vector"` /
+    `mode="hybrid"` and optional `Reranker`. Pipeline
+    order: `(base retrieve) → (graph expand) → (rerank)`.
+  - **`Retriever._expand_via_graph`** runs
+    `graph_store.traverse()` per seed in parallel via
+    `asyncio.gather`, synthesises a `VectorMatch` per
+    neighbour node (`text` from
+    `node.properties[text_property]`; `score = seed.score
+    * decay ** depth`; metadata carries
+    `agentforge.expanded_from` + `agentforge.hop`),
+    dedups by id with direct hits winning, sorts
+    neighbours by decayed score desc after the seeds.
+  - **`RetrievalConfig.graph_expansion`** +
+    `GraphExpansionConfig` schema block.
+    `build_retriever_from_config` resolves the graph store
+    under the existing `graph_stores` entry-point category,
+    converts `edge_types: list[str]` to a tuple at the
+    boundary, builds the `GraphExpansion` value, threads
+    into the `Retriever`.
+  - Missing-graph-node tolerance (a vector hit with no
+    corresponding graph node logs at DEBUG and silently
+    skips expansion for that seed).
+
+### Changed
+
+- `RetrievalConfig` gains
+  `graph_expansion: GraphExpansionConfig | None = None`
+  (additive — existing YAML keeps working unchanged).
+
 - **feat-022 v0.2 follow-up — native hybrid for Postgres
   + SQLite.** Both production drivers now declare the
   `"hybrid_search"` capability and ship native

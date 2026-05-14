@@ -2167,3 +2167,71 @@ Tooling notes:
   (...) STORED` requires Postgres 12+. We don't gate on
   the version explicitly; the pgvector dependency already
   implies a modern Postgres.
+
+---
+
+## 2026-05-14T14:00 — feat-023 GraphRAG hybrid retrieval in review
+
+Closes the second of the three un-numbered v0.2 retrieval
+sub-feats per the user's "GraphRAG hybrid retrieval
+(feat-023)" + "Full spec in one PR" choice.
+
+Branch: `feat/023-graphrag-hybrid-retrieval`.
+
+Chunked across 4 commits:
+
+- chunk 1 (`5192abf`): canonical spec at
+  `docs/features/feat-023-graphrag-hybrid.md` + catalogue
+  row + roadmap pointer (strikes the un-numbered GraphRAG
+  bullet).
+- chunk 2 (`5f4ce61`): `GraphExpansion` value at
+  `agentforge_core/values/retrieval.py` — frozen, strict,
+  `arbitrary_types_allowed=True` for the `GraphStore`
+  field. `Retriever.__init__` gains `graph_expansion:
+  GraphExpansion | None = None`. `retrieve()` refactored
+  into a unified pipeline `(base retrieve) → (graph
+  expand) → (rerank)`; `_retrieve_hybrid` split into
+  `_retrieve_vector_candidates` + `_retrieve_hybrid_
+  candidates` so rerank happens once at the end of the
+  pipeline. New `_expand_via_graph` runs
+  `store.traverse()` per seed via `asyncio.gather`,
+  synthesises `VectorMatch`es per neighbour with score =
+  `seed.score * decay**depth` and metadata
+  `agentforge.expanded_from` + `agentforge.hop`, dedup by
+  id with direct hits winning. Without a reranker the
+  expanded list is returned whole (seeds at the head,
+  neighbours appended); with a reranker the augmented set
+  is narrowed to top_k. Unit tests cover validation,
+  single/multi-hop, edge-type filter, score decay, dedup,
+  missing-graph-node tolerance, reranker post-expansion,
+  hybrid composition.
+- chunk 3 (`d588e1b`): `RetrievalConfig.graph_expansion`
+  + `GraphExpansionConfig` block. Builder resolves graph
+  store under the `graph_stores` resolver category,
+  converts `edge_types` (YAML list → list[str]) to tuple
+  at the boundary before constructing the frozen
+  `GraphExpansion`. Integration test registers an
+  `_IntegrationGraphStore` and exercises a YAML with
+  `graph_expansion: { max_hops: 2, edge_types: [CITES] }`.
+- chunk 4 (about-to-commit): spec implementation-status
+  flip + catalogue + roadmap flips + CHANGELOG + state.
+
+Design notes:
+
+- Composition, not new class. Graph expansion is a
+  decorator over the existing `Retriever.retrieve()`
+  pipeline — same `Retriever` class with three orthogonal
+  axes: (vector / hybrid), (reranker yes/no), (graph
+  expansion yes/no).
+- Id alignment between vector and graph stores is a
+  caller contract. Misalignment silently skips expansion
+  for that seed (logged at DEBUG). Fail-loud was rejected
+  because mixed corpora (some docs only in vectors, some
+  only in graph) are common in practice.
+- Without a reranker, `top_k` is treated as the minimum
+  *direct-hit* count, not a hard cap on the final result.
+  Users who want a hard cap configure a reranker.
+- YAML lists don't coerce to tuple under
+  `ConfigDict(strict=True)`. Pattern: schema uses
+  `list[str]`, value type uses `tuple[str, ...]`, builder
+  converts.

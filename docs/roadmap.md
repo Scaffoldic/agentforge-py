@@ -220,12 +220,12 @@ targeted for v0.2:
   with graph expansion (pull top-k vector matches, then traverse
   outgoing edges to enrich context).~~ — promoted to canonical
   [feat-023](./features/feat-023-graphrag-hybrid.md);
-  spec locked, implementation landing in the same PR
-  (`GraphExpansion` value + `Retriever(graph_expansion=...)`
-  post-retrieve N-hop traversal + score-decay merge + dedup,
-  composes orthogonally with vector/hybrid + optional reranker).
-  Native single-query graph-augmented retrieval inside Neo4j /
-  SurrealDB deferred to per-driver follow-ups.
+  **shipped** in v0.2 (`GraphExpansion` value +
+  `Retriever(graph_expansion=...)` post-retrieve N-hop traversal +
+  score-decay merge + dedup, composes orthogonally with
+  vector/hybrid + optional reranker). Native single-query
+  graph-augmented retrieval inside Neo4j / SurrealDB deferred to
+  per-driver follow-ups.
 - ~~**Hybrid search** (BM25 + vector fusion) inside the
   `VectorStore` capability vocabulary.~~ — promoted to
   canonical [feat-022](./features/feat-022-hybrid-search.md);
