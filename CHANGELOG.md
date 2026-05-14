@@ -11,6 +11,29 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-002 + feat-009 v0.3.x strategy follow-ups bundle.**
+  Closes the two deferred items from the v0.3 polish bundle:
+  - **`strategy.iteration` OTel spans on ToT + MultiAgent.**
+    Both strategies now emit `strategy.iteration` child
+    spans under `agent.run` (attributes
+    `agentforge.iteration`, `agentforge.strategy`). The
+    inner loop body of each was extracted into
+    `_iterate_depth` / `_iterate_round` so the
+    `with tracer.start_as_current_span(...)` block wraps a
+    single helper call (avoiding the indent cascade that
+    blocked PR #40). Span-tree coverage now spans all four
+    built-in strategies.
+  - **PlanExecute / ToT / MultiAgent `stream()` overrides.**
+    Each strategy now reimplements its `run()` body in
+    `stream()` mode, yielding a `step` `StreamingEvent`
+    after each recorded step. PlanExecute flushes events
+    after the plan + batched execute + synthesize phases;
+    ToT flushes after each depth's `_iterate_depth` + the
+    final synthesize; MultiAgent flushes after each round's
+    `_iterate_round` + the final aggregate. The shared
+    `_events_for_new_steps` helper was lifted from
+    `react.py` into `_base.py` to keep duplication minimal.
+
 - **feat-002 + feat-009 v0.3 polish + feat-021 follow-up
   bundle.** Closes the three remaining v0.2 cycle items in
   one PR:

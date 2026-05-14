@@ -46,16 +46,19 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 
 from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.observability.tracing import get_tracer
 from agentforge_core.production.budget import BudgetPolicy
+from agentforge_core.values.chat import StreamingEvent
 from agentforge_core.values.messages import Message
 from agentforge_core.values.state import AgentState
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from agentforge.resolver_register import register_strategy
 from agentforge.runtime import RUNTIME_KEY, RuntimeContext
-from agentforge.strategies._base import StrategyBase, get_runtime
+from agentforge.strategies._base import StrategyBase, _events_for_new_steps, get_runtime
 
 log = logging.getLogger(__name__)
 
@@ -170,40 +173,118 @@ class MultiAgentSupervisor(StrategyBase):
         runtime = get_runtime(state)
         round_idx = 0
         all_results: list[_WorkerResult] = []
+        tracer = get_tracer()
 
         while round_idx < self._max_rounds:
-            self._check_guardrails(state)
-
-            # PHASE 1 — DELEGATE
-            plan = await self._delegate(state, round_idx, prior=all_results)
-            assignments = self._filter_assignments(plan.assignments)
-            if not assignments:
-                log.info(
-                    "MultiAgentSupervisor: round %d produced no valid "
-                    "assignments; proceeding to aggregation.",
-                    round_idx,
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": round_idx,
+                    "agentforge.strategy": "multi_agent",
+                },
+            ):
+                new_results, should_break = await self._iterate_round(
+                    state, runtime, round_idx, all_results
                 )
-                break
-
-            # PHASE 2 — EXECUTE WORKERS (proportional budget split)
-            results = await self._execute_workers(state, runtime, assignments, round_idx=round_idx)
-            all_results.extend(results)
+            all_results.extend(new_results)
             round_idx += 1
-
-            if not any(r.error is None for r in results):
-                # Every worker failed in this round; nothing useful to
-                # iterate on. Bail out to aggregation rather than
-                # spinning the supervisor on the same failure.
-                log.warning(
-                    "MultiAgentSupervisor: every worker errored in round "
-                    "%d; aggregating with no successful outputs.",
-                    round_idx - 1,
-                )
+            if should_break:
                 break
 
         # PHASE 3 — AGGREGATE
         await self._aggregate(state, round_idx + 1, all_results)
         return state
+
+    async def stream(self, state: AgentState) -> AsyncIterator[StreamingEvent]:
+        """Per-round streaming override (feat-002 v0.3 polish).
+
+        Mirrors :meth:`run` but yields a ``step`` `StreamingEvent`
+        for each step recorded inside a round (delegate plan +
+        per-worker outputs; flushed after the round completes),
+        then the final aggregate step, then the terminal ``done``.
+        """
+        runtime = get_runtime(state)
+        round_idx = 0
+        all_results: list[_WorkerResult] = []
+        tracer = get_tracer()
+        before = len(state.steps)
+
+        while round_idx < self._max_rounds:
+            with tracer.start_as_current_span(
+                "strategy.iteration",
+                attributes={
+                    "agentforge.iteration": round_idx,
+                    "agentforge.strategy": "multi_agent",
+                },
+            ):
+                new_results, should_break = await self._iterate_round(
+                    state, runtime, round_idx, all_results
+                )
+            for ev in _events_for_new_steps(state.steps, before):
+                yield ev
+            before = len(state.steps)
+            all_results.extend(new_results)
+            round_idx += 1
+            if should_break:
+                break
+
+        # PHASE 3 — AGGREGATE
+        await self._aggregate(state, round_idx + 1, all_results)
+        for ev in _events_for_new_steps(state.steps, before):
+            yield ev
+
+        yield StreamingEvent(
+            kind="done",
+            content={
+                "run_id": state.run_id,
+                "cost_usd": float(runtime.budget.spent_usd),
+            },
+            metadata={},
+        )
+
+    async def _iterate_round(
+        self,
+        state: AgentState,
+        runtime: RuntimeContext,
+        round_idx: int,
+        prior_results: list[_WorkerResult],
+    ) -> tuple[list[_WorkerResult], bool]:
+        """Run one delegation round.
+
+        Returns ``(new_results, should_break)``. ``should_break`` is
+        True when the supervisor cannot make further progress this
+        run — either the delegation plan was empty or every worker
+        errored. The caller is responsible for extending the
+        aggregate result list and incrementing ``round_idx``.
+        """
+        self._check_guardrails(state)
+
+        # PHASE 1 — DELEGATE
+        plan = await self._delegate(state, round_idx, prior=prior_results)
+        assignments = self._filter_assignments(plan.assignments)
+        if not assignments:
+            log.info(
+                "MultiAgentSupervisor: round %d produced no valid "
+                "assignments; proceeding to aggregation.",
+                round_idx,
+            )
+            return [], True
+
+        # PHASE 2 — EXECUTE WORKERS (proportional budget split)
+        results = await self._execute_workers(state, runtime, assignments, round_idx=round_idx)
+
+        if not any(r.error is None for r in results):
+            # Every worker failed in this round; nothing useful to
+            # iterate on. Bail out to aggregation rather than
+            # spinning the supervisor on the same failure.
+            log.warning(
+                "MultiAgentSupervisor: every worker errored in round "
+                "%d; aggregating with no successful outputs.",
+                round_idx,
+            )
+            return results, True
+
+        return results, False
 
     # ------------------------------------------------------------------
     # Phase 1 — delegate
