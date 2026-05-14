@@ -51,6 +51,9 @@ neo4j = "agentforge_memory_neo4j.memory:Neo4jMemoryStore"
 [project.entry-points."agentforge.graph_stores"]
 neo4j = "agentforge_memory_neo4j.graph:Neo4jGraphStore"
 
+[project.entry-points."agentforge.vector_stores"]
+neo4j = "agentforge_memory_neo4j.vector:Neo4jVectorStore"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

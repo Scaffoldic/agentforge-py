@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import pytest
-from agentforge_core.testing import run_vector_conformance
+from agentforge_core.testing import (
+    run_hybrid_search_conformance,
+    run_vector_conformance,
+)
 from agentforge_memory_surrealdb import SurrealVectorStore
 
 
@@ -30,10 +33,22 @@ def test_capabilities_empty_without_schema(surreal_fake_runner) -> None:  # type
 
 
 @pytest.mark.asyncio
-async def test_capabilities_declares_native_ann_after_init(surreal_fake_runner) -> None:  # type: ignore[no-untyped-def]
+async def test_capabilities_declares_both_caps_after_init(surreal_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """feat-025: native_ann + hybrid_search land together after
+    init_schema() — both indexes ship in the bundled vector
+    migrations (HNSW + FTS analyzer + SEARCH ANALYZER ... BM25)."""
     store = SurrealVectorStore(runner=surreal_fake_runner, dimensions=8)
     await store.init_schema()
-    assert store.capabilities() == {"native_ann"}
+    assert store.capabilities() == {"native_ann", "hybrid_search"}
+
+
+@pytest.mark.asyncio
+async def test_passes_hybrid_search_conformance_suite(surreal_fake_runner) -> None:  # type: ignore[no-untyped-def]
+    """feat-022 follow-up via feat-025: native lexical_search via
+    SurrealDB FTS analyzer + BM25 search index."""
+    store = SurrealVectorStore(runner=surreal_fake_runner, dimensions=8)
+    await store.init_schema()
+    await run_hybrid_search_conformance(store)
 
 
 @pytest.mark.asyncio

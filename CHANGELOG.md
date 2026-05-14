@@ -11,6 +11,44 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-025 — Neo4jVectorStore + SurrealDB native
+  `lexical_search`.** Completes hybrid_search coverage
+  across every shipped `VectorStore` (InMemory / Postgres
+  / SQLite / SurrealDB / Neo4j all now pass
+  `run_hybrid_search_conformance`).
+  - **`Neo4jVectorStore`** at
+    `agentforge_memory_neo4j.vector` — new third ABC
+    implementation alongside the existing
+    `Neo4jMemoryStore` + `Neo4jGraphStore`. Uses Neo4j
+    5.13+ native `CREATE VECTOR INDEX` +
+    `CREATE FULLTEXT INDEX`. `AfVector` label coexists
+    with `AfNode` (graph) and `Claim` (memory). Cypher
+    `db.index.vector.queryNodes` for cosine search;
+    `db.index.fulltext.queryNodes` for lexical (Lucene
+    scores max-normalised to `[0, 1]` client-side).
+  - **Bundled migrations** at
+    `migrations/vector/0100_vectors.cypher` with
+    `${dimensions}` template (feat-024 v0.3 mechanism).
+    Constraint + vector index + fulltext index.
+  - **Entry-point registration** under
+    `[project.entry-points."agentforge.vector_stores"]`
+    so YAML configs can pick `driver: neo4j`.
+  - **SurrealDB native `lexical_search`** —
+    `migrations/vector/0101_fts.surql` defines
+    `af_vector_en` analyzer + `af_vector_fts` SEARCH
+    index. `SurrealVectorStore.lexical_search` queries
+    via `WHERE text @0@ $query` +
+    `search::score(0)`, max-normalises client-side.
+    Capability set after `init_schema()` is now
+    `{"native_ann", "hybrid_search"}`.
+
+### Changed
+
+- **`SurrealVectorStore.capabilities()`** now declares
+  `{"native_ann", "hybrid_search"}` after
+  `init_schema()` (was just `{"native_ann"}`). Additive
+  — the new capability is bundled in the migration.
+
 - **feat-024 v0.3 polish — parameterized migrations.** Closes
   the deferred dim-parameterized item from PR #45. Migration
   bodies may now contain `${var}` placeholders, rendered at
