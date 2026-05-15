@@ -99,7 +99,8 @@ def _run_new(args: argparse.Namespace) -> int:
     prepend_markers(dst, template_name=args.template, template_version=template_version)
 
     # feat-019: inject shared runbooks + AGENTS.md / CLAUDE.md /
-    # .cursorrules into every scaffolded agent.
+    # .cursorrules / .github/copilot-instructions.md into every
+    # scaffolded agent.
     shared_count = inject_shared_scaffold(
         dst,
         template_name=args.template,

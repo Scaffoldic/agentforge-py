@@ -1,95 +1,68 @@
 ---
-feature: feat-020 v0.3 polish — sentence-window streaming output guardrails
+feature: v0.2.0 cut — providers + runbooks + trackers + release coordination
 state: in_review
-branch: chore/feat-020-sentence-window-guardrails
+branch: chore/v0.2-trackers-alignment
 started_at: 2026-05-14
 last_milestone_at: 2026-05-14
-last_shipped: feat-025 — Neo4jVectorStore + SurrealDB native lexical_search shipped via PR #47 (merged 2026-05-14)
+last_shipped: feat-020 v0.3 polish — sentence-window streaming output guardrails (PR #48 merged 2026-05-14)
 blocker: null
 flags_for_user: []
 ---
 
 ## Active feature
 
-Closes the deferred safety gap from feat-020 v0.2: per-token
-streamed text on `ChatSession.stream()` now passes through
-output validators at sentence boundaries when
-`safety_mode == "sentence-window"` (or its current alias
-`"stream-then-redact"`). Default `"buffer-then-stream"` is
-unchanged.
+Bundled v0.2.0 release PR (#49) — four commits on
+`chore/v0.2-trackers-alignment`:
 
-- New `_SentenceWindowBuffer` at
-  `agentforge_chat/_window.py`.
-- `ChatSessionConfig.safety_mode` Literal expanded.
-- `SafetyMode` re-exported from `agentforge_chat`.
-- `ChatSession.__init__` gains `safety_mode=` kwarg;
-  `_stream_per_token` dispatches accordingly.
-- `build_chat_session_from_config` reads
-  `modules.chat.session.safety_mode` and forwards it.
+1. **chore: align trackers ahead of v0.2.0 cut** (a185a84) —
+   roadmap fixes + v0.3 backlog + feat-003 catalogue.
+2. **feat(feat-003): ship 5 first-party LLM provider sister
+   packages** (f01e9e0) — `agentforge-anthropic`, `-openai`,
+   `-voyage`, `-litellm`, `-ollama`. Runner-Protocol +
+   lazy-SDK-import pattern. ~7000 LoC.
+3. **docs(feat-019): add 5 v0.2 runbooks + provider-table polish**
+   (926ccdf) — runbooks 17–21 inside `_shared/docs/runbooks/`.
+4. **chore(release): cut v0.2.0** (40d498e) — all 34 packages
+   bumped to 0.2.0 + CHANGELOG flip + roadmap "Tagged
+   releases" table.
+
+PR URL: https://github.com/Scaffoldic/agentforge-py/pull/49
+
+## Post-merge tasks
+
+- `git tag v0.2.0 && git push --tags`
+- Smoke `pip install agentforge-anthropic[anthropic]` from a
+  built wheel.
 
 ## Last shipped
 
-feat-025 — Neo4jVectorStore + SurrealDB native
-lexical_search shipped via PR #47 (merged 2026-05-14).
+feat-020 v0.3 polish — sentence-window streaming output
+guardrails (PR #48 merged 2026-05-14).
 
 ### Previously
 
-- feat-024 v0.3 polish — parameterized migrations
-  (PR #46).
+- feat-025 — Neo4jVectorStore + SurrealDB native
+  lexical_search (PR #47).
+- feat-024 v0.3 polish — parameterized migrations (PR #46).
 - feat-024 — Schema migrations framework (PR #45).
 - feat-023 — GraphRAG hybrid retrieval (PR #44).
 - feat-022 v0.2 follow-up — native hybrid for Postgres +
   SQLite (PR #43).
 - feat-022 — BM25 + vector hybrid search (PR #42).
-- feat-002 + feat-009 v0.3.x strategy follow-ups bundle
-  (PR #41).
-- feat-002 + feat-009 v0.3 polish + feat-021 follow-up
-  bundle (PR #40).
 
-## Next pick candidates
+## Next pick candidates (v0.3+)
 
-Remaining v0.3+ open items:
-
-- **`down` migrations / schema rollback** (feat-024
-  v0.3+).
-- **Native single-query graph-augmented retrieval inside
-  Neo4j / SurrealDB** (feat-023 sister-package
-  follow-up).
-- **Evidently real-time drift dashboards via Cloud**
-  (feat-009 v0.3+).
-- **Multi-cluster Redlock for `RedisSessionLock`**
+- `down` migrations / schema rollback (feat-024 v0.3+).
+- Native single-Cypher graph-augmented retrieval inside
+  Neo4j / SurrealDB (feat-023 sister-package follow-up).
+- Multi-cluster Redlock for `RedisSessionLock`
   (feat-020 v0.3+).
-
-**Already shipped on the v0.1 → v0.2 line:**
-
-- feat-013 v0.2 — production MCP runner (PR #32).
-- feat-014 v0.2 — production A2A runner + discovery +
-  streaming (PR #33).
-- feat-020 v0.2 — chat history + adapters + streaming
-  (PR #34).
-- feat-014 v0.3 — A2A per-token streaming (PR #35).
-- feat-009 v0.2 — vendor observability backends (PR #36).
-- feat-021 — Reranker ABC + Retriever integration
-  (PR #37).
-- feat-021 v0.2 follow-up — `retrieval:` YAML block +
-  builder (PR #38).
-- feat-021 v0.2 follow-up — vendor reranker sister
-  packages (PR #39).
-- feat-002 + feat-009 v0.3 polish + feat-021 follow-up
-  bundle (PR #40).
-- feat-002 + feat-009 v0.3.x strategy follow-ups bundle
-  (PR #41).
-- feat-022 — BM25 + vector hybrid search (PR #42).
-- feat-022 v0.2 follow-up — native hybrid for Postgres
-  + SQLite (PR #43).
-- feat-023 — GraphRAG hybrid retrieval (PR #44).
-- feat-024 — Schema migrations framework (PR #45).
-- feat-024 v0.3 polish — parameterized migrations
-  (PR #46).
-- feat-025 — Neo4jVectorStore + SurrealDB native
-  lexical_search (PR #47).
-- feat-020 v0.3 polish — sentence-window streaming
-  output guardrails (in review).
+- True streaming-aware `stream-then-redact` (feat-020 v0.3+).
+- Evidently real-time drift dashboards via Cloud
+  (feat-009 v0.3+).
+- Optional eval sister packages (`-ragas` / `-deepeval` /
+  `-toxicity` / `-codeexec`).
+- TypeScript port of the v0.2 surface.
 
 ## Reading order on session resume
 

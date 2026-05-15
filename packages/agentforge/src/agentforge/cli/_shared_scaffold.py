@@ -9,9 +9,10 @@ lock — they participate in `agentforge upgrade` / `fork` exactly
 like template-rendered files do.
 
 The shared directory carries the runbooks, AGENTS.md, CLAUDE.md,
-and .cursorrules that ship with every scaffolded agent. Putting
-them in one place keeps the framework's six templates from each
-maintaining a near-duplicate copy.
+.cursorrules, and .github/copilot-instructions.md that ship with
+every scaffolded agent. Putting them in one place keeps the
+framework's six templates from each maintaining a near-duplicate
+copy.
 
 A `.tmpl` extension on a file marks it as Jinja-templated; the
 extension is stripped on write. Files without `.tmpl` are copied

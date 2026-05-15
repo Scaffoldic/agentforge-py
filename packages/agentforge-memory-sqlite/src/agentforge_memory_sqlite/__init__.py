@@ -12,6 +12,6 @@ from __future__ import annotations
 from agentforge_memory_sqlite.memory import SqliteMemoryStore
 from agentforge_memory_sqlite.vector import SqliteVectorStore
 
-__version__ = "0.0.0"
+__version__ = "0.2.0"
 
 __all__ = ["SqliteMemoryStore", "SqliteVectorStore", "__version__"]

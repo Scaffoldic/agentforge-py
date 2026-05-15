@@ -2512,3 +2512,119 @@ Design notes:
 - Per-token `text` events in sentence-window mode
   don't emit `ChatChunk` until a sentence boundary
   fires. This is the intended latency trade-off.
+
+---
+
+## 2026-05-14T17:00 — PR #49 opened: v0.2.0 cut (bundled)
+
+User pivoted from per-chunk PR sequence to one bundled PR
+for the entire v0.2 cut after merging PR #48
+(feat-020 v0.3 polish). Four commits on
+`chore/v0.2-trackers-alignment`:
+
+- **a185a84** chore: align trackers ahead of v0.2.0 cut.
+  Roadmap fixes + v0.3 backlog section + feat-003 catalogue
+  reclassification.
+- **f01e9e0** feat(feat-003): ship 5 first-party LLM provider
+  sister packages (agentforge-anthropic, -openai, -voyage,
+  -litellm, -ollama). 7036 line insertion across 66 files.
+- **926ccdf** docs(feat-019): add 5 v0.2 runbooks (17–21) +
+  provider-table polish in runbook 13 + AGENTS.md.tmpl rows.
+- **40d498e** chore(release): cut v0.2.0 — coordinated bump
+  across all 34 workspace members + CHANGELOG flip
+  ([Unreleased] → [0.2.0] — 2026-05-14) + roadmap "Tagged
+  releases" table.
+
+PR URL: https://github.com/Scaffoldic/agentforge-py/pull/49
+
+Pattern decisions worth remembering:
+
+- Provider sister packages use `model_id=` constructor kwarg
+  (not `model=`) so the Agent resolver's
+  `cls(model_id=model_id)` call works. `runner=None` lazy-builds
+  the production SDK runner so `Agent(model="anthropic:...")`
+  works out-of-the-box.
+- New test files inside packages MUST use unique basenames
+  per package (`test_anthropic_client.py`, not `test_client.py`)
+  to avoid pytest's `ImportPathMismatchError` when no
+  `__init__.py` is present in tests/ dirs. Existing packages
+  with `__init__.py` everywhere (bedrock) take a different
+  path — don't mix the two.
+- `OllamaEmbeddingClient` requires explicit `dimensions=`
+  on construction; Ollama doesn't expose model→dim via
+  the API (unlike OpenAI/Voyage where it's in a known
+  table). Callers must know the model's dim ahead of time.
+- LiteLLM wrapper conservatively declares only
+  `{tools}` capabilities since underlying-provider
+  capabilities vary; users wanting caching / thinking /
+  streaming should use the matching native sister package.
+
+## 2026-05-15T07:48 — Split CI into per-OS workflows (PR #49)
+
+Replaced single `.github/workflows/ci.yml` (Linux + macOS +
+Windows matrix on every PR) with three files:
+
+- `ci-linux.yml` — lint-and-type, test, live-ubuntu,
+  coverage-ratchet. Triggers: `pull_request` + `push: main`.
+  This is the per-PR gate.
+- `ci-windows.yml` — Windows test job. Trigger:
+  `workflow_dispatch` only. Run manually before a release
+  or when touching path / subprocess / filesystem code.
+- `ci-mac.yml` — macOS test + live-macos jobs. Trigger:
+  `workflow_dispatch` only.
+
+Rationale: cuts ~⅔ of per-PR CI minutes. AgentForge is
+pure Python with no native extensions, so macOS/Windows
+catch a narrow set of regressions (path separators, line
+endings, subprocess) that don't change on every PR.
+
+Branch-protection follow-up needed post-merge: required
+status checks pointed at the old workflow's `test
+(ubuntu-latest, …)` job name will need to be updated to
+the new `Test (Linux, Python 3.13)` name. Documented in
+the PR description.
+
+`.pre-commit-config.yaml`, `AGENTS.md`, and
+`scripts/README.md` references to `ci.yml` updated.
+
+## 2026-05-15T08:30 — Copilot scaffold + README + v0.2.0 release notes (PR #49)
+
+Three threads bundled into PR #49:
+
+1. **GitHub Copilot scaffold support.** New
+   `packages/agentforge/src/agentforge/templates/_shared/.github/copilot-instructions.md`
+   is a one-line pointer to `AGENTS.md`, mirroring the
+   existing `CLAUDE.md` and `.cursorrules` pointer files.
+   The Copier post-render hook
+   (`_shared_scaffold.inject_shared_scaffold`) picks it up
+   via `rglob("*")` automatically — no code change needed in
+   the scaffold injector. Updated `_shared_scaffold.py`
+   docstring + `new_cmd.py` comment to mention the new file.
+   Added regression test
+   `test_new_cmd.py::test_scaffold_ships_ai_assistant_instructions`
+   asserting every AI-assistant pointer file lands in a
+   scaffolded agent.
+
+2. **README rewrite.** Old README was stuck at the v0.0
+   pre-alpha narrative (feat-001 only, Bedrock-only).
+   Rewritten to lead with the AI-assisted-development story:
+   scaffolded agents ship framework-aware instructions for
+   Claude Code / Cursor / Copilot / Aider / Codex /
+   Windsurf, plus 21 runbooks. The developer focuses on
+   requirements + design; the AI follows runbooks +
+   invariants; `agentforge upgrade` keeps instructions
+   fresh. Capability table reflects all 34 v0.2 packages.
+
+3. **v0.2.0 release notes.** Filled the
+   `.claude/templates/release-notes.md` skeleton at
+   `docs/releases/v0.2.0.md`. Mirrors the v0.1.0 file
+   structure: Highlights → What's new → Breaking changes
+   (None) → Migration guide → Coordinated release train
+   (34-row package table) → Cross-language status →
+   Install/upgrade → Shipped features → Acknowledgements →
+   Full changelog → v0.3.0 backlog. This becomes the body
+   of the GitHub Release when the v0.2.0 tag is cut
+   post-merge.
+
+CHANGELOG.md [0.2.0] section gained a Copilot bullet under
+Added.
