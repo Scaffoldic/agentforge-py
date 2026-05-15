@@ -124,7 +124,7 @@ from agentforge_core.values import (
     VectorMatch,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "OBSERVABILITY_SCOPE_NAME",

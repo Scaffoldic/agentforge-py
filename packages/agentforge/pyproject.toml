@@ -13,8 +13,8 @@
 # Per ADR-0003 (three-tier package model — this is Tier 2).
 
 [project]
-name = "agentforge"
-version = "0.2.0"
+name = "agentforge-py"
+version = "0.2.1"
 description = "AgentForge — open-source plug-and-play framework for production AI agents"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -36,7 +36,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core",
+    "agentforge-core ~= 0.2.1",
     "pydantic>=2.10",
     "pyyaml>=6.0",
     "typer>=0.15",

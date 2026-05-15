@@ -17,9 +17,9 @@ result = await agent.run("Say hello in three words.")
 ## Install
 
 ```bash
-pip install agentforge                              # core runtime
-pip install "agentforge[anthropic]"                 # + Anthropic provider
-pip install "agentforge[anthropic,memory-postgres]" # + persistence
+pip install agentforge-py                              # core runtime
+pip install "agentforge-py[anthropic]"                 # + Anthropic provider
+pip install "agentforge-py[anthropic,memory-postgres]" # + persistence
 ```
 
 ## Status
