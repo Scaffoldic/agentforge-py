@@ -97,6 +97,19 @@ past v0.2 — see [docs/roadmap.md](./docs/roadmap.md):
   - `agentforge-ollama` — local Ollama daemon via
     `ollama.AsyncClient`. Declares `{tools, streaming}`.
     `OllamaEmbeddingClient` for local embedding.
+- **feat-019 v0.2 — GitHub Copilot scaffold support.** Every
+  scaffolded agent now ships
+  `.github/copilot-instructions.md` as a pointer to the
+  canonical `AGENTS.md`. Joins the existing `CLAUDE.md` and
+  `.cursorrules` pointer files so Copilot users get the same
+  framework-aware idioms as Claude Code / Cursor / Aider
+  users. Unit test in
+  `test_new_cmd.py::test_scaffold_ships_ai_assistant_instructions`
+  guards against future drift.
+- **README + release notes** — README rewritten to lead with
+  the AI-assisted developer workflow story; full v0.2.0
+  release notes shipped at `docs/releases/v0.2.0.md` and used
+  as the GitHub Release body when the tag is cut.
 - **feat-019 v0.2 polish — 5 new runbooks** auto-discovered
   by `agentforge docs`:
   - `17-add-reranker.md`, `18-add-hybrid-search.md`,

@@ -130,6 +130,31 @@ def test_every_shipped_template_renders(tmp_path: Path, template: str):
     assert (dst / "README.md").exists()
 
 
+def test_scaffold_ships_ai_assistant_instructions(tmp_path: Path):
+    """Every scaffolded agent gets framework-aware instructions for
+    Claude Code, Cursor, Aider/agents.md tools, and GitHub Copilot —
+    so the developer's AI assistant follows the framework's runbooks
+    out of the box. Regression guard: missing one of these means a
+    user's AI helper hallucinates LangChain idioms instead of using
+    AgentForge's locked contracts."""
+    dst = tmp_path / "ai-assist-check"
+    code = _run_new(
+        argparse.Namespace(
+            project_slug="ai-assist-check",
+            template="minimal",
+            provider="bedrock",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    assert code == 0
+    assert (dst / "AGENTS.md").exists(), "agents.md convention file"
+    assert (dst / "CLAUDE.md").exists(), "Claude Code discovery"
+    assert (dst / ".cursorrules").exists(), "Cursor discovery"
+    assert (dst / ".github" / "copilot-instructions.md").exists(), "GitHub Copilot discovery"
+    assert (dst / "docs" / "runbooks").is_dir(), "runbook catalogue"
+
+
 def test_rendered_python_package_has_underscore_name(tmp_path: Path):
     """Kebab-case slug → snake_case package name in `src/`."""
     dst = tmp_path / "my-pr-reviewer"
