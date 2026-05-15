@@ -2628,3 +2628,35 @@ Three threads bundled into PR #49:
 
 CHANGELOG.md [0.2.0] section gained a Copilot bullet under
 Added.
+
+## 2026-05-15T09:00 — v0.2.0 released
+
+PR #49 merged via `70d79c3` ("Merge pull request #49 from
+Scaffoldic/chore/v0.2-trackers-alignment"). CI on the merge
+commit ran on the new `ci-linux.yml` workflow and finished
+green (run 25897552058).
+
+Tag + release cut on a clean local main:
+
+- `git tag -a v0.2.0 -m "AgentForge v0.2.0 — Drivers"`
+- `git push origin v0.2.0`
+- `gh release create v0.2.0 --title "v0.2.0 — Drivers"
+  --notes-file docs/releases/v0.2.0.md`
+
+Release URL: https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.0
+
+34 workspace packages now at `0.2.0`. 16 new sister packages
+introduced in the v0.2 cycle (5 LLM providers + 4 rerankers
++ 4 observability backends + chat-history-postgres / -redis
+/ -slack). `.claude/state/current.md` reset to idle; next
+pick comes from the v0.3 backlog.
+
+Open follow-ups recorded as `flags_for_user` in
+current.md:
+
+1. Branch protection on `main` still references old job
+   name `Test (ubuntu-latest, Python 3.13)`. Update required
+   status checks to `Test (Linux, Python 3.13)` from the
+   split CI workflows.
+2. PyPI publish for the 16 new packages — `uv build` +
+   `twine upload`, or wait for CI publish automation.
