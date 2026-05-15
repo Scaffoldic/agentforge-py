@@ -1,14 +1,22 @@
 name: Release
 
-# Publish every workspace package to PyPI via Trusted Publishing
-# (PyPI OIDC). Triggered when a vX.Y.Z tag is pushed to the repo.
+# Publish every workspace package to PyPI. Triggered when a vX.Y.Z
+# tag is pushed to the repo.
 #
-# Each PyPI project must have a pending publisher configured at
-# https://pypi.org/manage/account/publishing/ pointing at:
-#   - Owner:        Scaffoldic
-#   - Repository:   agentforge-py
-#   - Workflow:     release.yml
-#   - Environment:  pypi
+# Auth: hybrid — uses `secrets.PYPI_API_TOKEN` if set, otherwise
+# falls back to PyPI Trusted Publishing (OIDC). The
+# `pypa/gh-action-pypi-publish` action prefers the `password`
+# input when present.
+#
+# Hybrid migration path (current state: API token):
+#   1. Today  — `PYPI_API_TOKEN` repo secret is set; this workflow
+#               uses it to publish + reserve the 34 package names.
+#   2. Later  — for each PyPI project, add a Trusted Publisher at
+#               https://pypi.org/manage/project/<pkg>/settings/publishing/
+#               with Owner=Scaffoldic, Repository=agentforge-py,
+#               Workflow=release.yml, Environment=pypi.
+#   3. Final  — delete the `PYPI_API_TOKEN` secret + the `password:`
+#               line below; OIDC takes over automatically.
 #
 # The `pypi` GitHub environment (Settings → Environments → New
 # environment → "pypi") should be configured with required
@@ -79,10 +87,17 @@ jobs:
         with:
           name: dist
           path: dist/
-      - name: Publish to PyPI via Trusted Publishing
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
           # Skip duplicates so re-running on a partial-failure tag
           # doesn't 400 on packages that already uploaded.
           skip-existing: true
+          # Hybrid auth: use the API token when set; otherwise the
+          # action falls back to Trusted Publishing via the
+          # `id-token: write` permission above. To complete the
+          # migration to OIDC, remove this line + the
+          # `PYPI_API_TOKEN` secret once every PyPI project has a
+          # Trusted Publisher configured.
+          password: ${{ secrets.PYPI_API_TOKEN }}

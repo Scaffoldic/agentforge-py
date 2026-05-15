@@ -5,10 +5,16 @@ How to push a coordinated AgentForge release to PyPI after the
 
 > **Status (2026-05-15):** v0.2.1 in flight. The `agentforge` ↔
 > `agentforge-py` rename is wired in `feat/v0.2.1-rename-and-trusted-publishing`,
-> cross-package deps pinned to `~= 0.2.1`, Trusted Publishing
-> workflow shipped at `.github/workflows/release.yml`. Owner
-> account on PyPI: **`scaffoldic`**. v0.2.0 stays a git-only
-> tag; PyPI history begins at v0.2.1.
+> cross-package deps pinned to `~= 0.2.1`, release workflow
+> shipped at `.github/workflows/release.yml`. Owner account on
+> PyPI: **`scaffoldic`**. v0.2.0 stays a git-only tag; PyPI
+> history begins at v0.2.1.
+>
+> **Auth path: hybrid.** v0.2.1 uses an API token
+> (`PYPI_API_TOKEN` GitHub repo secret) to bypass the upfront
+> pending-publisher registration. After v0.2.1 reserves the 34
+> package names on PyPI, convert each project to Trusted
+> Publishing at your own pace (see §7). End-state is full OIDC.
 
 ---
 
@@ -49,15 +55,17 @@ train policy in ADR-0015.
 
 ---
 
-## 0a. Trusted Publishing — pending publishers to add on PyPI
+## 0a. Trusted Publishing — DEFERRED (hybrid path active for v0.2.1)
 
-Before the v0.2.1 tag triggers `release.yml`, every PyPI project
-that this workflow will publish needs a **pending publisher**
-registered under the `scaffoldic` account.
+**v0.2.1 publishes via API token, not OIDC.** Skip this section
+for v0.2.1; come back to it any time after v0.2.1 lands and the
+34 names are reserved on PyPI.
 
-Go to <https://pypi.org/manage/account/publishing/> → **Add a
-new pending publisher** → fill the form for **each** name below.
-Same values for the GitHub fields every time:
+When you're ready to convert (any time, no rush), the per-project
+Trusted Publisher form lives at
+`https://pypi.org/manage/project/<package-name>/settings/publishing/`.
+Fill the form for **each** name below. Same values for the
+GitHub fields every time:
 
 - **Owner:** `Scaffoldic`
 - **Repository name:** `agentforge-py`
@@ -101,14 +109,23 @@ Same values for the GitHub fields every time:
 33. `agentforge-reranker-voyage`
 34. `agentforge-reranker-mixedbread`
 
-**34 entries total** — all must be filled in before the v0.2.1
-tag is pushed, otherwise the matching package's upload step
-fails with a 403.
+**34 entries total** — only needed when you convert away from
+the API token. The order doesn't matter and you can do them in
+batches.
 
-Also create the **`pypi` GitHub environment** at GitHub →
-Settings → Environments → New environment → "pypi". Add yourself
-as a required reviewer so each release run pauses for manual
-approval before the upload step.
+Once all 34 are converted, remove `password: ${{
+secrets.PYPI_API_TOKEN }}` from `release.yml` and revoke the
+secret + token. OIDC takes over automatically.
+
+---
+
+## 0b. GitHub `pypi` environment (required either way)
+
+Create the **`pypi` GitHub environment** at GitHub → Settings →
+Environments → New environment → "pypi". Add yourself as a
+required reviewer so each release run pauses for manual
+approval before the upload step. This gate is the human safety
+net regardless of which auth mechanism backs the upload.
 
 ---
 

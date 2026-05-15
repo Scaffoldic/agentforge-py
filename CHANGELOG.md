@@ -41,13 +41,17 @@ tag push uploads all 34 workspace packages to PyPI under the
 
 ### Added
 
-- **Trusted Publishing workflow** at
-  `.github/workflows/release.yml`. Triggers on `push: tags:
-  ["v*"]`. Builds every workspace member with `uv build --all`
-  and uploads via `pypa/gh-action-pypi-publish` using PyPI's
-  OIDC trust handshake (no long-lived API token). Gated on a
-  `pypi` GitHub environment so each release run pauses for a
-  manual approve click before upload.
+- **PyPI release workflow** at `.github/workflows/release.yml`.
+  Triggers on `push: tags: ["v*"]`. Builds every workspace
+  member with `uv build --all` and uploads via
+  `pypa/gh-action-pypi-publish`. Hybrid auth — uses the
+  `PYPI_API_TOKEN` GitHub secret today; falls back to PyPI
+  Trusted Publishing (OIDC) when the secret is removed. v0.2.1
+  ships on the token path to bypass upfront pending-publisher
+  registration; conversion to OIDC is deferred and tracked in
+  `playbooks/publish-to-pypi.md` §0a. Gated on a `pypi` GitHub
+  environment so each release run pauses for a manual approve
+  click before upload.
 
 ### Notes
 
