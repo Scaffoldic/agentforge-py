@@ -1,4 +1,10 @@
-name: CI
+name: CI (Linux)
+
+# Linux runs on every PR + push to main and gates merge.
+# Windows and macOS live in sibling `ci-windows.yml` / `ci-mac.yml`
+# files and run only on `workflow_dispatch` — invoke them
+# manually from the Actions tab when touching path / subprocess /
+# filesystem code or before cutting a release.
 
 on:
   pull_request:
@@ -7,7 +13,7 @@ on:
 
 # Cancel in-progress runs on force-push to a PR.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-linux-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -43,12 +49,11 @@ jobs:
         run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src packages/agentforge-guard-presidio/src packages/agentforge-guard-nemo/src packages/agentforge-guard-llamaguard/src packages/agentforge-mcp/src packages/agentforge-chat/src packages/agentforge-chat-http/src packages/agentforge-chat-history-postgres/src packages/agentforge-chat-history-redis/src packages/agentforge-chat-slack/src packages/agentforge-a2a/src packages/agentforge-statsd/src packages/agentforge-langfuse/src packages/agentforge-phoenix/src packages/agentforge-evidently/src packages/agentforge-reranker-sentence-transformers/src packages/agentforge-reranker-cohere/src packages/agentforge-reranker-voyage/src packages/agentforge-reranker-mixedbread/src packages/agentforge-anthropic/src packages/agentforge-openai/src packages/agentforge-voyage/src packages/agentforge-litellm/src packages/agentforge-ollama/src
 
   test:
-    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
-    runs-on: ${{ matrix.os }}
+    name: Test (Linux, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.13"]
     steps:
       - uses: actions/checkout@v4
@@ -65,7 +70,6 @@ jobs:
       - name: Pytest integration
         run: uv run pytest -q -m "not live" packages/agentforge-bedrock/tests/integration tests/integration
       - name: Coverage
-        if: matrix.os == 'ubuntu-latest'
         run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"
 
   live-ubuntu:
@@ -79,8 +83,8 @@ jobs:
     # (chat-history backends) via a `services:` block. GitHub Actions
     # `services:` require Docker, which is only available on Linux
     # runners, so this job is Ubuntu-only. macOS lives in the sibling
-    # `live-macos` job below without services.
-    name: Live (ubuntu-latest, Python ${{ matrix.python-version }})
+    # `ci-mac.yml` workflow without services.
+    name: Live (Linux, Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     if: success() || failure()
     continue-on-error: true
@@ -124,37 +128,6 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Pytest live (every package shipping integration/)
-        run: |
-          uv run pytest -q -m live \
-            packages/agentforge-mcp/tests/integration \
-            packages/agentforge-a2a/tests/integration \
-            packages/agentforge-chat-history-postgres/tests/integration \
-            packages/agentforge-chat-history-redis/tests/integration
-
-  live-macos:
-    # macOS live runner has no Docker available, so Postgres + Redis
-    # service-backed live tests skip cleanly here (env vars unset).
-    # Kept in CI to catch macOS-specific regressions in the mcp + a2a
-    # live suites that don't require external services.
-    name: Live (macos-latest, Python ${{ matrix.python-version }})
-    runs-on: macos-latest
-    if: success() || failure()
-    continue-on-error: true
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.13"]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          enable-cache: true
-      - name: Set up Python
-        run: uv python install ${{ matrix.python-version }}
-      - name: Sync dependencies
-        run: uv sync --all-extras --dev
-      - name: Pytest live (mcp + a2a only; service-backed suites skip)
         run: |
           uv run pytest -q -m live \
             packages/agentforge-mcp/tests/integration \
