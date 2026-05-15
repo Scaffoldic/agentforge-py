@@ -31,6 +31,7 @@ should:
 ## Where these are used
 
 - **Local pre-commit**: `.pre-commit-config.yaml` references them.
-- **CI**: `.github/workflows/ci.yml` runs the same checks (lands with
-  feat-001).
+- **CI**: `.github/workflows/ci-linux.yml` runs the same checks on
+  every PR (Linux only). `ci-windows.yml` and `ci-mac.yml` run the
+  same suites on Windows / macOS on `workflow_dispatch`.
 - **Manual**: developers can run any script directly during a session.

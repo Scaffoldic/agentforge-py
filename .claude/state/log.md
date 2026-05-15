@@ -2558,3 +2558,31 @@ Pattern decisions worth remembering:
   `{tools}` capabilities since underlying-provider
   capabilities vary; users wanting caching / thinking /
   streaming should use the matching native sister package.
+
+## 2026-05-15T07:48 — Split CI into per-OS workflows (PR #49)
+
+Replaced single `.github/workflows/ci.yml` (Linux + macOS +
+Windows matrix on every PR) with three files:
+
+- `ci-linux.yml` — lint-and-type, test, live-ubuntu,
+  coverage-ratchet. Triggers: `pull_request` + `push: main`.
+  This is the per-PR gate.
+- `ci-windows.yml` — Windows test job. Trigger:
+  `workflow_dispatch` only. Run manually before a release
+  or when touching path / subprocess / filesystem code.
+- `ci-mac.yml` — macOS test + live-macos jobs. Trigger:
+  `workflow_dispatch` only.
+
+Rationale: cuts ~⅔ of per-PR CI minutes. AgentForge is
+pure Python with no native extensions, so macOS/Windows
+catch a narrow set of regressions (path separators, line
+endings, subprocess) that don't change on every PR.
+
+Branch-protection follow-up needed post-merge: required
+status checks pointed at the old workflow's `test
+(ubuntu-latest, …)` job name will need to be updated to
+the new `Test (Linux, Python 3.13)` name. Documented in
+the PR description.
+
+`.pre-commit-config.yaml`, `AGENTS.md`, and
+`scripts/README.md` references to `ci.yml` updated.

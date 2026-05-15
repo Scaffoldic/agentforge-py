@@ -2,7 +2,8 @@
 #
 # Install once after cloning the repo: `uv run pre-commit install`.
 # Run all hooks manually against every file: `uv run pre-commit run --all-files`.
-# CI runs the same checks; see .github/workflows/ci.yml.
+# CI runs the same checks; see .github/workflows/ci-linux.yml
+# (Linux runs per-PR; ci-windows.yml and ci-mac.yml run on demand).
 
 minimum_pre_commit_version: "3.5.0"
 
@@ -66,8 +67,9 @@ repos:
   # ----------------------------------------------------------------------
   - repo: local
     hooks:
-      # Hook entries below MUST mirror .github/workflows/ci.yml exactly.
-      # When you add a new package, extend BOTH this file and ci.yml in
+      # Hook entries below MUST mirror .github/workflows/ci-linux.yml
+      # (and ci-windows.yml / ci-mac.yml) exactly. When you add a new
+      # package, extend BOTH this file AND all three CI workflows in
       # the same commit — the local gate is meant to catch every error
       # CI would catch. mypy is invoked over package src trees (not
       # file-by-file) because cross-file type inference can surface
