@@ -2586,3 +2586,45 @@ the PR description.
 
 `.pre-commit-config.yaml`, `AGENTS.md`, and
 `scripts/README.md` references to `ci.yml` updated.
+
+## 2026-05-15T08:30 — Copilot scaffold + README + v0.2.0 release notes (PR #49)
+
+Three threads bundled into PR #49:
+
+1. **GitHub Copilot scaffold support.** New
+   `packages/agentforge/src/agentforge/templates/_shared/.github/copilot-instructions.md`
+   is a one-line pointer to `AGENTS.md`, mirroring the
+   existing `CLAUDE.md` and `.cursorrules` pointer files.
+   The Copier post-render hook
+   (`_shared_scaffold.inject_shared_scaffold`) picks it up
+   via `rglob("*")` automatically — no code change needed in
+   the scaffold injector. Updated `_shared_scaffold.py`
+   docstring + `new_cmd.py` comment to mention the new file.
+   Added regression test
+   `test_new_cmd.py::test_scaffold_ships_ai_assistant_instructions`
+   asserting every AI-assistant pointer file lands in a
+   scaffolded agent.
+
+2. **README rewrite.** Old README was stuck at the v0.0
+   pre-alpha narrative (feat-001 only, Bedrock-only).
+   Rewritten to lead with the AI-assisted-development story:
+   scaffolded agents ship framework-aware instructions for
+   Claude Code / Cursor / Copilot / Aider / Codex /
+   Windsurf, plus 21 runbooks. The developer focuses on
+   requirements + design; the AI follows runbooks +
+   invariants; `agentforge upgrade` keeps instructions
+   fresh. Capability table reflects all 34 v0.2 packages.
+
+3. **v0.2.0 release notes.** Filled the
+   `.claude/templates/release-notes.md` skeleton at
+   `docs/releases/v0.2.0.md`. Mirrors the v0.1.0 file
+   structure: Highlights → What's new → Breaking changes
+   (None) → Migration guide → Coordinated release train
+   (34-row package table) → Cross-language status →
+   Install/upgrade → Shipped features → Acknowledgements →
+   Full changelog → v0.3.0 backlog. This becomes the body
+   of the GitHub Release when the v0.2.0 tag is cut
+   post-merge.
+
+CHANGELOG.md [0.2.0] section gained a Copilot bullet under
+Added.
