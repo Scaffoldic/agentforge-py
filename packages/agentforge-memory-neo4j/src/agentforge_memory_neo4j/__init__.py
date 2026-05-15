@@ -13,7 +13,7 @@ from agentforge_memory_neo4j.graph import Neo4jGraphStore
 from agentforge_memory_neo4j.memory import Neo4jMemoryStore
 from agentforge_memory_neo4j.vector import Neo4jVectorStore
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "Neo4jGraphStore",

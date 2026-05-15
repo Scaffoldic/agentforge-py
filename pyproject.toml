@@ -22,7 +22,7 @@ license-files = ["LICENSE", "NOTICE"]
 # installs every member (and their dependencies) into the shared venv.
 dependencies = [
     "agentforge-core",
-    "agentforge",
+    "agentforge-py",
     "agentforge-bedrock",
     "agentforge-memory-sqlite",
     "agentforge-memory-neo4j",
@@ -62,7 +62,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 agentforge-core = { workspace = true }
-agentforge = { workspace = true }
+agentforge-py = { workspace = true }
 agentforge-bedrock = { workspace = true }
 agentforge-memory-sqlite = { workspace = true }
 agentforge-memory-neo4j = { workspace = true }

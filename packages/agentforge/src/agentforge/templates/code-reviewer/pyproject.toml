@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "{{ description }}"
 requires-python = ">=3.13"
 dependencies = [
-    "agentforge",
+    "agentforge-py",
 {%- if llm_provider == 'bedrock' %}
     "agentforge-bedrock",
 {%- endif %}

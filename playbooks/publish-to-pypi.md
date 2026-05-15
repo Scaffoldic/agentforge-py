@@ -3,12 +3,19 @@
 How to push a coordinated AgentForge release to PyPI after the
 `vX.Y.Z` tag is cut and the GitHub Release is published.
 
-> **Status:** v0.2.0 has been tagged but **not yet published** to
-> PyPI. The blocker at step 0 must be resolved before any upload.
+> **Status (2026-05-15):** v0.2.1 in flight. The `agentforge` ↔
+> `agentforge-py` rename is wired in `feat/v0.2.1-rename-and-trusted-publishing`,
+> cross-package deps pinned to `~= 0.2.1`, Trusted Publishing
+> workflow shipped at `.github/workflows/release.yml`. Owner
+> account on PyPI: **`scaffoldic`**. v0.2.0 stays a git-only
+> tag; PyPI history begins at v0.2.1.
 
 ---
 
-## 0. Blocker — the `agentforge` name on PyPI is taken
+## 0. Blocker — the `agentforge` name on PyPI is taken (RESOLVED in v0.2.1)
+
+**Resolution applied:** distribution renamed to `agentforge-py`
+in v0.2.1; Python import name `agentforge` is unchanged.
 
 The base name **`agentforge`** on PyPI is owned by an unrelated
 project: [`DataBassGit/AgentForge`](https://github.com/DataBassGit/AgentForge)
@@ -39,6 +46,69 @@ Apply the rename (one line in
 in root `pyproject.toml` + CHANGELOG entry). Cut v0.2.1 with the
 rename or bundle it into v0.3.0 — coordinate with the release
 train policy in ADR-0015.
+
+---
+
+## 0a. Trusted Publishing — pending publishers to add on PyPI
+
+Before the v0.2.1 tag triggers `release.yml`, every PyPI project
+that this workflow will publish needs a **pending publisher**
+registered under the `scaffoldic` account.
+
+Go to <https://pypi.org/manage/account/publishing/> → **Add a
+new pending publisher** → fill the form for **each** name below.
+Same values for the GitHub fields every time:
+
+- **Owner:** `Scaffoldic`
+- **Repository name:** `agentforge-py`
+- **Workflow name:** `release.yml`
+- **Environment name:** `pypi`
+
+**PyPI Project Name** is the only field that changes per row:
+
+1. `agentforge-py` ✅ (already done)
+2. `agentforge-core`
+3. `agentforge-bedrock`
+4. `agentforge-anthropic`
+5. `agentforge-openai`
+6. `agentforge-voyage`
+7. `agentforge-litellm`
+8. `agentforge-ollama`
+9. `agentforge-memory-sqlite`
+10. `agentforge-memory-postgres`
+11. `agentforge-memory-neo4j`
+12. `agentforge-memory-surrealdb`
+13. `agentforge-chat`
+14. `agentforge-chat-http`
+15. `agentforge-chat-history-postgres`
+16. `agentforge-chat-history-redis`
+17. `agentforge-chat-slack`
+18. `agentforge-a2a`
+19. `agentforge-mcp`
+20. `agentforge-eval-geval`
+21. `agentforge-testing`
+22. `agentforge-otel`
+23. `agentforge-langfuse`
+24. `agentforge-phoenix`
+25. `agentforge-evidently`
+26. `agentforge-statsd`
+27. `agentforge-guard-llmguard`
+28. `agentforge-guard-presidio`
+29. `agentforge-guard-nemo`
+30. `agentforge-guard-llamaguard`
+31. `agentforge-reranker-sentence-transformers`
+32. `agentforge-reranker-cohere`
+33. `agentforge-reranker-voyage`
+34. `agentforge-reranker-mixedbread`
+
+**34 entries total** — all must be filled in before the v0.2.1
+tag is pushed, otherwise the matching package's upload step
+fails with a 403.
+
+Also create the **`pypi` GitHub environment** at GitHub →
+Settings → Environments → New environment → "pypi". Add yourself
+as a required reviewer so each release run pauses for manual
+approval before the upload step.
 
 ---
 
