@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-evidently"
-version = "0.1.0"
+version = "0.2.0"
 description = "Evidently AI metrics + drift hook for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"

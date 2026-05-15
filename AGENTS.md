@@ -30,7 +30,7 @@ new directory under `packages/`. The workspace glob in the root
 | 2 | Contracts in `agentforge-core` (every ABC + the `Finding` Protocol + the locked value types) are **stable surface**. Adding a method to an ABC is a major version bump; adding a field with a safe default is a minor bump. | locked contract layer |
 | 3 | Configuration is data, not code. No dynamic imports from YAML; no Jinja inside config. Env-var interpolation only (`${VAR}`, `${VAR:default}`, `${VAR:?error}`, `$$` → `$`). | `agentforge.config` |
 | 4 | No magic numbers in production code. Every threshold / timeout / limit comes from a Pydantic config model with a documented default. | configuration policy |
-| 5 | Test coverage must be ≥ 90% on every commit. Pre-commit blocks below; CI ratchet rejects regressions on `main`. | `.pre-commit-config.yaml` + `.github/workflows/ci.yml` |
+| 5 | Test coverage must be ≥ 90% on every commit. Pre-commit blocks below; CI ratchet rejects regressions on `main`. | `.pre-commit-config.yaml` + `.github/workflows/ci-linux.yml` |
 | 6 | One feature = one branch = one PR. Conventional Commits format (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`, `perf:`, `revert:`). | PR template |
 | 7 | Never bypass pre-commit with `--no-verify` unless the user explicitly authorises it for a specific commit (and the bypass is documented in the commit message). | pre-commit policy |
 | 8 | Type hints everywhere. `mypy --strict` is the gate. `Any` only at genuine boundaries (raw provider responses); never to paper over untyped internals. | `pyproject.toml > [tool.mypy]` |

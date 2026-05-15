@@ -1,0 +1,151 @@
+name: CI (Linux)
+
+# Linux runs on every PR + push to main and gates merge.
+# Windows and macOS live in sibling `ci-windows.yml` / `ci-mac.yml`
+# files and run only on `workflow_dispatch` — invoke them
+# manually from the Actions tab when touching path / subprocess /
+# filesystem code or before cutting a release.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel in-progress runs on force-push to a PR.
+concurrency:
+  group: ci-linux-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-type:
+    name: Lint + types (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Mypy strict
+        run: uv run mypy --strict packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src packages/agentforge-guard-presidio/src packages/agentforge-guard-nemo/src packages/agentforge-guard-llamaguard/src packages/agentforge-mcp/src packages/agentforge-chat/src packages/agentforge-chat-http/src packages/agentforge-chat-history-postgres/src packages/agentforge-chat-history-redis/src packages/agentforge-chat-slack/src packages/agentforge-a2a/src packages/agentforge-statsd/src packages/agentforge-langfuse/src packages/agentforge-phoenix/src packages/agentforge-evidently/src packages/agentforge-reranker-sentence-transformers/src packages/agentforge-reranker-cohere/src packages/agentforge-reranker-voyage/src packages/agentforge-reranker-mixedbread/src packages/agentforge-anthropic/src packages/agentforge-openai/src packages/agentforge-voyage/src packages/agentforge-litellm/src packages/agentforge-ollama/src
+      - name: Bandit
+        # -c pyproject.toml so [tool.bandit] (skips B101) is honoured;
+        # without it, the conformance suite's asserts in
+        # agentforge_core.testing.conformance trip B101.
+        run: uv run bandit -q -c pyproject.toml -r packages/agentforge-core/src packages/agentforge/src packages/agentforge-bedrock/src packages/agentforge-memory-sqlite/src packages/agentforge-memory-neo4j/src packages/agentforge-memory-surrealdb/src packages/agentforge-memory-postgres/src packages/agentforge-eval-geval/src packages/agentforge-otel/src packages/agentforge-testing/src packages/agentforge-guard-llmguard/src packages/agentforge-guard-presidio/src packages/agentforge-guard-nemo/src packages/agentforge-guard-llamaguard/src packages/agentforge-mcp/src packages/agentforge-chat/src packages/agentforge-chat-http/src packages/agentforge-chat-history-postgres/src packages/agentforge-chat-history-redis/src packages/agentforge-chat-slack/src packages/agentforge-a2a/src packages/agentforge-statsd/src packages/agentforge-langfuse/src packages/agentforge-phoenix/src packages/agentforge-evidently/src packages/agentforge-reranker-sentence-transformers/src packages/agentforge-reranker-cohere/src packages/agentforge-reranker-voyage/src packages/agentforge-reranker-mixedbread/src packages/agentforge-anthropic/src packages/agentforge-openai/src packages/agentforge-voyage/src packages/agentforge-litellm/src packages/agentforge-ollama/src
+
+  test:
+    name: Test (Linux, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest unit
+        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit packages/agentforge-memory-sqlite/tests/unit packages/agentforge-memory-neo4j/tests/unit packages/agentforge-memory-surrealdb/tests/unit packages/agentforge-memory-postgres/tests/unit packages/agentforge-eval-geval/tests/unit packages/agentforge-otel/tests/unit packages/agentforge-testing/tests/unit packages/agentforge-guard-llmguard/tests/unit packages/agentforge-guard-presidio/tests/unit packages/agentforge-guard-nemo/tests/unit packages/agentforge-guard-llamaguard/tests/unit packages/agentforge-mcp/tests/unit packages/agentforge-chat/tests/unit packages/agentforge-chat-http/tests/unit packages/agentforge-chat-history-postgres/tests/unit packages/agentforge-chat-history-redis/tests/unit packages/agentforge-chat-slack/tests/unit packages/agentforge-a2a/tests/unit packages/agentforge-statsd/tests/unit packages/agentforge-langfuse/tests/unit packages/agentforge-phoenix/tests/unit packages/agentforge-evidently/tests/unit packages/agentforge-reranker-sentence-transformers/tests/unit packages/agentforge-reranker-cohere/tests/unit packages/agentforge-reranker-voyage/tests/unit packages/agentforge-reranker-mixedbread/tests/unit packages/agentforge-anthropic/tests/unit packages/agentforge-openai/tests/unit packages/agentforge-voyage/tests/unit packages/agentforge-litellm/tests/unit packages/agentforge-ollama/tests/unit tests/unit
+      - name: Pytest integration
+        run: uv run pytest -q -m "not live" packages/agentforge-bedrock/tests/integration tests/integration
+      - name: Coverage
+        run: uv run pytest --cov --cov-report=xml --cov-fail-under=90 -q -m "not live"
+
+  live-ubuntu:
+    # feat-014 v0.2: live integration tests for every package that
+    # ships a `tests/integration/test_*_live.py` suite. Runs on every
+    # PR and push to main, but does NOT gate merge — branch protection
+    # stays on the `test` job. We tighten this once the live suite
+    # stabilises across more packages.
+    #
+    # feat-020 v0.2 adds the Postgres + Redis live tests
+    # (chat-history backends) via a `services:` block. GitHub Actions
+    # `services:` require Docker, which is only available on Linux
+    # runners, so this job is Ubuntu-only. macOS lives in the sibling
+    # `ci-mac.yml` workflow without services.
+    name: Live (Linux, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    if: success() || failure()
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: agentforge_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RUN_LIVE_POSTGRES_DSN: postgresql://postgres:test@localhost:5432/agentforge_test
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest live (every package shipping integration/)
+        run: |
+          uv run pytest -q -m live \
+            packages/agentforge-mcp/tests/integration \
+            packages/agentforge-a2a/tests/integration \
+            packages/agentforge-chat-history-postgres/tests/integration \
+            packages/agentforge-chat-history-redis/tests/integration
+
+  coverage-ratchet:
+    name: Coverage ratchet vs main
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run coverage ratchet
+        run: |
+          if [ -f scripts/coverage_ratchet.py ]; then
+            python scripts/coverage_ratchet.py
+          else
+            echo "coverage_ratchet.py not yet shipped (lands with feat-001 implementation)"
+          fi

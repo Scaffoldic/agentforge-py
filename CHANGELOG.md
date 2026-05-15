@@ -9,7 +9,128 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-14
+
+The second coordinated release. v0.2 is the "complete the v0.1
+surface" tag: every locked ABC from v0.1 (`LLMClient`,
+`EmbeddingClient`, `VectorStore`, `GraphStore`, `Reranker`,
+`Migrator`, chat) now has at least one shipped driver in tree,
+the deferred v0.2 follow-ups all landed, and the v0.2.1 polish
+candidates moved to a v0.3 backlog. ADR-0015 coordinated
+release train: every workspace member bumps to `0.2.0`.
+
+### Highlights
+
+- **5 first-party LLM provider sister packages** —
+  `agentforge-anthropic`, `agentforge-openai`,
+  `agentforge-voyage`, `agentforge-litellm`,
+  `agentforge-ollama`. Every package registers under
+  `agentforge.providers:<name>` (and
+  `agentforge.embeddings:<name>` where applicable). String-id
+  swap (`"anthropic:..."` → `"bedrock:..."`) requires no
+  caller code change.
+- **5 new runbooks** shipped inside every scaffolded agent:
+  reranker, hybrid search, GraphRAG, schema migrations,
+  streaming guardrails (feat-019 v0.2 polish).
+- **Sentence-window streaming guardrails** — `safety_mode`
+  Literal expanded; output validators now run at sentence
+  boundaries on per-token streams (feat-020 v0.3 polish).
+- **Native lexical paths on every shipped vector store** —
+  Postgres tsvector / SQLite FTS5 / Neo4j fulltext / SurrealDB
+  BM25 analyzer. Every driver passes
+  `run_hybrid_search_conformance` (feat-022 + feat-025).
+- **Schema migrations framework** across Postgres / SQLite /
+  Neo4j / SurrealDB + parameterised migrations for
+  dimension-sensitive vector schemas (feat-024).
+- **GraphRAG retrieval** — `Retriever(graph_expansion=...)`
+  composes with vector / hybrid / reranker (feat-023).
+- **Reranker ABC + 4 vendor sister packages**
+  (sentence-transformers, Cohere, Voyage, Mixedbread) +
+  YAML `retrieval.reranker:` block (feat-021).
+- **Production protocol runners** for MCP (stdio + HTTP/SSE)
+  and A2A (HTTP + per-token streaming + discovery)
+  (feat-013 v0.2 + feat-014 v0.2 + feat-014 v0.3).
+- **Vendor observability backends** — `agentforge-langfuse`,
+  `agentforge-phoenix`, `agentforge-evidently`,
+  `agentforge-statsd`; plus v0.3 polish for OTel
+  (child spans, A2A trace propagation, content-based PII
+  redaction) (feat-009 v0.2 + v0.3).
+- **All 34 workspace members** ship at `0.2.0`; every
+  `__version__` constant matches.
+
+### v0.2.0 → v0.3.0
+
+The v0.3 backlog enumerates everything explicitly deferred
+past v0.2 — see [docs/roadmap.md](./docs/roadmap.md):
+
+- `down` migrations / schema rollback (feat-024 v0.3+).
+- Native single-Cypher / SurrealQL graph-augmented retrieval
+  (feat-023 sister-package follow-ups).
+- Multi-cluster Redlock for `RedisSessionLock` (feat-020 v0.3+).
+- True streaming-aware `stream-then-redact` (feat-020 v0.3+).
+- Evidently real-time drift dashboards via Cloud (feat-009 v0.3+).
+- Optional eval adapters (`agentforge-eval-ragas` / `-deepeval` /
+  `-toxicity` / `-codeexec`).
+- TypeScript port of the v0.2 surface.
+
 ### Added
+
+- **feat-003 v0.2 — first-party LLM provider sister
+  packages.** Five new Tier-3 modules following the
+  Runner-Protocol + lazy-SDK-import pattern:
+  - `agentforge-anthropic` — Anthropic native Messages API.
+    Declares `{tools, json_mode, caching, thinking, streaming}`.
+    Caching via `cache_control: ephemeral` breakpoints,
+    extended thinking via `thinking={"type": "enabled",
+    "budget_tokens": ...}`, per-token streaming via
+    `messages.stream()`.
+  - `agentforge-openai` — OpenAI chat.completions +
+    `text-embedding-3-*` embeddings. Declares
+    `{tools, json_mode, streaming}` (+`vision` for `gpt-4o*`).
+    Matryoshka dimension override on embeddings.
+  - `agentforge-voyage` — Voyage AI embeddings
+    (`voyage-3-*`, `voyage-code-3`, `voyage-multimodal-3`).
+    Declares `{matryoshka, multimodal}` where applicable.
+  - `agentforge-litellm` — wraps `litellm.acompletion` so a
+    single agent routes to 100+ underlying providers.
+    Declares `{tools}`.
+  - `agentforge-ollama` — local Ollama daemon via
+    `ollama.AsyncClient`. Declares `{tools, streaming}`.
+    `OllamaEmbeddingClient` for local embedding.
+- **feat-019 v0.2 — GitHub Copilot scaffold support.** Every
+  scaffolded agent now ships
+  `.github/copilot-instructions.md` as a pointer to the
+  canonical `AGENTS.md`. Joins the existing `CLAUDE.md` and
+  `.cursorrules` pointer files so Copilot users get the same
+  framework-aware idioms as Claude Code / Cursor / Aider
+  users. Unit test in
+  `test_new_cmd.py::test_scaffold_ships_ai_assistant_instructions`
+  guards against future drift.
+- **README + release notes** — README rewritten to lead with
+  the AI-assisted developer workflow story; full v0.2.0
+  release notes shipped at `docs/releases/v0.2.0.md` and used
+  as the GitHub Release body when the tag is cut.
+- **feat-019 v0.2 polish — 5 new runbooks** auto-discovered
+  by `agentforge docs`:
+  - `17-add-reranker.md`, `18-add-hybrid-search.md`,
+    `19-add-graphrag.md`, `20-apply-schema-migrations.md`,
+    `21-use-streaming-guardrails.md`.
+  - `AGENTS.md.tmpl` learns the 5 new rows so AI assistants
+    in downstream agents (Claude Code, Cursor, Aider) follow
+    the framework's idioms via the runbook lookup table.
+  - `13-configure-multi-provider.md` gains the v0.2
+    provider-capability table.
+### Changed
+
+- **All workspace members bumped to `0.2.0`** per ADR-0015.
+  Every `__version__` constant in tree updated to match.
+- **`agentforge.providers` resolver category** picks up five
+  new registrations at import time: `anthropic`, `openai`,
+  `ollama`, `litellm` (plus existing `bedrock`).
+  `agentforge.embeddings` picks up `openai`, `voyage`, `ollama`
+  (plus existing `bedrock`).
+
+### Added (accumulated during the v0.2 cycle)
 
 - **feat-020 v0.3 polish — sentence-window streaming
   output guardrails.** Closes the deferred safety gap from

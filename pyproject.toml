@@ -50,6 +50,11 @@ dependencies = [
     "agentforge-reranker-cohere",
     "agentforge-reranker-voyage",
     "agentforge-reranker-mixedbread",
+    "agentforge-anthropic",
+    "agentforge-openai",
+    "agentforge-voyage",
+    "agentforge-litellm",
+    "agentforge-ollama",
 ]
 
 [tool.uv.workspace]
@@ -85,6 +90,11 @@ agentforge-reranker-sentence-transformers = { workspace = true }
 agentforge-reranker-cohere = { workspace = true }
 agentforge-reranker-voyage = { workspace = true }
 agentforge-reranker-mixedbread = { workspace = true }
+agentforge-anthropic = { workspace = true }
+agentforge-openai = { workspace = true }
+agentforge-voyage = { workspace = true }
+agentforge-litellm = { workspace = true }
+agentforge-ollama = { workspace = true }
 
 [tool.uv]
 package = false   # the root is a virtual workspace; not itself published
@@ -399,6 +409,60 @@ disable_error_code = ["no-any-unimported"]
 module = "agentforge_reranker_mixedbread.*"
 disable_error_code = ["no-any-unimported"]
 
+# feat-003 v0.2: first-party LLM provider sister packages.
+# Each provider lazy-imports its SDK so the bare package stays
+# importable without the SDK in the dev venv.
+
+[[tool.mypy.overrides]]
+module = ["anthropic", "anthropic.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_anthropic.*"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = ["openai", "openai.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_openai.*"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = ["voyageai", "voyageai.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_voyage.*"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = ["litellm", "litellm.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_litellm.*"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = ["ollama", "ollama.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+disable_error_code = ["no-any-unimported"]
+
+[[tool.mypy.overrides]]
+module = "agentforge_ollama.*"
+disable_error_code = ["no-any-unimported"]
+
 # ----------------------------------------------------------------------
 # Pytest
 # ----------------------------------------------------------------------
@@ -436,6 +500,11 @@ testpaths = [
     "packages/agentforge-reranker-cohere/tests",
     "packages/agentforge-reranker-voyage/tests",
     "packages/agentforge-reranker-mixedbread/tests",
+    "packages/agentforge-anthropic/tests",
+    "packages/agentforge-openai/tests",
+    "packages/agentforge-voyage/tests",
+    "packages/agentforge-litellm/tests",
+    "packages/agentforge-ollama/tests",
     "tests",
 ]
 markers = [
@@ -499,6 +568,11 @@ source = [
     "packages/agentforge-reranker-cohere/src",
     "packages/agentforge-reranker-voyage/src",
     "packages/agentforge-reranker-mixedbread/src",
+    "packages/agentforge-anthropic/src",
+    "packages/agentforge-openai/src",
+    "packages/agentforge-voyage/src",
+    "packages/agentforge-litellm/src",
+    "packages/agentforge-ollama/src",
 ]
 branch = true
 parallel = true

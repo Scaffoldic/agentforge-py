@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-reranker-sentence-transformers"
-version = "0.1.0"
+version = "0.2.0"
 description = "SentenceTransformers cross-encoder reranker for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"

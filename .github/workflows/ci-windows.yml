@@ -1,0 +1,39 @@
+name: CI (Windows)
+
+# Windows runs on-demand only — invoke from the Actions tab via the
+# "Run workflow" button before cutting a release, or when touching
+# path / subprocess / filesystem code that could regress on Windows.
+# Linux is the per-PR gate; see `ci-linux.yml`.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (Windows, Python ${{ matrix.python-version }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Pytest unit
+        run: uv run pytest -q -m "not live" packages/agentforge-core/tests packages/agentforge/tests packages/agentforge-bedrock/tests/unit packages/agentforge-memory-sqlite/tests/unit packages/agentforge-memory-neo4j/tests/unit packages/agentforge-memory-surrealdb/tests/unit packages/agentforge-memory-postgres/tests/unit packages/agentforge-eval-geval/tests/unit packages/agentforge-otel/tests/unit packages/agentforge-testing/tests/unit packages/agentforge-guard-llmguard/tests/unit packages/agentforge-guard-presidio/tests/unit packages/agentforge-guard-nemo/tests/unit packages/agentforge-guard-llamaguard/tests/unit packages/agentforge-mcp/tests/unit packages/agentforge-chat/tests/unit packages/agentforge-chat-http/tests/unit packages/agentforge-chat-history-postgres/tests/unit packages/agentforge-chat-history-redis/tests/unit packages/agentforge-chat-slack/tests/unit packages/agentforge-a2a/tests/unit packages/agentforge-statsd/tests/unit packages/agentforge-langfuse/tests/unit packages/agentforge-phoenix/tests/unit packages/agentforge-evidently/tests/unit packages/agentforge-reranker-sentence-transformers/tests/unit packages/agentforge-reranker-cohere/tests/unit packages/agentforge-reranker-voyage/tests/unit packages/agentforge-reranker-mixedbread/tests/unit packages/agentforge-anthropic/tests/unit packages/agentforge-openai/tests/unit packages/agentforge-voyage/tests/unit packages/agentforge-litellm/tests/unit packages/agentforge-ollama/tests/unit tests/unit
+      - name: Pytest integration
+        run: uv run pytest -q -m "not live" packages/agentforge-bedrock/tests/integration tests/integration

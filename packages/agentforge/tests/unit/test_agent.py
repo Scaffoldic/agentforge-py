@@ -57,8 +57,12 @@ def test_agent_kwarg_max_iterations_overrides_default() -> None:
 
 
 def test_agent_string_model_without_provider_registered_raises() -> None:
+    # `nonexistent` has no `@register_provider("nonexistent")` anywhere
+    # in-tree, so the resolver miss surfaces as the friendly install
+    # message. Don't use a real provider name here — `anthropic`,
+    # `bedrock`, `openai`, etc. are all registered v0.2.
     with pytest.raises(ModuleError, match="No LLM provider registered"):
-        Agent(model="anthropic:claude-sonnet-4.7", strategy=_NoOpStrategy())
+        Agent(model="nonexistent:some-model", strategy=_NoOpStrategy())
 
 
 def test_agent_invalid_model_string_raises() -> None:
