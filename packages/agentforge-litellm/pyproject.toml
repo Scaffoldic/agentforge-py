@@ -11,7 +11,7 @@
 
 [project]
 name = "agentforge-litellm"
-version = "0.2.0"
+version = "0.2.1"
 description = "LiteLLM router-based LLM provider for AgentForge — 100+ underlying providers through one interface"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -32,7 +32,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core",
+    "agentforge-core ~= 0.2.1",
 ]
 
 [project.optional-dependencies]

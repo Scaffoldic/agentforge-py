@@ -13,8 +13,8 @@
 # Per ADR-0003 (three-tier package model — this is Tier 2).
 
 [project]
-name = "agentforge"
-version = "0.2.0"
+name = "agentforge-py"
+version = "0.2.1"
 description = "AgentForge — open-source plug-and-play framework for production AI agents"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -36,7 +36,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core",
+    "agentforge-core ~= 0.2.1",
     "pydantic>=2.10",
     "pyyaml>=6.0",
     "typer>=0.15",
@@ -50,7 +50,100 @@ dependencies = [
 # corresponding package onto the path; entry-point discovery does the
 # rest (per ADR-0004).
 [project.optional-dependencies]
-# Empty until provider modules ship in subsequent features.
+# Each extra installs one sister package at the matching coordinated
+# release-train version. `pip install agentforge-py[anthropic]`
+# resolves to `agentforge-py + agentforge-anthropic`, etc.
+# Add a new entry here every time a new sister package ships.
+
+# LLM providers
+anthropic = ["agentforge-anthropic ~= 0.2.1"]
+openai = ["agentforge-openai ~= 0.2.1"]
+bedrock = ["agentforge-bedrock ~= 0.2.1"]
+ollama = ["agentforge-ollama ~= 0.2.1"]
+litellm = ["agentforge-litellm ~= 0.2.1"]
+
+# Embeddings
+voyage = ["agentforge-voyage ~= 0.2.1"]
+
+# Memory backends
+memory-sqlite = ["agentforge-memory-sqlite ~= 0.2.1"]
+memory-postgres = ["agentforge-memory-postgres ~= 0.2.1"]
+memory-neo4j = ["agentforge-memory-neo4j ~= 0.2.1"]
+memory-surrealdb = ["agentforge-memory-surrealdb ~= 0.2.1"]
+
+# Chat surface
+chat = ["agentforge-chat ~= 0.2.1"]
+chat-http = ["agentforge-chat-http ~= 0.2.1"]
+chat-slack = ["agentforge-chat-slack ~= 0.2.1"]
+chat-history-postgres = ["agentforge-chat-history-postgres ~= 0.2.1"]
+chat-history-redis = ["agentforge-chat-history-redis ~= 0.2.1"]
+
+# Rerankers
+reranker-cohere = ["agentforge-reranker-cohere ~= 0.2.1"]
+reranker-voyage = ["agentforge-reranker-voyage ~= 0.2.1"]
+reranker-mixedbread = ["agentforge-reranker-mixedbread ~= 0.2.1"]
+reranker-sentence-transformers = ["agentforge-reranker-sentence-transformers ~= 0.2.1"]
+
+# Guardrails
+guard-llmguard = ["agentforge-guard-llmguard ~= 0.2.1"]
+guard-presidio = ["agentforge-guard-presidio ~= 0.2.1"]
+guard-nemo = ["agentforge-guard-nemo ~= 0.2.1"]
+guard-llamaguard = ["agentforge-guard-llamaguard ~= 0.2.1"]
+
+# Observability
+langfuse = ["agentforge-langfuse ~= 0.2.1"]
+phoenix = ["agentforge-phoenix ~= 0.2.1"]
+otel = ["agentforge-otel ~= 0.2.1"]
+statsd = ["agentforge-statsd ~= 0.2.1"]
+evidently = ["agentforge-evidently ~= 0.2.1"]
+
+# Protocols
+mcp = ["agentforge-mcp ~= 0.2.1"]
+a2a = ["agentforge-a2a ~= 0.2.1"]
+
+# Eval
+eval = ["agentforge-eval-geval ~= 0.2.1"]
+
+# Testing
+testing = ["agentforge-testing ~= 0.2.1"]
+
+# Everything (development / docs / smoke-test convenience — not
+# recommended for production deploys; pick the actual integrations
+# you use to keep the dependency tree small).
+all = [
+    "agentforge-anthropic ~= 0.2.1",
+    "agentforge-openai ~= 0.2.1",
+    "agentforge-bedrock ~= 0.2.1",
+    "agentforge-ollama ~= 0.2.1",
+    "agentforge-litellm ~= 0.2.1",
+    "agentforge-voyage ~= 0.2.1",
+    "agentforge-memory-sqlite ~= 0.2.1",
+    "agentforge-memory-postgres ~= 0.2.1",
+    "agentforge-memory-neo4j ~= 0.2.1",
+    "agentforge-memory-surrealdb ~= 0.2.1",
+    "agentforge-chat ~= 0.2.1",
+    "agentforge-chat-http ~= 0.2.1",
+    "agentforge-chat-slack ~= 0.2.1",
+    "agentforge-chat-history-postgres ~= 0.2.1",
+    "agentforge-chat-history-redis ~= 0.2.1",
+    "agentforge-reranker-cohere ~= 0.2.1",
+    "agentforge-reranker-voyage ~= 0.2.1",
+    "agentforge-reranker-mixedbread ~= 0.2.1",
+    "agentforge-reranker-sentence-transformers ~= 0.2.1",
+    "agentforge-guard-llmguard ~= 0.2.1",
+    "agentforge-guard-presidio ~= 0.2.1",
+    "agentforge-guard-nemo ~= 0.2.1",
+    "agentforge-guard-llamaguard ~= 0.2.1",
+    "agentforge-langfuse ~= 0.2.1",
+    "agentforge-phoenix ~= 0.2.1",
+    "agentforge-otel ~= 0.2.1",
+    "agentforge-statsd ~= 0.2.1",
+    "agentforge-evidently ~= 0.2.1",
+    "agentforge-mcp ~= 0.2.1",
+    "agentforge-a2a ~= 0.2.1",
+    "agentforge-eval-geval ~= 0.2.1",
+    "agentforge-testing ~= 0.2.1",
+]
 
 [project.scripts]
 # feat-010 ships the read-only `list` command. Destructive commands
@@ -74,12 +167,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentforge"]
-
 # feat-011: ship Copier templates inside the wheel. The
-# `{{project_slug}}/` subdir isn't a Python package; force-include
-# preserves it.
-[tool.hatch.build.targets.wheel.force-include]
-"src/agentforge/templates" = "agentforge/templates"
+# `{{project_slug}}/` subdir is auto-included via the `packages`
+# directive — hatchling walks all files under src/agentforge,
+# including the Jinja2-named subdirs. Do NOT add a force-include
+# for templates: it duplicates every entry and PyPI rejects the
+# wheel with "Duplicate filename in local headers".
 
 [tool.hatch.build.targets.sdist]
 include = [

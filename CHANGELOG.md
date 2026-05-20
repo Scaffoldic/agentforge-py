@@ -9,6 +9,89 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-05-15
+
+First PyPI-published release. v0.2.0 was tagged but never
+uploaded because the bare `agentforge` name on PyPI is owned by
+an unrelated project (`DataBassGit/AgentForge`). v0.2.1 renames
+the distribution to `agentforge-py`, pins every cross-package
+dependency to `~= 0.2.1`, and wires Trusted Publishing so the
+tag push uploads all 34 workspace packages to PyPI under the
+`scaffoldic` account.
+
+### Changed
+
+- **Distribution rename.** The runtime package's PyPI name is
+  now `agentforge-py` (was `agentforge`). **The Python import
+  name is unchanged** — `from agentforge import Agent` still
+  works. Users on a fresh install run
+  `pip install agentforge-py[anthropic]` (was
+  `pip install agentforge[anthropic]`). Sister packages
+  declaring a runtime dependency switch from `"agentforge"` to
+  `"agentforge-py ~= 0.2.1"` (affects `agentforge-chat`,
+  `-chat-http`, `-a2a`, `-testing`).
+- **Cross-package deps pinned.** Every workspace member now
+  declares its `agentforge-*` dependencies with `~= 0.2.1` so a
+  user installing `agentforge-anthropic==0.2.1` cannot end up
+  paired with a future incompatible `agentforge-core`. Honours
+  ADR-0015's coordinated-release-train invariant once published
+  wheels reach end users.
+- **All 34 workspace members bumped to `0.2.1`.** Every
+  `__version__` constant updated.
+
+### Added
+
+- **PyPI release workflow** at `.github/workflows/release.yml`.
+  Triggers on `push: tags: ["v*"]`. Builds every workspace
+  member with `uv build --all` and uploads via
+  `pypa/gh-action-pypi-publish`. Hybrid auth — uses the
+  `PYPI_API_TOKEN` GitHub secret today; falls back to PyPI
+  Trusted Publishing (OIDC) when the secret is removed. v0.2.1
+  ships on the token path to bypass upfront pending-publisher
+  registration; conversion to OIDC is deferred and tracked in
+  `playbooks/publish-to-pypi.md` §0a. Gated on a `pypi` GitHub
+  environment so each release run pauses for a manual approve
+  click before upload.
+
+### Fixed
+
+- **Wheel build duplicate-file bug** in `agentforge-py` and
+  `agentforge-eval-geval`. Both pyproject files declared a
+  `[tool.hatch.build.targets.wheel.force-include]` block for a
+  subdirectory that was *already* picked up by the
+  `packages = [...]` directive, so every templated file (for
+  `agentforge-py`'s `templates/` Copier tree) and every rubric
+  YAML (for `agentforge-eval-geval`'s `rubrics/`) appeared twice
+  in the wheel ZIP. PyPI's strict validator rejects this with
+  `400 "Duplicate filename in local headers"`. The force-include
+  blocks were redundant and have been removed; hatchling's
+  default packaging walks the package source and includes data
+  files automatically.
+- **Missing optional-dependencies declarations on `agentforge-py`.**
+  `pip install agentforge-py[anthropic]` (and `[openai]`,
+  `[bedrock]`, `[ollama]`, etc.) silently warned
+  *"does not provide the extra 'anthropic'"* and installed
+  nothing extra — the runtime's `pyproject.toml` had an empty
+  `[project.optional-dependencies]` block. Every sister-package
+  install path documented in `README.md`, `CHANGELOG.md`, and
+  `docs/releases/v0.2.1.md` is now declared as an extra pinned
+  to `~= 0.2.1`. Adds 32 extras + an `all` convenience extra.
+
+### Added
+
+- **`scripts/testpypi_dry_run.py`** — one-command TestPyPI dry
+  run. Builds all packages, uploads to TestPyPI in
+  rate-limit-aware batches, smoke-installs `agentforge-py` from
+  TestPyPI and imports `agentforge.Agent`. Made the
+  TestPyPI step **mandatory** in
+  `.claude/checklists/pre-release.md` §8.
+
+### Notes
+
+No functional changes from v0.2.0 — same shipped surface, just
+publishable. v0.2.0 stays a git-only tag for archival; PyPI
+history starts at v0.2.1.
+
 ## [0.2.0] — 2026-05-14
 
 The second coordinated release. v0.2 is the "complete the v0.1

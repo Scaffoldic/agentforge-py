@@ -2660,3 +2660,79 @@ current.md:
    split CI workflows.
 2. PyPI publish for the 16 new packages — `uv build` +
    `twine upload`, or wait for CI publish automation.
+
+## 2026-05-15T11:30 — v0.2.1 rename + Trusted Publishing in flight
+
+Branch `feat/v0.2.1-rename-and-trusted-publishing` (off PR
+#50's branch) prepares the **first PyPI-publishable** AgentForge
+release. v0.2.0 stays git-only — the bare name `agentforge` on
+PyPI is owned by an unrelated project (`DataBassGit/AgentForge`
+v0.6.5).
+
+Changes:
+
+- **Distribution rename `agentforge` → `agentforge-py`** in
+  `packages/agentforge/pyproject.toml` `[project] name`.
+  Python import path `from agentforge import Agent` is
+  unchanged — `[tool.hatch.build.targets.wheel] packages =
+  ["src/agentforge"]` keeps the import name. Mirrors the
+  `python-dateutil` (installs as `python-dateutil`, imports as
+  `dateutil`) pattern.
+- **Cross-package deps pinned to `~= 0.2.1`** across all 34
+  workspace `pyproject.toml` files. Built wheel metadata
+  verified to carry `Requires-Dist: agentforge-core~=0.2.1`
+  etc. Honours ADR-0015 once published.
+- **Root `pyproject.toml`** updated — `[tool.uv.sources]`
+  and the workspace `dependencies` switched to
+  `agentforge-py`. Pulled the squatted `agentforge==0.6.5`
+  out of `uv.lock` resolution (was previously sneaking in
+  via the workspace dep).
+- **Sister packages depending on the runtime**
+  (`agentforge-chat`, `agentforge-chat-http`, `agentforge-a2a`,
+  `agentforge-testing`) switched dep string to `agentforge-py`.
+- **All 34 `__version__` constants bumped to `0.2.1`.**
+- **Scaffolded agent pyproject templates** (`minimal`,
+  `code-reviewer`, `patch-bot`, `docs-qa`, `triage`,
+  `research`) switched their runtime dep to `agentforge-py`.
+- **`.github/workflows/release.yml` shipped.** Trusted
+  Publishing pipeline: `build` builds 68 artefacts (34
+  wheels + 34 sdists) via `uv build --all`, uploads to
+  `dist/` GitHub artefact; `publish` job is gated on the
+  `pypi` GitHub environment and uses
+  `pypa/gh-action-pypi-publish@release/v1` with PyPI OIDC.
+  `skip-existing: true` so partial-failure re-runs are safe.
+- **`docs/releases/v0.2.1.md` shipped** as the release notes
+  body for the GitHub Release.
+- **`CHANGELOG.md`** flipped `[Unreleased]` → `[0.2.1] —
+  2026-05-15` with the rename + pin + Trusted Publishing
+  bullets. v0.2.0 stays as a separate section above.
+- **`playbooks/publish-to-pypi.md` updated** — blocker §0
+  marked RESOLVED, owner identity is `scaffoldic`, and §0a
+  lists the 34 PyPI Project Names for pending-publisher
+  registration (33 still to add; `agentforge-py` already
+  done by user).
+- **`docs/roadmap.md`** Tagged releases table gains the v0.2.1
+  row.
+
+Pre-commit gate green. `uv build --all` produces 68 clean
+artefacts including `agentforge_py-0.2.1-py3-none-any.whl`.
+Smoke verified: `from agentforge import Agent` imports
+correctly post-rename.
+
+**User action items before this PR's tag triggers the
+publish:**
+
+1. Add 33 more pending publishers on PyPI (list in
+   `playbooks/publish-to-pypi.md` §0a). Same Owner /
+   Repository / Workflow / Environment values; only the PyPI
+   Project Name field varies.
+2. Create the `pypi` GitHub environment with self as required
+   reviewer (Settings → Environments → New environment).
+3. Update branch protection on `main` to reference the new
+   `Test (Linux, Python 3.13)` job name (carried over from
+   v0.2.0 follow-up).
+4. After this PR + PR #50 merge, on clean main:
+   `git tag -a v0.2.1 -m "AgentForge v0.2.1 — Publishable"
+   && git push origin v0.2.1`. The tag push triggers
+   `release.yml`; approve the `pypi` environment when
+   prompted; PyPI uploads 34 packages.

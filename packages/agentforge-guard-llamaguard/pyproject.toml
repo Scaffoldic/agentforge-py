@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-guard-llamaguard"
-version = "0.2.0"
+version = "0.2.1"
 description = "Llama Guard 3 classifier for AgentForge guardrails"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -21,7 +21,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = ["agentforge-core"]
+dependencies = ["agentforge-core ~= 0.2.1"]
 
 [project.urls]
 Homepage = "https://github.com/Scaffoldic/agentforge-py"

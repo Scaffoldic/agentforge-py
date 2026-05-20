@@ -3,12 +3,25 @@
 How to push a coordinated AgentForge release to PyPI after the
 `vX.Y.Z` tag is cut and the GitHub Release is published.
 
-> **Status:** v0.2.0 has been tagged but **not yet published** to
-> PyPI. The blocker at step 0 must be resolved before any upload.
+> **Status (2026-05-15):** v0.2.1 in flight. The `agentforge` ↔
+> `agentforge-py` rename is wired in `feat/v0.2.1-rename-and-trusted-publishing`,
+> cross-package deps pinned to `~= 0.2.1`, release workflow
+> shipped at `.github/workflows/release.yml`. Owner account on
+> PyPI: **`scaffoldic`**. v0.2.0 stays a git-only tag; PyPI
+> history begins at v0.2.1.
+>
+> **Auth path: hybrid.** v0.2.1 uses an API token
+> (`PYPI_API_TOKEN` GitHub repo secret) to bypass the upfront
+> pending-publisher registration. After v0.2.1 reserves the 34
+> package names on PyPI, convert each project to Trusted
+> Publishing at your own pace (see §7). End-state is full OIDC.
 
 ---
 
-## 0. Blocker — the `agentforge` name on PyPI is taken
+## 0. Blocker — the `agentforge` name on PyPI is taken (RESOLVED in v0.2.1)
+
+**Resolution applied:** distribution renamed to `agentforge-py`
+in v0.2.1; Python import name `agentforge` is unchanged.
 
 The base name **`agentforge`** on PyPI is owned by an unrelated
 project: [`DataBassGit/AgentForge`](https://github.com/DataBassGit/AgentForge)
@@ -39,6 +52,80 @@ Apply the rename (one line in
 in root `pyproject.toml` + CHANGELOG entry). Cut v0.2.1 with the
 rename or bundle it into v0.3.0 — coordinate with the release
 train policy in ADR-0015.
+
+---
+
+## 0a. Trusted Publishing — DEFERRED (hybrid path active for v0.2.1)
+
+**v0.2.1 publishes via API token, not OIDC.** Skip this section
+for v0.2.1; come back to it any time after v0.2.1 lands and the
+34 names are reserved on PyPI.
+
+When you're ready to convert (any time, no rush), the per-project
+Trusted Publisher form lives at
+`https://pypi.org/manage/project/<package-name>/settings/publishing/`.
+Fill the form for **each** name below. Same values for the
+GitHub fields every time:
+
+- **Owner:** `Scaffoldic`
+- **Repository name:** `agentforge-py`
+- **Workflow name:** `release.yml`
+- **Environment name:** `pypi`
+
+**PyPI Project Name** is the only field that changes per row:
+
+1. `agentforge-py` ✅ (already done)
+2. `agentforge-core`
+3. `agentforge-bedrock`
+4. `agentforge-anthropic`
+5. `agentforge-openai`
+6. `agentforge-voyage`
+7. `agentforge-litellm`
+8. `agentforge-ollama`
+9. `agentforge-memory-sqlite`
+10. `agentforge-memory-postgres`
+11. `agentforge-memory-neo4j`
+12. `agentforge-memory-surrealdb`
+13. `agentforge-chat`
+14. `agentforge-chat-http`
+15. `agentforge-chat-history-postgres`
+16. `agentforge-chat-history-redis`
+17. `agentforge-chat-slack`
+18. `agentforge-a2a`
+19. `agentforge-mcp`
+20. `agentforge-eval-geval`
+21. `agentforge-testing`
+22. `agentforge-otel`
+23. `agentforge-langfuse`
+24. `agentforge-phoenix`
+25. `agentforge-evidently`
+26. `agentforge-statsd`
+27. `agentforge-guard-llmguard`
+28. `agentforge-guard-presidio`
+29. `agentforge-guard-nemo`
+30. `agentforge-guard-llamaguard`
+31. `agentforge-reranker-sentence-transformers`
+32. `agentforge-reranker-cohere`
+33. `agentforge-reranker-voyage`
+34. `agentforge-reranker-mixedbread`
+
+**34 entries total** — only needed when you convert away from
+the API token. The order doesn't matter and you can do them in
+batches.
+
+Once all 34 are converted, remove `password: ${{
+secrets.PYPI_API_TOKEN }}` from `release.yml` and revoke the
+secret + token. OIDC takes over automatically.
+
+---
+
+## 0b. GitHub `pypi` environment (required either way)
+
+Create the **`pypi` GitHub environment** at GitHub → Settings →
+Environments → New environment → "pypi". Add yourself as a
+required reviewer so each release run pauses for manual
+approval before the upload step. This gate is the human safety
+net regardless of which auth mechanism backs the upload.
 
 ---
 
@@ -161,22 +248,109 @@ Verify `Requires-Dist:` lines pin the cross-package deps.
 
 ---
 
-## 3. Optional but recommended: TestPyPI dry run
+## 3. TestPyPI dry run — **MANDATORY before every production tag**
+
+> **Rule:** no `git push origin vX.Y.Z` to the production tag
+> until a full TestPyPI publish of the same artefacts has
+> succeeded and a smoke install of at least one wheel from
+> TestPyPI has imported cleanly. PyPI does not allow re-uploads
+> of the same version — a broken first attempt at production
+> burns the version number and forces a `.postN` bump. The
+> TestPyPI dry run catches almost every failure mode (bad
+> metadata, missing files, bad pins, name typos) cheaply.
+>
+> This step is also gated by
+> [`.claude/checklists/pre-release.md`](../.claude/checklists/pre-release.md) §8.
+
+**The one-command path:**
+[`scripts/testpypi_dry_run.py`](../scripts/testpypi_dry_run.py)
+wraps build → batched upload → smoke install into a single
+exit-0/non-zero check. Run it from the project root:
 
 ```bash
-export UV_PUBLISH_URL=https://test.pypi.org/legacy/
-export UV_PUBLISH_TOKEN=pypi-AgENdGVzdC5weXBpLm9yZw...  # TestPyPI token
-
-uv publish dist/agentforge_core-0.2.0*
-uv publish dist/agentforge_anthropic-0.2.0*
-# Smoke install from TestPyPI:
-pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            agentforge-anthropic==0.2.0
+python scripts/testpypi_dry_run.py
 ```
 
-(TestPyPI is wiped periodically — names you reserve there don't
-carry over to production PyPI.)
+The manual flow below is documented for transparency and for
+the case where you want to step through each phase by hand.
+
+### a) TestPyPI credentials
+
+One-time setup — store in `~/.pypirc` (chmod 600):
+
+```ini
+[distutils]
+index-servers = pypi testpypi
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-AgENdGVzdC5weXBpLm9yZw...   # TestPyPI token
+
+[pypi]
+repository = https://upload.pypi.org/legacy/
+username = __token__
+password = pypi-AgEIcHlwaS5vcmcCJ...         # production token (optional)
+```
+
+### b) Build + upload to TestPyPI
+
+```bash
+rm -rf dist/
+uv build --all
+ls dist/ | wc -l    # expect 68 (34 wheels + 34 sdists)
+
+# Upload everything to TestPyPI
+uv run twine upload --repository testpypi dist/*
+```
+
+If a name was previously reserved on TestPyPI at the same
+version, twine reports a 400 — that's fine, those packages
+skip. Real failures are 4xx with metadata errors.
+
+### c) Smoke install from TestPyPI
+
+```bash
+python -m venv /tmp/agentforge-testpypi-smoke
+source /tmp/agentforge-testpypi-smoke/bin/activate
+
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "agentforge-py[anthropic]==X.Y.Z"
+
+python -c "from agentforge import Agent; print('ok')"
+
+deactivate && rm -rf /tmp/agentforge-testpypi-smoke
+```
+
+The `--extra-index-url https://pypi.org/simple/` is required
+because third-party deps (anthropic SDK, httpx, pydantic, etc.)
+live on production PyPI, not TestPyPI.
+
+### d) Gate
+
+- [ ] Every wheel + sdist uploaded to TestPyPI without metadata
+      errors.
+- [ ] At least one package installed cleanly from TestPyPI.
+- [ ] `from agentforge import Agent` imports without error.
+- [ ] (Recommended) Smoke at least one sister package per
+      category — provider, memory, chat, reranker, observability,
+      guardrail.
+
+Only after all four boxes are ticked, proceed to §4 (production
+publish) or push the production tag (CI path).
+
+> **TestPyPI quirks to remember:**
+> - TestPyPI is wiped periodically. Names you reserve there don't
+>   transfer to production PyPI — registration on production is
+>   still required.
+> - The same version uploaded twice to TestPyPI is rejected.
+>   Bumping the patch number locally (and reverting before the
+>   production tag) is fine; using `.devN` / `.rcN` suffixes is
+>   cleaner. Example: build `0.2.1.dev1` for TestPyPI, then build
+>   `0.2.1` clean for production.
+> - TestPyPI rate-limits aggressively. If `twine upload`
+>   hangs, retry after a few minutes.
 
 ---
 

@@ -12,7 +12,6 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "agentforge",
     "agentforge-a2a",
     "agentforge-anthropic",
     "agentforge-bedrock",
@@ -39,6 +38,7 @@ members = [
     "agentforge-openai",
     "agentforge-otel",
     "agentforge-phoenix",
+    "agentforge-py",
     "agentforge-reranker-cohere",
     "agentforge-reranker-mixedbread",
     "agentforge-reranker-sentence-transformers",
@@ -50,33 +50,12 @@ members = [
 ]
 
 [[package]]
-name = "agentforge"
-version = "0.2.0"
-source = { editable = "packages/agentforge" }
-dependencies = [
-    { name = "agentforge-core" },
-    { name = "copier" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "typer" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "agentforge-core", editable = "packages/agentforge-core" },
-    { name = "copier", specifier = ">=9.4" },
-    { name = "pydantic", specifier = ">=2.10" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "typer", specifier = ">=0.15" },
-]
-
-[[package]]
 name = "agentforge-a2a"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-a2a" }
 dependencies = [
-    { name = "agentforge" },
     { name = "agentforge-core" },
+    { name = "agentforge-py" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "uvicorn" },
@@ -84,8 +63,8 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-py", editable = "packages/agentforge" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "uvicorn", specifier = ">=0.32" },
@@ -93,7 +72,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-anthropic"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-anthropic" }
 dependencies = [
     { name = "agentforge-core" },
@@ -113,7 +92,7 @@ provides-extras = ["anthropic"]
 
 [[package]]
 name = "agentforge-bedrock"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-bedrock" }
 dependencies = [
     { name = "agentforge-core" },
@@ -130,11 +109,11 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-chat" }
 dependencies = [
-    { name = "agentforge" },
     { name = "agentforge-core" },
+    { name = "agentforge-py" },
 ]
 
 [package.optional-dependencies]
@@ -144,15 +123,15 @@ sqlite = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-py", editable = "packages/agentforge" },
     { name = "aiosqlite", marker = "extra == 'sqlite'", specifier = ">=0.20" },
 ]
 provides-extras = ["sqlite"]
 
 [[package]]
 name = "agentforge-chat-history-postgres"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-chat-history-postgres" }
 dependencies = [
     { name = "agentforge-core" },
@@ -167,7 +146,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-history-redis"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-chat-history-redis" }
 dependencies = [
     { name = "agentforge-chat" },
@@ -184,12 +163,12 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-http"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-chat-http" }
 dependencies = [
-    { name = "agentforge" },
     { name = "agentforge-chat" },
     { name = "agentforge-core" },
+    { name = "agentforge-py" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "uvicorn" },
@@ -197,9 +176,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-chat", editable = "packages/agentforge-chat" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-py", editable = "packages/agentforge" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "uvicorn", specifier = ">=0.32" },
@@ -207,7 +186,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-chat-slack"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-chat-slack" }
 dependencies = [
     { name = "agentforge-chat" },
@@ -226,7 +205,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-core"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-core" }
 dependencies = [
     { name = "opentelemetry-api" },
@@ -243,7 +222,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-eval-geval"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-eval-geval" }
 dependencies = [
     { name = "agentforge-core" },
@@ -258,7 +237,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-evidently"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-evidently" }
 dependencies = [
     { name = "agentforge-core" },
@@ -278,7 +257,7 @@ provides-extras = ["evidently"]
 
 [[package]]
 name = "agentforge-guard-llamaguard"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-guard-llamaguard" }
 dependencies = [
     { name = "agentforge-core" },
@@ -289,7 +268,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-llmguard"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-guard-llmguard" }
 dependencies = [
     { name = "agentforge-core" },
@@ -300,7 +279,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-nemo"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-guard-nemo" }
 dependencies = [
     { name = "agentforge-core" },
@@ -311,7 +290,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-guard-presidio"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-guard-presidio" }
 dependencies = [
     { name = "agentforge-core" },
@@ -322,7 +301,7 @@ requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-cor
 
 [[package]]
 name = "agentforge-langfuse"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-langfuse" }
 dependencies = [
     { name = "agentforge-core" },
@@ -342,7 +321,7 @@ provides-extras = ["langfuse"]
 
 [[package]]
 name = "agentforge-litellm"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-litellm" }
 dependencies = [
     { name = "agentforge-core" },
@@ -362,7 +341,7 @@ provides-extras = ["litellm"]
 
 [[package]]
 name = "agentforge-mcp"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-mcp" }
 dependencies = [
     { name = "agentforge-core" },
@@ -382,7 +361,7 @@ provides-extras = ["mcp"]
 
 [[package]]
 name = "agentforge-memory-neo4j"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-memory-neo4j" }
 dependencies = [
     { name = "agentforge-core" },
@@ -397,7 +376,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-postgres"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-memory-postgres" }
 dependencies = [
     { name = "agentforge-core" },
@@ -414,7 +393,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-sqlite"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-memory-sqlite" }
 dependencies = [
     { name = "agentforge-core" },
@@ -429,7 +408,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-memory-surrealdb"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-memory-surrealdb" }
 dependencies = [
     { name = "agentforge-core" },
@@ -444,7 +423,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-ollama"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-ollama" }
 dependencies = [
     { name = "agentforge-core" },
@@ -464,7 +443,7 @@ provides-extras = ["ollama"]
 
 [[package]]
 name = "agentforge-openai"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-openai" }
 dependencies = [
     { name = "agentforge-core" },
@@ -484,7 +463,7 @@ provides-extras = ["openai"]
 
 [[package]]
 name = "agentforge-otel"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-otel" }
 dependencies = [
     { name = "agentforge-core" },
@@ -501,7 +480,7 @@ requires-dist = [
 
 [[package]]
 name = "agentforge-phoenix"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-phoenix" }
 dependencies = [
     { name = "agentforge-core" },
@@ -520,8 +499,226 @@ requires-dist = [
 provides-extras = ["phoenix"]
 
 [[package]]
+name = "agentforge-py"
+version = "0.2.1"
+source = { editable = "packages/agentforge" }
+dependencies = [
+    { name = "agentforge-core" },
+    { name = "copier" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+a2a = [
+    { name = "agentforge-a2a" },
+]
+all = [
+    { name = "agentforge-a2a" },
+    { name = "agentforge-anthropic" },
+    { name = "agentforge-bedrock" },
+    { name = "agentforge-chat" },
+    { name = "agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis" },
+    { name = "agentforge-chat-http" },
+    { name = "agentforge-chat-slack" },
+    { name = "agentforge-eval-geval" },
+    { name = "agentforge-evidently" },
+    { name = "agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llmguard" },
+    { name = "agentforge-guard-nemo" },
+    { name = "agentforge-guard-presidio" },
+    { name = "agentforge-langfuse" },
+    { name = "agentforge-litellm" },
+    { name = "agentforge-mcp" },
+    { name = "agentforge-memory-neo4j" },
+    { name = "agentforge-memory-postgres" },
+    { name = "agentforge-memory-sqlite" },
+    { name = "agentforge-memory-surrealdb" },
+    { name = "agentforge-ollama" },
+    { name = "agentforge-openai" },
+    { name = "agentforge-otel" },
+    { name = "agentforge-phoenix" },
+    { name = "agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-voyage" },
+    { name = "agentforge-statsd" },
+    { name = "agentforge-testing" },
+    { name = "agentforge-voyage" },
+]
+anthropic = [
+    { name = "agentforge-anthropic" },
+]
+bedrock = [
+    { name = "agentforge-bedrock" },
+]
+chat = [
+    { name = "agentforge-chat" },
+]
+chat-history-postgres = [
+    { name = "agentforge-chat-history-postgres" },
+]
+chat-history-redis = [
+    { name = "agentforge-chat-history-redis" },
+]
+chat-http = [
+    { name = "agentforge-chat-http" },
+]
+chat-slack = [
+    { name = "agentforge-chat-slack" },
+]
+eval = [
+    { name = "agentforge-eval-geval" },
+]
+evidently = [
+    { name = "agentforge-evidently" },
+]
+guard-llamaguard = [
+    { name = "agentforge-guard-llamaguard" },
+]
+guard-llmguard = [
+    { name = "agentforge-guard-llmguard" },
+]
+guard-nemo = [
+    { name = "agentforge-guard-nemo" },
+]
+guard-presidio = [
+    { name = "agentforge-guard-presidio" },
+]
+langfuse = [
+    { name = "agentforge-langfuse" },
+]
+litellm = [
+    { name = "agentforge-litellm" },
+]
+mcp = [
+    { name = "agentforge-mcp" },
+]
+memory-neo4j = [
+    { name = "agentforge-memory-neo4j" },
+]
+memory-postgres = [
+    { name = "agentforge-memory-postgres" },
+]
+memory-sqlite = [
+    { name = "agentforge-memory-sqlite" },
+]
+memory-surrealdb = [
+    { name = "agentforge-memory-surrealdb" },
+]
+ollama = [
+    { name = "agentforge-ollama" },
+]
+openai = [
+    { name = "agentforge-openai" },
+]
+otel = [
+    { name = "agentforge-otel" },
+]
+phoenix = [
+    { name = "agentforge-phoenix" },
+]
+reranker-cohere = [
+    { name = "agentforge-reranker-cohere" },
+]
+reranker-mixedbread = [
+    { name = "agentforge-reranker-mixedbread" },
+]
+reranker-sentence-transformers = [
+    { name = "agentforge-reranker-sentence-transformers" },
+]
+reranker-voyage = [
+    { name = "agentforge-reranker-voyage" },
+]
+statsd = [
+    { name = "agentforge-statsd" },
+]
+testing = [
+    { name = "agentforge-testing" },
+]
+voyage = [
+    { name = "agentforge-voyage" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "agentforge-a2a", marker = "extra == 'a2a'", editable = "packages/agentforge-a2a" },
+    { name = "agentforge-a2a", marker = "extra == 'all'", editable = "packages/agentforge-a2a" },
+    { name = "agentforge-anthropic", marker = "extra == 'all'", editable = "packages/agentforge-anthropic" },
+    { name = "agentforge-anthropic", marker = "extra == 'anthropic'", editable = "packages/agentforge-anthropic" },
+    { name = "agentforge-bedrock", marker = "extra == 'all'", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-bedrock", marker = "extra == 'bedrock'", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-chat", marker = "extra == 'all'", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat", marker = "extra == 'chat'", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat-history-postgres", marker = "extra == 'all'", editable = "packages/agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-postgres", marker = "extra == 'chat-history-postgres'", editable = "packages/agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis", marker = "extra == 'all'", editable = "packages/agentforge-chat-history-redis" },
+    { name = "agentforge-chat-history-redis", marker = "extra == 'chat-history-redis'", editable = "packages/agentforge-chat-history-redis" },
+    { name = "agentforge-chat-http", marker = "extra == 'all'", editable = "packages/agentforge-chat-http" },
+    { name = "agentforge-chat-http", marker = "extra == 'chat-http'", editable = "packages/agentforge-chat-http" },
+    { name = "agentforge-chat-slack", marker = "extra == 'all'", editable = "packages/agentforge-chat-slack" },
+    { name = "agentforge-chat-slack", marker = "extra == 'chat-slack'", editable = "packages/agentforge-chat-slack" },
+    { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-eval-geval", marker = "extra == 'all'", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-eval-geval", marker = "extra == 'eval'", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-evidently", marker = "extra == 'all'", editable = "packages/agentforge-evidently" },
+    { name = "agentforge-evidently", marker = "extra == 'evidently'", editable = "packages/agentforge-evidently" },
+    { name = "agentforge-guard-llamaguard", marker = "extra == 'all'", editable = "packages/agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llamaguard", marker = "extra == 'guard-llamaguard'", editable = "packages/agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llmguard", marker = "extra == 'all'", editable = "packages/agentforge-guard-llmguard" },
+    { name = "agentforge-guard-llmguard", marker = "extra == 'guard-llmguard'", editable = "packages/agentforge-guard-llmguard" },
+    { name = "agentforge-guard-nemo", marker = "extra == 'all'", editable = "packages/agentforge-guard-nemo" },
+    { name = "agentforge-guard-nemo", marker = "extra == 'guard-nemo'", editable = "packages/agentforge-guard-nemo" },
+    { name = "agentforge-guard-presidio", marker = "extra == 'all'", editable = "packages/agentforge-guard-presidio" },
+    { name = "agentforge-guard-presidio", marker = "extra == 'guard-presidio'", editable = "packages/agentforge-guard-presidio" },
+    { name = "agentforge-langfuse", marker = "extra == 'all'", editable = "packages/agentforge-langfuse" },
+    { name = "agentforge-langfuse", marker = "extra == 'langfuse'", editable = "packages/agentforge-langfuse" },
+    { name = "agentforge-litellm", marker = "extra == 'all'", editable = "packages/agentforge-litellm" },
+    { name = "agentforge-litellm", marker = "extra == 'litellm'", editable = "packages/agentforge-litellm" },
+    { name = "agentforge-mcp", marker = "extra == 'all'", editable = "packages/agentforge-mcp" },
+    { name = "agentforge-mcp", marker = "extra == 'mcp'", editable = "packages/agentforge-mcp" },
+    { name = "agentforge-memory-neo4j", marker = "extra == 'all'", editable = "packages/agentforge-memory-neo4j" },
+    { name = "agentforge-memory-neo4j", marker = "extra == 'memory-neo4j'", editable = "packages/agentforge-memory-neo4j" },
+    { name = "agentforge-memory-postgres", marker = "extra == 'all'", editable = "packages/agentforge-memory-postgres" },
+    { name = "agentforge-memory-postgres", marker = "extra == 'memory-postgres'", editable = "packages/agentforge-memory-postgres" },
+    { name = "agentforge-memory-sqlite", marker = "extra == 'all'", editable = "packages/agentforge-memory-sqlite" },
+    { name = "agentforge-memory-sqlite", marker = "extra == 'memory-sqlite'", editable = "packages/agentforge-memory-sqlite" },
+    { name = "agentforge-memory-surrealdb", marker = "extra == 'all'", editable = "packages/agentforge-memory-surrealdb" },
+    { name = "agentforge-memory-surrealdb", marker = "extra == 'memory-surrealdb'", editable = "packages/agentforge-memory-surrealdb" },
+    { name = "agentforge-ollama", marker = "extra == 'all'", editable = "packages/agentforge-ollama" },
+    { name = "agentforge-ollama", marker = "extra == 'ollama'", editable = "packages/agentforge-ollama" },
+    { name = "agentforge-openai", marker = "extra == 'all'", editable = "packages/agentforge-openai" },
+    { name = "agentforge-openai", marker = "extra == 'openai'", editable = "packages/agentforge-openai" },
+    { name = "agentforge-otel", marker = "extra == 'all'", editable = "packages/agentforge-otel" },
+    { name = "agentforge-otel", marker = "extra == 'otel'", editable = "packages/agentforge-otel" },
+    { name = "agentforge-phoenix", marker = "extra == 'all'", editable = "packages/agentforge-phoenix" },
+    { name = "agentforge-phoenix", marker = "extra == 'phoenix'", editable = "packages/agentforge-phoenix" },
+    { name = "agentforge-reranker-cohere", marker = "extra == 'all'", editable = "packages/agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-cohere", marker = "extra == 'reranker-cohere'", editable = "packages/agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread", marker = "extra == 'all'", editable = "packages/agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-mixedbread", marker = "extra == 'reranker-mixedbread'", editable = "packages/agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-sentence-transformers", marker = "extra == 'all'", editable = "packages/agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-sentence-transformers", marker = "extra == 'reranker-sentence-transformers'", editable = "packages/agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-voyage", marker = "extra == 'all'", editable = "packages/agentforge-reranker-voyage" },
+    { name = "agentforge-reranker-voyage", marker = "extra == 'reranker-voyage'", editable = "packages/agentforge-reranker-voyage" },
+    { name = "agentforge-statsd", marker = "extra == 'all'", editable = "packages/agentforge-statsd" },
+    { name = "agentforge-statsd", marker = "extra == 'statsd'", editable = "packages/agentforge-statsd" },
+    { name = "agentforge-testing", marker = "extra == 'all'", editable = "packages/agentforge-testing" },
+    { name = "agentforge-testing", marker = "extra == 'testing'", editable = "packages/agentforge-testing" },
+    { name = "agentforge-voyage", marker = "extra == 'all'", editable = "packages/agentforge-voyage" },
+    { name = "agentforge-voyage", marker = "extra == 'voyage'", editable = "packages/agentforge-voyage" },
+    { name = "copier", specifier = ">=9.4" },
+    { name = "pydantic", specifier = ">=2.10" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "typer", specifier = ">=0.15" },
+]
+provides-extras = ["anthropic", "openai", "bedrock", "ollama", "litellm", "voyage", "memory-sqlite", "memory-postgres", "memory-neo4j", "memory-surrealdb", "chat", "chat-http", "chat-slack", "chat-history-postgres", "chat-history-redis", "reranker-cohere", "reranker-voyage", "reranker-mixedbread", "reranker-sentence-transformers", "guard-llmguard", "guard-presidio", "guard-nemo", "guard-llamaguard", "langfuse", "phoenix", "otel", "statsd", "evidently", "mcp", "a2a", "eval", "testing", "all"]
+
+[[package]]
 name = "agentforge-reranker-cohere"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-reranker-cohere" }
 dependencies = [
     { name = "agentforge-core" },
@@ -541,7 +738,7 @@ provides-extras = ["cohere"]
 
 [[package]]
 name = "agentforge-reranker-mixedbread"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-reranker-mixedbread" }
 dependencies = [
     { name = "agentforge-core" },
@@ -561,7 +758,7 @@ provides-extras = ["mixedbread"]
 
 [[package]]
 name = "agentforge-reranker-sentence-transformers"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-reranker-sentence-transformers" }
 dependencies = [
     { name = "agentforge-core" },
@@ -581,7 +778,7 @@ provides-extras = ["sentence-transformers"]
 
 [[package]]
 name = "agentforge-reranker-voyage"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-reranker-voyage" }
 dependencies = [
     { name = "agentforge-core" },
@@ -601,7 +798,7 @@ provides-extras = ["voyage"]
 
 [[package]]
 name = "agentforge-statsd"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-statsd" }
 dependencies = [
     { name = "agentforge-core" },
@@ -621,22 +818,22 @@ provides-extras = ["statsd"]
 
 [[package]]
 name = "agentforge-testing"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-testing" }
 dependencies = [
-    { name = "agentforge" },
     { name = "agentforge-core" },
+    { name = "agentforge-py" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-py", editable = "packages/agentforge" },
 ]
 
 [[package]]
 name = "agentforge-voyage"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "packages/agentforge-voyage" }
 dependencies = [
     { name = "agentforge-core" },
@@ -659,7 +856,6 @@ name = "agentforge-workspace"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "agentforge" },
     { name = "agentforge-a2a" },
     { name = "agentforge-anthropic" },
     { name = "agentforge-bedrock" },
@@ -686,6 +882,7 @@ dependencies = [
     { name = "agentforge-openai" },
     { name = "agentforge-otel" },
     { name = "agentforge-phoenix" },
+    { name = "agentforge-py" },
     { name = "agentforge-reranker-cohere" },
     { name = "agentforge-reranker-mixedbread" },
     { name = "agentforge-reranker-sentence-transformers" },
@@ -712,7 +909,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentforge", editable = "packages/agentforge" },
     { name = "agentforge-a2a", editable = "packages/agentforge-a2a" },
     { name = "agentforge-anthropic", editable = "packages/agentforge-anthropic" },
     { name = "agentforge-bedrock", editable = "packages/agentforge-bedrock" },
@@ -739,6 +935,7 @@ requires-dist = [
     { name = "agentforge-openai", editable = "packages/agentforge-openai" },
     { name = "agentforge-otel", editable = "packages/agentforge-otel" },
     { name = "agentforge-phoenix", editable = "packages/agentforge-phoenix" },
+    { name = "agentforge-py", editable = "packages/agentforge" },
     { name = "agentforge-reranker-cohere", editable = "packages/agentforge-reranker-cohere" },
     { name = "agentforge-reranker-mixedbread", editable = "packages/agentforge-reranker-mixedbread" },
     { name = "agentforge-reranker-sentence-transformers", editable = "packages/agentforge-reranker-sentence-transformers" },
@@ -3744,17 +3941,16 @@ wheels = [
 
 [[package]]
 name = "protobuf"
-version = "6.33.6"
+version = "5.29.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/66/70/e908e9c5e52ef7c3a6c7902c9dfbb34c7e29c25d2f81ade3856445fd5c94/protobuf-6.33.6.tar.gz", hash = "sha256:a6768d25248312c297558af96a9f9c929e8c4cee0659cb07e780731095f38135", size = 444531, upload-time = "2026-03-18T19:05:00.988Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/57/394a763c103e0edf87f0938dafcd918d53b4c011dfc5c8ae80f3b0452dbb/protobuf-5.29.6.tar.gz", hash = "sha256:da9ee6a5424b6b30fd5e45c5ea663aef540ca95f9ad99d1e887e819cdf9b8723", size = 425623, upload-time = "2026-02-04T22:54:40.584Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/9f/2f509339e89cfa6f6a4c4ff50438db9ca488dec341f7e454adad60150b00/protobuf-6.33.6-cp310-abi3-win32.whl", hash = "sha256:7d29d9b65f8afef196f8334e80d6bc1d5d4adedb449971fefd3723824e6e77d3", size = 425739, upload-time = "2026-03-18T19:04:48.373Z" },
-    { url = "https://files.pythonhosted.org/packages/76/5d/683efcd4798e0030c1bab27374fd13a89f7c2515fb1f3123efdfaa5eab57/protobuf-6.33.6-cp310-abi3-win_amd64.whl", hash = "sha256:0cd27b587afca21b7cfa59a74dcbd48a50f0a6400cfb59391340ad729d91d326", size = 437089, upload-time = "2026-03-18T19:04:50.381Z" },
-    { url = "https://files.pythonhosted.org/packages/5c/01/a3c3ed5cd186f39e7880f8303cc51385a198a81469d53d0fdecf1f64d929/protobuf-6.33.6-cp39-abi3-macosx_10_9_universal2.whl", hash = "sha256:9720e6961b251bde64edfdab7d500725a2af5280f3f4c87e57c0208376aa8c3a", size = 427737, upload-time = "2026-03-18T19:04:51.866Z" },
-    { url = "https://files.pythonhosted.org/packages/ee/90/b3c01fdec7d2f627b3a6884243ba328c1217ed2d978def5c12dc50d328a3/protobuf-6.33.6-cp39-abi3-manylinux2014_aarch64.whl", hash = "sha256:e2afbae9b8e1825e3529f88d514754e094278bb95eadc0e199751cdd9a2e82a2", size = 324610, upload-time = "2026-03-18T19:04:53.096Z" },
-    { url = "https://files.pythonhosted.org/packages/9b/ca/25afc144934014700c52e05103c2421997482d561f3101ff352e1292fb81/protobuf-6.33.6-cp39-abi3-manylinux2014_s390x.whl", hash = "sha256:c96c37eec15086b79762ed265d59ab204dabc53056e3443e702d2681f4b39ce3", size = 339381, upload-time = "2026-03-18T19:04:54.616Z" },
-    { url = "https://files.pythonhosted.org/packages/16/92/d1e32e3e0d894fe00b15ce28ad4944ab692713f2e7f0a99787405e43533a/protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl", hash = "sha256:e9db7e292e0ab79dd108d7f1a94fe31601ce1ee3f7b79e0692043423020b0593", size = 323436, upload-time = "2026-03-18T19:04:55.768Z" },
-    { url = "https://files.pythonhosted.org/packages/c4/72/02445137af02769918a93807b2b7890047c32bfb9f90371cbc12688819eb/protobuf-6.33.6-py3-none-any.whl", hash = "sha256:77179e006c476e69bf8e8ce866640091ec42e1beb80b213c3900006ecfba6901", size = 170656, upload-time = "2026-03-18T19:04:59.826Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/88/9ee58ff7863c479d6f8346686d4636dd4c415b0cbeed7a6a7d0617639c2a/protobuf-5.29.6-cp310-abi3-win32.whl", hash = "sha256:62e8a3114992c7c647bce37dcc93647575fc52d50e48de30c6fcb28a6a291eb1", size = 423357, upload-time = "2026-02-04T22:54:25.805Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/66/2dc736a4d576847134fb6d80bd995c569b13cdc7b815d669050bf0ce2d2c/protobuf-5.29.6-cp310-abi3-win_amd64.whl", hash = "sha256:7e6ad413275be172f67fdee0f43484b6de5a904cc1c3ea9804cb6fe2ff366eda", size = 435175, upload-time = "2026-02-04T22:54:28.592Z" },
+    { url = "https://files.pythonhosted.org/packages/06/db/49b05966fd208ae3f44dcd33837b6243b4915c57561d730a43f881f24dea/protobuf-5.29.6-cp38-abi3-macosx_10_9_universal2.whl", hash = "sha256:b5a169e664b4057183a34bdc424540e86eea47560f3c123a0d64de4e137f9269", size = 418619, upload-time = "2026-02-04T22:54:30.266Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/d7/48cbf6b0c3c39761e47a99cb483405f0fde2be22cf00d71ef316ce52b458/protobuf-5.29.6-cp38-abi3-manylinux2014_aarch64.whl", hash = "sha256:a8866b2cff111f0f863c1b3b9e7572dc7eaea23a7fae27f6fc613304046483e6", size = 320284, upload-time = "2026-02-04T22:54:31.782Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/dd/cadd6ec43069247d91f6345fa7a0d2858bef6af366dbd7ba8f05d2c77d3b/protobuf-5.29.6-cp38-abi3-manylinux2014_x86_64.whl", hash = "sha256:e3387f44798ac1106af0233c04fb8abf543772ff241169946f698b3a9a3d3ab9", size = 320478, upload-time = "2026-02-04T22:54:32.909Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/cb/e3065b447186cb70aa65acc70c86baf482d82bf75625bf5a2c4f6919c6a3/protobuf-5.29.6-py3-none-any.whl", hash = "sha256:6b9edb641441b2da9fa8f428760fc136a49cf97a52076010cf22a2ff73438a86", size = 173126, upload-time = "2026-02-04T22:54:39.462Z" },
 ]
 
 [[package]]
