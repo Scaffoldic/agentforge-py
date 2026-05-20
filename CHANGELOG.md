@@ -67,6 +67,15 @@ tag push uploads all 34 workspace packages to PyPI under the
   blocks were redundant and have been removed; hatchling's
   default packaging walks the package source and includes data
   files automatically.
+- **Missing optional-dependencies declarations on `agentforge-py`.**
+  `pip install agentforge-py[anthropic]` (and `[openai]`,
+  `[bedrock]`, `[ollama]`, etc.) silently warned
+  *"does not provide the extra 'anthropic'"* and installed
+  nothing extra — the runtime's `pyproject.toml` had an empty
+  `[project.optional-dependencies]` block. Every sister-package
+  install path documented in `README.md`, `CHANGELOG.md`, and
+  `docs/releases/v0.2.1.md` is now declared as an extra pinned
+  to `~= 0.2.1`. Adds 32 extras + an `all` convenience extra.
 
 ### Added
 

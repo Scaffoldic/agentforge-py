@@ -37,12 +37,19 @@ DIST_DIR = REPO_ROOT / "dist"
 SMOKE_PACKAGE = "agentforge-py[anthropic]"
 DEFAULT_BATCH_SIZE = 8
 RATE_LIMIT_PAUSE_SECONDS = 90
+TESTPYPI_JSON_URL = "https://test.pypi.org/pypi/{name}/{version}/json"
 
 
 def _run(cmd: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
     # All `cmd` values in this script are hardcoded literals, not user input.
     print(f"\n$ {' '.join(cmd)}")
-    return subprocess.run(cmd, check=True, text=True, **kwargs)  # type: ignore[call-overload]  # noqa: S603
+    result: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603
+        cmd,
+        check=True,
+        text=True,
+        **kwargs,  # type: ignore[call-overload]
+    )
+    return result
 
 
 def _check_pypirc() -> None:
@@ -80,8 +87,56 @@ def _build() -> None:
     _run(["uv", "build", "--all"], cwd=REPO_ROOT)
 
 
-def _upload_in_batches(batch_size: int) -> None:
+def _artefact_distribution_name(path: Path) -> str:
+    """Extract the PyPI distribution name from a wheel or sdist filename.
+
+    Wheels: ``name-version-...whl``; sdists: ``name-version.tar.gz``.
+    Underscores in the filename map back to hyphens in the dist name.
+    """
+    stem = path.name.split("-0.")[0]
+    return stem.replace("_", "-")
+
+
+def _already_on_testpypi(name: str, version: str) -> bool:
+    # Shell out to curl rather than urllib so we use the system CA
+    # store — macOS framework Python's urllib often fails SSL verify
+    # on test.pypi.org, which would silently mark every package as
+    # missing and force a re-upload of the whole set.
+    url = TESTPYPI_JSON_URL.format(name=name, version=version)
+    result = subprocess.run(  # noqa: S603
+        ["/usr/bin/curl", "-sI", "-o", "/dev/null", "-w", "%{http_code}", url],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    return result.stdout.strip().startswith("2")
+
+
+def _filter_artefacts(version: str) -> list[Path]:
     artefacts = sorted(p for p in DIST_DIR.iterdir() if p.suffix in {".whl", ".gz"})
+    by_name: dict[str, list[Path]] = {}
+    for a in artefacts:
+        by_name.setdefault(_artefact_distribution_name(a), []).append(a)
+    needed: list[Path] = []
+    skipped: list[str] = []
+    for name, paths in sorted(by_name.items()):
+        if _already_on_testpypi(name, version):
+            skipped.append(name)
+        else:
+            needed.extend(paths)
+    if skipped:
+        print(f"\nAlready on TestPyPI ({len(skipped)}):")
+        for n in skipped:
+            print(f"  - {n}=={version}")
+    return needed
+
+
+def _upload_in_batches(version: str, batch_size: int) -> None:
+    artefacts = _filter_artefacts(version)
+    if not artefacts:
+        print("\nNothing to upload — all packages already on TestPyPI.")
+        return
     print(f"\n{len(artefacts)} artefacts to upload (batches of {batch_size}).")
     failed: list[Path] = []
     for i in range(0, len(artefacts), batch_size):
@@ -159,7 +214,7 @@ def main() -> None:
     elif not DIST_DIR.exists():
         sys.exit("ERROR: --skip-build set but dist/ does not exist.")
 
-    _upload_in_batches(args.batch_size)
+    _upload_in_batches(version, args.batch_size)
     _smoke_install(version)
 
     print("\nTestPyPI dry run PASSED.")

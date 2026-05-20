@@ -510,14 +510,211 @@ dependencies = [
     { name = "typer" },
 ]
 
+[package.optional-dependencies]
+a2a = [
+    { name = "agentforge-a2a" },
+]
+all = [
+    { name = "agentforge-a2a" },
+    { name = "agentforge-anthropic" },
+    { name = "agentforge-bedrock" },
+    { name = "agentforge-chat" },
+    { name = "agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis" },
+    { name = "agentforge-chat-http" },
+    { name = "agentforge-chat-slack" },
+    { name = "agentforge-eval-geval" },
+    { name = "agentforge-evidently" },
+    { name = "agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llmguard" },
+    { name = "agentforge-guard-nemo" },
+    { name = "agentforge-guard-presidio" },
+    { name = "agentforge-langfuse" },
+    { name = "agentforge-litellm" },
+    { name = "agentforge-mcp" },
+    { name = "agentforge-memory-neo4j" },
+    { name = "agentforge-memory-postgres" },
+    { name = "agentforge-memory-sqlite" },
+    { name = "agentforge-memory-surrealdb" },
+    { name = "agentforge-ollama" },
+    { name = "agentforge-openai" },
+    { name = "agentforge-otel" },
+    { name = "agentforge-phoenix" },
+    { name = "agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-voyage" },
+    { name = "agentforge-statsd" },
+    { name = "agentforge-testing" },
+    { name = "agentforge-voyage" },
+]
+anthropic = [
+    { name = "agentforge-anthropic" },
+]
+bedrock = [
+    { name = "agentforge-bedrock" },
+]
+chat = [
+    { name = "agentforge-chat" },
+]
+chat-history-postgres = [
+    { name = "agentforge-chat-history-postgres" },
+]
+chat-history-redis = [
+    { name = "agentforge-chat-history-redis" },
+]
+chat-http = [
+    { name = "agentforge-chat-http" },
+]
+chat-slack = [
+    { name = "agentforge-chat-slack" },
+]
+eval = [
+    { name = "agentforge-eval-geval" },
+]
+evidently = [
+    { name = "agentforge-evidently" },
+]
+guard-llamaguard = [
+    { name = "agentforge-guard-llamaguard" },
+]
+guard-llmguard = [
+    { name = "agentforge-guard-llmguard" },
+]
+guard-nemo = [
+    { name = "agentforge-guard-nemo" },
+]
+guard-presidio = [
+    { name = "agentforge-guard-presidio" },
+]
+langfuse = [
+    { name = "agentforge-langfuse" },
+]
+litellm = [
+    { name = "agentforge-litellm" },
+]
+mcp = [
+    { name = "agentforge-mcp" },
+]
+memory-neo4j = [
+    { name = "agentforge-memory-neo4j" },
+]
+memory-postgres = [
+    { name = "agentforge-memory-postgres" },
+]
+memory-sqlite = [
+    { name = "agentforge-memory-sqlite" },
+]
+memory-surrealdb = [
+    { name = "agentforge-memory-surrealdb" },
+]
+ollama = [
+    { name = "agentforge-ollama" },
+]
+openai = [
+    { name = "agentforge-openai" },
+]
+otel = [
+    { name = "agentforge-otel" },
+]
+phoenix = [
+    { name = "agentforge-phoenix" },
+]
+reranker-cohere = [
+    { name = "agentforge-reranker-cohere" },
+]
+reranker-mixedbread = [
+    { name = "agentforge-reranker-mixedbread" },
+]
+reranker-sentence-transformers = [
+    { name = "agentforge-reranker-sentence-transformers" },
+]
+reranker-voyage = [
+    { name = "agentforge-reranker-voyage" },
+]
+statsd = [
+    { name = "agentforge-statsd" },
+]
+testing = [
+    { name = "agentforge-testing" },
+]
+voyage = [
+    { name = "agentforge-voyage" },
+]
+
 [package.metadata]
 requires-dist = [
+    { name = "agentforge-a2a", marker = "extra == 'a2a'", editable = "packages/agentforge-a2a" },
+    { name = "agentforge-a2a", marker = "extra == 'all'", editable = "packages/agentforge-a2a" },
+    { name = "agentforge-anthropic", marker = "extra == 'all'", editable = "packages/agentforge-anthropic" },
+    { name = "agentforge-anthropic", marker = "extra == 'anthropic'", editable = "packages/agentforge-anthropic" },
+    { name = "agentforge-bedrock", marker = "extra == 'all'", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-bedrock", marker = "extra == 'bedrock'", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-chat", marker = "extra == 'all'", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat", marker = "extra == 'chat'", editable = "packages/agentforge-chat" },
+    { name = "agentforge-chat-history-postgres", marker = "extra == 'all'", editable = "packages/agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-postgres", marker = "extra == 'chat-history-postgres'", editable = "packages/agentforge-chat-history-postgres" },
+    { name = "agentforge-chat-history-redis", marker = "extra == 'all'", editable = "packages/agentforge-chat-history-redis" },
+    { name = "agentforge-chat-history-redis", marker = "extra == 'chat-history-redis'", editable = "packages/agentforge-chat-history-redis" },
+    { name = "agentforge-chat-http", marker = "extra == 'all'", editable = "packages/agentforge-chat-http" },
+    { name = "agentforge-chat-http", marker = "extra == 'chat-http'", editable = "packages/agentforge-chat-http" },
+    { name = "agentforge-chat-slack", marker = "extra == 'all'", editable = "packages/agentforge-chat-slack" },
+    { name = "agentforge-chat-slack", marker = "extra == 'chat-slack'", editable = "packages/agentforge-chat-slack" },
     { name = "agentforge-core", editable = "packages/agentforge-core" },
+    { name = "agentforge-eval-geval", marker = "extra == 'all'", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-eval-geval", marker = "extra == 'eval'", editable = "packages/agentforge-eval-geval" },
+    { name = "agentforge-evidently", marker = "extra == 'all'", editable = "packages/agentforge-evidently" },
+    { name = "agentforge-evidently", marker = "extra == 'evidently'", editable = "packages/agentforge-evidently" },
+    { name = "agentforge-guard-llamaguard", marker = "extra == 'all'", editable = "packages/agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llamaguard", marker = "extra == 'guard-llamaguard'", editable = "packages/agentforge-guard-llamaguard" },
+    { name = "agentforge-guard-llmguard", marker = "extra == 'all'", editable = "packages/agentforge-guard-llmguard" },
+    { name = "agentforge-guard-llmguard", marker = "extra == 'guard-llmguard'", editable = "packages/agentforge-guard-llmguard" },
+    { name = "agentforge-guard-nemo", marker = "extra == 'all'", editable = "packages/agentforge-guard-nemo" },
+    { name = "agentforge-guard-nemo", marker = "extra == 'guard-nemo'", editable = "packages/agentforge-guard-nemo" },
+    { name = "agentforge-guard-presidio", marker = "extra == 'all'", editable = "packages/agentforge-guard-presidio" },
+    { name = "agentforge-guard-presidio", marker = "extra == 'guard-presidio'", editable = "packages/agentforge-guard-presidio" },
+    { name = "agentforge-langfuse", marker = "extra == 'all'", editable = "packages/agentforge-langfuse" },
+    { name = "agentforge-langfuse", marker = "extra == 'langfuse'", editable = "packages/agentforge-langfuse" },
+    { name = "agentforge-litellm", marker = "extra == 'all'", editable = "packages/agentforge-litellm" },
+    { name = "agentforge-litellm", marker = "extra == 'litellm'", editable = "packages/agentforge-litellm" },
+    { name = "agentforge-mcp", marker = "extra == 'all'", editable = "packages/agentforge-mcp" },
+    { name = "agentforge-mcp", marker = "extra == 'mcp'", editable = "packages/agentforge-mcp" },
+    { name = "agentforge-memory-neo4j", marker = "extra == 'all'", editable = "packages/agentforge-memory-neo4j" },
+    { name = "agentforge-memory-neo4j", marker = "extra == 'memory-neo4j'", editable = "packages/agentforge-memory-neo4j" },
+    { name = "agentforge-memory-postgres", marker = "extra == 'all'", editable = "packages/agentforge-memory-postgres" },
+    { name = "agentforge-memory-postgres", marker = "extra == 'memory-postgres'", editable = "packages/agentforge-memory-postgres" },
+    { name = "agentforge-memory-sqlite", marker = "extra == 'all'", editable = "packages/agentforge-memory-sqlite" },
+    { name = "agentforge-memory-sqlite", marker = "extra == 'memory-sqlite'", editable = "packages/agentforge-memory-sqlite" },
+    { name = "agentforge-memory-surrealdb", marker = "extra == 'all'", editable = "packages/agentforge-memory-surrealdb" },
+    { name = "agentforge-memory-surrealdb", marker = "extra == 'memory-surrealdb'", editable = "packages/agentforge-memory-surrealdb" },
+    { name = "agentforge-ollama", marker = "extra == 'all'", editable = "packages/agentforge-ollama" },
+    { name = "agentforge-ollama", marker = "extra == 'ollama'", editable = "packages/agentforge-ollama" },
+    { name = "agentforge-openai", marker = "extra == 'all'", editable = "packages/agentforge-openai" },
+    { name = "agentforge-openai", marker = "extra == 'openai'", editable = "packages/agentforge-openai" },
+    { name = "agentforge-otel", marker = "extra == 'all'", editable = "packages/agentforge-otel" },
+    { name = "agentforge-otel", marker = "extra == 'otel'", editable = "packages/agentforge-otel" },
+    { name = "agentforge-phoenix", marker = "extra == 'all'", editable = "packages/agentforge-phoenix" },
+    { name = "agentforge-phoenix", marker = "extra == 'phoenix'", editable = "packages/agentforge-phoenix" },
+    { name = "agentforge-reranker-cohere", marker = "extra == 'all'", editable = "packages/agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-cohere", marker = "extra == 'reranker-cohere'", editable = "packages/agentforge-reranker-cohere" },
+    { name = "agentforge-reranker-mixedbread", marker = "extra == 'all'", editable = "packages/agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-mixedbread", marker = "extra == 'reranker-mixedbread'", editable = "packages/agentforge-reranker-mixedbread" },
+    { name = "agentforge-reranker-sentence-transformers", marker = "extra == 'all'", editable = "packages/agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-sentence-transformers", marker = "extra == 'reranker-sentence-transformers'", editable = "packages/agentforge-reranker-sentence-transformers" },
+    { name = "agentforge-reranker-voyage", marker = "extra == 'all'", editable = "packages/agentforge-reranker-voyage" },
+    { name = "agentforge-reranker-voyage", marker = "extra == 'reranker-voyage'", editable = "packages/agentforge-reranker-voyage" },
+    { name = "agentforge-statsd", marker = "extra == 'all'", editable = "packages/agentforge-statsd" },
+    { name = "agentforge-statsd", marker = "extra == 'statsd'", editable = "packages/agentforge-statsd" },
+    { name = "agentforge-testing", marker = "extra == 'all'", editable = "packages/agentforge-testing" },
+    { name = "agentforge-testing", marker = "extra == 'testing'", editable = "packages/agentforge-testing" },
+    { name = "agentforge-voyage", marker = "extra == 'all'", editable = "packages/agentforge-voyage" },
+    { name = "agentforge-voyage", marker = "extra == 'voyage'", editable = "packages/agentforge-voyage" },
     { name = "copier", specifier = ">=9.4" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "typer", specifier = ">=0.15" },
 ]
+provides-extras = ["anthropic", "openai", "bedrock", "ollama", "litellm", "voyage", "memory-sqlite", "memory-postgres", "memory-neo4j", "memory-surrealdb", "chat", "chat-http", "chat-slack", "chat-history-postgres", "chat-history-redis", "reranker-cohere", "reranker-voyage", "reranker-mixedbread", "reranker-sentence-transformers", "guard-llmguard", "guard-presidio", "guard-nemo", "guard-llamaguard", "langfuse", "phoenix", "otel", "statsd", "evidently", "mcp", "a2a", "eval", "testing", "all"]
 
 [[package]]
 name = "agentforge-reranker-cohere"
