@@ -248,22 +248,109 @@ Verify `Requires-Dist:` lines pin the cross-package deps.
 
 ---
 
-## 3. Optional but recommended: TestPyPI dry run
+## 3. TestPyPI dry run — **MANDATORY before every production tag**
+
+> **Rule:** no `git push origin vX.Y.Z` to the production tag
+> until a full TestPyPI publish of the same artefacts has
+> succeeded and a smoke install of at least one wheel from
+> TestPyPI has imported cleanly. PyPI does not allow re-uploads
+> of the same version — a broken first attempt at production
+> burns the version number and forces a `.postN` bump. The
+> TestPyPI dry run catches almost every failure mode (bad
+> metadata, missing files, bad pins, name typos) cheaply.
+>
+> This step is also gated by
+> [`.claude/checklists/pre-release.md`](../.claude/checklists/pre-release.md) §8.
+
+**The one-command path:**
+[`scripts/testpypi_dry_run.py`](../scripts/testpypi_dry_run.py)
+wraps build → batched upload → smoke install into a single
+exit-0/non-zero check. Run it from the project root:
 
 ```bash
-export UV_PUBLISH_URL=https://test.pypi.org/legacy/
-export UV_PUBLISH_TOKEN=pypi-AgENdGVzdC5weXBpLm9yZw...  # TestPyPI token
-
-uv publish dist/agentforge_core-0.2.0*
-uv publish dist/agentforge_anthropic-0.2.0*
-# Smoke install from TestPyPI:
-pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            agentforge-anthropic==0.2.0
+python scripts/testpypi_dry_run.py
 ```
 
-(TestPyPI is wiped periodically — names you reserve there don't
-carry over to production PyPI.)
+The manual flow below is documented for transparency and for
+the case where you want to step through each phase by hand.
+
+### a) TestPyPI credentials
+
+One-time setup — store in `~/.pypirc` (chmod 600):
+
+```ini
+[distutils]
+index-servers = pypi testpypi
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-AgENdGVzdC5weXBpLm9yZw...   # TestPyPI token
+
+[pypi]
+repository = https://upload.pypi.org/legacy/
+username = __token__
+password = pypi-AgEIcHlwaS5vcmcCJ...         # production token (optional)
+```
+
+### b) Build + upload to TestPyPI
+
+```bash
+rm -rf dist/
+uv build --all
+ls dist/ | wc -l    # expect 68 (34 wheels + 34 sdists)
+
+# Upload everything to TestPyPI
+uv run twine upload --repository testpypi dist/*
+```
+
+If a name was previously reserved on TestPyPI at the same
+version, twine reports a 400 — that's fine, those packages
+skip. Real failures are 4xx with metadata errors.
+
+### c) Smoke install from TestPyPI
+
+```bash
+python -m venv /tmp/agentforge-testpypi-smoke
+source /tmp/agentforge-testpypi-smoke/bin/activate
+
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            "agentforge-py[anthropic]==X.Y.Z"
+
+python -c "from agentforge import Agent; print('ok')"
+
+deactivate && rm -rf /tmp/agentforge-testpypi-smoke
+```
+
+The `--extra-index-url https://pypi.org/simple/` is required
+because third-party deps (anthropic SDK, httpx, pydantic, etc.)
+live on production PyPI, not TestPyPI.
+
+### d) Gate
+
+- [ ] Every wheel + sdist uploaded to TestPyPI without metadata
+      errors.
+- [ ] At least one package installed cleanly from TestPyPI.
+- [ ] `from agentforge import Agent` imports without error.
+- [ ] (Recommended) Smoke at least one sister package per
+      category — provider, memory, chat, reranker, observability,
+      guardrail.
+
+Only after all four boxes are ticked, proceed to §4 (production
+publish) or push the production tag (CI path).
+
+> **TestPyPI quirks to remember:**
+> - TestPyPI is wiped periodically. Names you reserve there don't
+>   transfer to production PyPI — registration on production is
+>   still required.
+> - The same version uploaded twice to TestPyPI is rejected.
+>   Bumping the patch number locally (and reverting before the
+>   production tag) is fine; using `.devN` / `.rcN` suffixes is
+>   cleaner. Example: build `0.2.1.dev1` for TestPyPI, then build
+>   `0.2.1` clean for production.
+> - TestPyPI rate-limits aggressively. If `twine upload`
+>   hangs, retry after a few minutes.
 
 ---
 

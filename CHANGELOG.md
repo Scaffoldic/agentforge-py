@@ -53,6 +53,30 @@ tag push uploads all 34 workspace packages to PyPI under the
   environment so each release run pauses for a manual approve
   click before upload.
 
+### Fixed
+
+- **Wheel build duplicate-file bug** in `agentforge-py` and
+  `agentforge-eval-geval`. Both pyproject files declared a
+  `[tool.hatch.build.targets.wheel.force-include]` block for a
+  subdirectory that was *already* picked up by the
+  `packages = [...]` directive, so every templated file (for
+  `agentforge-py`'s `templates/` Copier tree) and every rubric
+  YAML (for `agentforge-eval-geval`'s `rubrics/`) appeared twice
+  in the wheel ZIP. PyPI's strict validator rejects this with
+  `400 "Duplicate filename in local headers"`. The force-include
+  blocks were redundant and have been removed; hatchling's
+  default packaging walks the package source and includes data
+  files automatically.
+
+### Added
+
+- **`scripts/testpypi_dry_run.py`** — one-command TestPyPI dry
+  run. Builds all packages, uploads to TestPyPI in
+  rate-limit-aware batches, smoke-installs `agentforge-py` from
+  TestPyPI and imports `agentforge.Agent`. Made the
+  TestPyPI step **mandatory** in
+  `.claude/checklists/pre-release.md` §8.
+
 ### Notes
 
 No functional changes from v0.2.0 — same shipped surface, just
