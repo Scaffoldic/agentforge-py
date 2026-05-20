@@ -12,7 +12,7 @@ from agentforge_memory_surrealdb.graph import SurrealGraphStore
 from agentforge_memory_surrealdb.memory import SurrealMemoryStore
 from agentforge_memory_surrealdb.vector import SurrealVectorStore
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     "SurrealGraphStore",

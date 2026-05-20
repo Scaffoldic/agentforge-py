@@ -1,0 +1,103 @@
+name: Release
+
+# Publish every workspace package to PyPI. Triggered when a vX.Y.Z
+# tag is pushed to the repo.
+#
+# Auth: hybrid — uses `secrets.PYPI_API_TOKEN` if set, otherwise
+# falls back to PyPI Trusted Publishing (OIDC). The
+# `pypa/gh-action-pypi-publish` action prefers the `password`
+# input when present.
+#
+# Hybrid migration path (current state: API token):
+#   1. Today  — `PYPI_API_TOKEN` repo secret is set; this workflow
+#               uses it to publish + reserve the 34 package names.
+#   2. Later  — for each PyPI project, add a Trusted Publisher at
+#               https://pypi.org/manage/project/<pkg>/settings/publishing/
+#               with Owner=Scaffoldic, Repository=agentforge-py,
+#               Workflow=release.yml, Environment=pypi.
+#   3. Final  — delete the `PYPI_API_TOKEN` secret + the `password:`
+#               line below; OIDC takes over automatically.
+#
+# The `pypi` GitHub environment (Settings → Environments → New
+# environment → "pypi") should be configured with required
+# reviewers so each release run pauses for a manual "Approve"
+# click before the upload step runs. That gate is the human
+# safety net between cutting a tag and PyPI accepting the upload.
+
+on:
+  push:
+    tags: ["v*"]
+  # Allow manual runs from the Actions tab without a new tag,
+  # for re-publishing a failed run on the same git ref.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build from (defaults to current branch)"
+        required: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build wheels + sdists
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Build every workspace member
+        run: uv build --all --out-dir dist/
+      - name: List built artefacts
+        run: ls -la dist/
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to PyPI
+    needs: [build]
+    runs-on: ubuntu-latest
+    # The `pypi` environment gates this job on a manual approve
+    # click (configured in Settings → Environments → pypi).
+    environment:
+      name: pypi
+      url: https://pypi.org/project/agentforge-py/
+    permissions:
+      # id-token: write is required for Trusted Publishing OIDC.
+      id-token: write
+      contents: read
+    steps:
+      - name: Download build artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          # Skip duplicates so re-running on a partial-failure tag
+          # doesn't 400 on packages that already uploaded.
+          skip-existing: true
+          # Hybrid auth: use the API token when set; otherwise the
+          # action falls back to Trusted Publishing via the
+          # `id-token: write` permission above. To complete the
+          # migration to OIDC, remove this line + the
+          # `PYPI_API_TOKEN` secret once every PyPI project has a
+          # Trusted Publisher configured.
+          password: ${{ secrets.PYPI_API_TOKEN }}

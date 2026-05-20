@@ -41,7 +41,7 @@ provider. No caller changes.
 ## Quick start
 
 ```bash
-pip install "agentforge[anthropic]"      # or [openai], [bedrock], [ollama], …
+pip install "agentforge-py[anthropic]"   # or [openai], [bedrock], [ollama], …
 agentforge new my-agent --template minimal
 cd my-agent
 
@@ -191,9 +191,9 @@ publishes to PyPI as its own distribution.
 ## Install
 
 ```bash
-pip install "agentforge[anthropic]"
+pip install "agentforge-py[anthropic]"
 # or
-pip install agentforge agentforge-openai agentforge-memory-postgres
+pip install agentforge-py agentforge-openai agentforge-memory-postgres
 ```
 
 Provider modules (`agentforge-anthropic`, `-openai`,

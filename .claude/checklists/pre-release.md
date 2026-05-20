@@ -75,7 +75,43 @@ rg -n '^version = "' packages/*/pyproject.toml
 - [ ] `.claude/state/log.md` has a `## YYYY-MM-DDTHH:MM —
       vX.Y.Z released` entry summarising what landed.
 
-## 8. Tag + publish
+## 8. TestPyPI dry run (**MANDATORY** — gate before pushing the production tag)
+
+> Burns no production-PyPI version number, catches almost every
+> failure mode (bad metadata, missing files, bad pins, name
+> typos) cheaply. PyPI does **not** allow re-uploads of the same
+> version, so a broken first attempt at production forces a
+> `.postN` bump. Don't skip this.
+
+**One command** drives the whole flow — see
+[`scripts/testpypi_dry_run.py`](../../scripts/testpypi_dry_run.py):
+
+```bash
+python scripts/testpypi_dry_run.py
+```
+
+It builds all 34 packages, uploads to TestPyPI in
+rate-limit-aware batches (TestPyPI is aggressive — solo
+`twine upload dist/*` will 429), smoke-installs `agentforge-py`
+from TestPyPI, and imports the runtime. Exits non-zero on any
+failure. Detail in
+[`playbooks/publish-to-pypi.md`](../../playbooks/publish-to-pypi.md) §3.
+
+- [ ] Every wheel + sdist (68 artefacts) uploaded to TestPyPI
+      without metadata errors.
+- [ ] `pip install agentforge-py[<extra>]==X.Y.Z` from TestPyPI
+      succeeds in a fresh venv.
+- [ ] `from agentforge import Agent` imports cleanly.
+- [ ] At least one sister-package category smoke-tested
+      (provider / memory / chat / reranker / observability /
+      guardrail).
+
+**Block on red.** Fix any failure, rebuild, re-upload to
+TestPyPI under the same (or a `.devN`-bumped) version, and rerun
+the smoke install. Only proceed to §9 when all four boxes are
+ticked.
+
+## 9. Tag + publish
 
 - [ ] `git tag -a vX.Y.Z -m "AgentForge vX.Y.Z — <codename>"`.
 - [ ] `git push origin vX.Y.Z`.
@@ -83,7 +119,7 @@ rg -n '^version = "' packages/*/pyproject.toml
 - [ ] Verify the GitHub Release page renders the notes
       correctly; attach any binary artefacts if applicable.
 
-## 9. Post-release
+## 10. Post-release
 
 - [ ] PyPI: each workspace package built and uploaded
       (`uv build` + `twine upload` per package; or the

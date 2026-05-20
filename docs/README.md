@@ -18,7 +18,7 @@ The goal of this docs tree is to lock in the design before the code lands.
 ## The 30-second pitch
 
 ```bash
-pip install "agentforge[anthropic]"
+pip install "agentforge-py[anthropic]"
 ```
 
 ```python

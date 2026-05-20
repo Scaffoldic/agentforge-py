@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-eval-geval"
-version = "0.2.0"
+version = "0.2.1"
 description = "LLM-judge evaluators (G-Eval) for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core",
+    "agentforge-core ~= 0.2.1",
     "PyYAML>=6.0",
 ]
 
@@ -59,11 +59,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agentforge_eval_geval"]
-
-# Rubric YAML files ship inside the package so `_load_rubric` finds
+# Rubric YAML files at src/agentforge_eval_geval/rubrics/*.yaml are
+# auto-included via the `packages` directive; `_load_rubric` finds
 # them from `__file__.parent / "rubrics"` after install.
-[tool.hatch.build.targets.wheel.force-include]
-"src/agentforge_eval_geval/rubrics" = "agentforge_eval_geval/rubrics"
 
 [tool.hatch.build.targets.sdist]
 include = [
