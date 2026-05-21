@@ -2736,3 +2736,71 @@ publish:**
    && git push origin v0.2.1`. The tag push triggers
    `release.yml`; approve the `pypi` environment when
    prompted; PyPI uploads 34 packages.
+
+---
+
+## 2026-05-21T13:42 — v0.2.3 shipped (bug-007 upgrade-flow fix)
+
+Three coordinated releases shipped today (v0.2.1 was tagged
+2026-05-20 with 4 packages live; today brought v0.2.2 + v0.2.3
+plus 4 more packages to the live set, total 8 of 34).
+
+**Bugs found + fixed via scaffold-and-upgrade validation:**
+
+- bug-001…006 (PR #53, v0.2.2) — scaffold path bugs. `agentforge
+  new` produced an agent that couldn't run end-to-end: provider
+  package not in deps, `agent.strategy` missing, no console
+  script, `.env` not loaded, stale error strings,
+  distribution-name drift in install hints.
+- bug-007 (PR #55, v0.2.3) — upgrade path bugs.
+  `agentforge new` didn't persist
+  `.agentforge-state/answers.yml`; `agentforge upgrade`
+  delegated to Copier's VCS-required `run_update`. Fixed both:
+  `new_cmd` writes answers ourselves, `upgrade_cmd` uses
+  `run_copy` against a temp dir + per-managed-file copy.
+
+**v0.2.3 sign-off state:**
+
+- 8 packages live on PyPI: `agentforge-core`, `-py`,
+  `-anthropic`, `-bedrock`, `-chat`, `-a2a`, `-memory-sqlite`,
+  `-testing`. Each upgraded via manual `uvx twine upload` for
+  v0.2.2 and v0.2.3 (existing-project version uploads — no
+  new-project quota).
+- 26 packages still pending. `release.yml` workflow fired on
+  v0.2.3 tag push but 429'd on the first new-project creation
+  (`agentforge-chat-history-postgres`). Daily quota window
+  already exhausted; tomorrow opens fresh. Path forward:
+  `gh workflow run release.yml --ref v0.2.3` daily.
+- v0.2.3 GitHub Release page live at
+  <https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.3>.
+- v0.2.2 git tag exists **locally only** (intentional —
+  v0.2.3 supersedes it; pushing it would trigger a redundant
+  `release.yml` run that re-burns the daily quota window).
+- bug-008 filed for v0.2.4 (cosmetic — `_template_version`
+  always renders `0.0.0+unknown` because
+  `importlib.metadata.version()` looks up the import name
+  instead of the PyPI distribution name).
+
+**Pipeline rule update:** `.claude/checklists/pre-release.md`
+§9 + `feedback_workflow` memory rule 9 now flag tag + GitHub
+Release as **non-skippable even when PyPI publishing is
+partial.** v0.2.2 was shipped without a tag (we skipped it
+to avoid burning the daily quota); recovery required
+back-dating the tag locally and surfacing the lesson here.
+`release.yml` is idempotent (`skip-existing: true`), so the
+fear was misplaced.
+
+**Files / commits / PRs:**
+
+- PR #53 — `chore/validate-via-code-reviewer-scaffold` — bugs
+  001-006 + regression test.
+- PR #54 — `chore/v0.2.2-release` — 34-package version bump,
+  CHANGELOG, `docs/releases/v0.2.2.md`.
+- PR #55 — `chore/v0.2.3-fix-bug-007-upgrade` — bug-007 fix +
+  three new regression tests + 34-package version bump,
+  CHANGELOG, `docs/releases/v0.2.3.md`.
+- PR #56 (open) — bug-008 doc + `pre-release.md §9` tag
+  callout. Doc-only.
+- 7 bug docs landed under `docs/bugs/`.
+- Two memory updates: `project_v02_cut_in_flight.md` (full
+  sign-off snapshot), `feedback_workflow.md` (tag-skip rule).
