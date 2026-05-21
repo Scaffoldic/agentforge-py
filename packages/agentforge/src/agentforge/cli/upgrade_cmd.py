@@ -14,12 +14,15 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
 from agentforge_core.production.exceptions import ModuleError
 
 from agentforge.cli._scaffold_state import (
+    _HASH_PREFIX_LEN,
+    _strip_marker_for_hash,
     answers_path,
     file_status,
     hash_content,
@@ -70,11 +73,18 @@ def _run_upgrade(
     *,
     cwd: Path | None = None,
 ) -> int:
-    """Run `copier update` against the linked template + refresh lock.
+    """Refresh framework-managed files from the current template.
 
-    Copier handles the three-way merge against the answer file's
-    recorded template-version. We only handle the lock refresh
-    afterwards.
+    The v0.2.x templates ship inside the framework package
+    (`agentforge/templates/<name>/`), not as a separate Copier-
+    versioned repo, so `copier update` can't do its usual VCS-driven
+    three-way merge (see bug-007). Instead we render the current
+    template into a temp directory with `run_copy`, then per the
+    existing `managed-files.lock` overwrite each non-forked managed
+    file in place. Forked files (via `agentforge fork`) are
+    preserved. New files introduced by the upgraded template are
+    added. The shared scaffold (`_shared/`) is re-injected so
+    runbooks + AI-assistant rules track the new framework version.
     """
     work_dir = cwd if cwd is not None else Path.cwd()
     if not answers_path(work_dir).exists():
@@ -84,55 +94,181 @@ def _run_upgrade(
         )
         return 1
 
+    answers = _read_answers(work_dir)
+    template_name = answers.pop("_template_name", None)
+    if not isinstance(template_name, str) or not template_name:
+        sys.stderr.write(
+            "answers.yml is missing `_template_name`. The file may pre-date the "
+            "bug-007 fix (v0.2.3) or have been hand-edited. Re-scaffold to "
+            "regenerate or add the field manually.\n"
+        )
+        return 1
+
+    from agentforge.cli.new_cmd import (  # noqa: PLC0415
+        _TEMPLATES,
+        _template_root,
+        _template_version,
+    )
+
+    template_root = _template_root(template_name)
+    if template_root is None:
+        sys.stderr.write(
+            f"Template {template_name!r} not shipped with this install. "
+            f"Known: {', '.join(_TEMPLATES)}.\n"
+        )
+        return 1
+
     if args.dry_run:
-        sys.stdout.write("  → dry-run: not actually running copier update\n")
+        sys.stdout.write(
+            f"  → dry-run: would re-render template {template_name!r} into this "
+            f"directory and refresh every non-forked managed file.\n"
+        )
         return 0
 
+    template_version = args.to if args.to else _template_version()
     try:
-        _run_copier_update(work_dir, to=args.to)
+        return _do_upgrade(
+            work_dir,
+            template_name=template_name,
+            template_root=template_root,
+            template_version=template_version,
+            answers=answers,
+        )
     except ModuleError as exc:
         sys.stderr.write(f"upgrade failed: {exc}\n")
         return 1
 
-    # Refresh the lock: re-hash every still-managed file against its
-    # new content. Forked entries stay flagged.
-    lock = read_lock(work_dir)
-    new_lock: dict[str, dict[str, object]] = {}
-    for rel, entry in lock.items():
-        path = work_dir / rel
-        if not path.exists():
-            continue
-        if entry.get("forked"):
-            new_lock[rel] = entry
-            continue
-        try:
-            content = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            new_lock[rel] = entry
-            continue
-        # Strip marker before hashing.
-        from agentforge.cli._scaffold_state import _strip_marker_for_hash  # noqa: PLC0415
 
-        body = _strip_marker_for_hash(content)
-        new_lock[rel] = {**entry, "hash": hash_content(body)}
+def _read_answers(work_dir: Path) -> dict[str, object]:
+    raw = yaml.safe_load(answers_path(work_dir).read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        raise ModuleError("answers.yml must be a top-level mapping.")
+    return {str(k): v for k, v in raw.items()}
+
+
+def _do_upgrade(
+    work_dir: Path,
+    *,
+    template_name: str,
+    template_root: Path,
+    template_version: str,
+    answers: dict[str, object],
+) -> int:
+    """Render template → temp; copy each non-forked managed file
+    into work_dir; refresh lock; re-inject shared scaffold."""
+    from agentforge.cli._shared_scaffold import inject_shared_scaffold  # noqa: PLC0415
+    from agentforge.cli.new_cmd import _run_copier  # noqa: PLC0415
+
+    # Drop the leading-underscore Copier metadata keys from the answers
+    # we pass back to Copier — `_template_name` / `_template_version`
+    # are ours, not Copier's, and Copier rejects unknown leading-`_`
+    # keys.
+    copier_answers: dict[str, object] = {k: v for k, v in answers.items() if not k.startswith("_")}
+
+    old_lock = read_lock(work_dir)
+    new_lock: dict[str, dict[str, object]] = {}
+    refreshed: list[str] = []
+    forked_kept: list[str] = []
+    new_files: list[str] = []
+
+    with tempfile.TemporaryDirectory(prefix="agentforge-upgrade-") as temp_str:
+        temp = Path(temp_str)
+        _run_copier(str(template_root), str(temp), copier_answers, defaults=True)
+
+        # Pass 1: refresh every file in the old lock.
+        for rel, entry in old_lock.items():
+            if entry.get("forked"):
+                new_lock[rel] = entry
+                forked_kept.append(rel)
+                continue
+            src = temp / rel
+            dst = work_dir / rel
+            if not src.exists():
+                # File was in scaffold but isn't in current template.
+                # Drop it from the new lock — `agentforge upgrade`
+                # treats template removals as "no longer managed".
+                continue
+            _write_with_marker(
+                dst,
+                src.read_text(encoding="utf-8"),
+                source_module=str(entry.get("source_module", f"template:{template_name}")),
+                source_version=template_version,
+            )
+            new_lock[rel] = {
+                **entry,
+                "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
+                "source_version": template_version,
+            }
+            refreshed.append(rel)
+
+        # Pass 2: add files in the new template that weren't in the
+        # old lock (template grew). Skip the state dir.
+        for src in temp.rglob("*"):
+            if not src.is_file():
+                continue
+            rel = str(src.relative_to(temp)).replace("\\", "/")
+            if rel in old_lock:
+                continue
+            if rel.startswith(".agentforge-state/"):
+                continue
+            dst = work_dir / rel
+            _write_with_marker(
+                dst,
+                src.read_text(encoding="utf-8"),
+                source_module=f"template:{template_name}",
+                source_version=template_version,
+            )
+            new_lock[rel] = {
+                "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
+                "source_module": f"template:{template_name}",
+                "source_version": template_version,
+                "forked": False,
+            }
+            new_files.append(rel)
+
     write_lock(work_dir, new_lock)
+
+    # Re-inject the shared scaffold (runbooks + AGENTS.md / CLAUDE.md /
+    # .cursorrules / copilot-instructions) so they track the new
+    # framework version.
+    shared = inject_shared_scaffold(
+        work_dir,
+        template_name=template_name,
+        template_version=template_version,
+    )
+
+    sys.stdout.write(
+        f"  → refreshed {len(refreshed)} managed files; preserved {len(forked_kept)} forked.\n"
+    )
+    if new_files:
+        max_preview = 3
+        preview = ", ".join(new_files[:max_preview])
+        if len(new_files) > max_preview:
+            preview += "…"
+        sys.stdout.write(f"  → added {len(new_files)} new managed files: {preview}\n")
+    sys.stdout.write(f"  → re-injected {shared} shared scaffold files.\n")
     sys.stdout.write("  → upgrade complete; lock refreshed.\n")
     return 0
 
 
-def _run_copier_update(cwd: Path, *, to: str | None) -> None:
-    from copier import run_update  # noqa: PLC0415
-
-    try:
-        run_update(
-            dst_path=str(cwd),
-            vcs_ref=to or "HEAD",
-            defaults=True,
-            overwrite=True,
-            quiet=False,
-        )
-    except Exception as exc:
-        raise ModuleError(f"copier update failed: {exc}") from exc
+def _write_with_marker(
+    dst: Path,
+    content: str,
+    *,
+    source_module: str,
+    source_version: str,
+) -> None:
+    """Write `content` to `dst`, prepending the AGENTFORGE-MANAGED
+    marker for the file's extension when applicable."""
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    marker = marker_for(
+        dst.suffix,
+        source_module,
+        source_version,
+        hash_content(content)[:_HASH_PREFIX_LEN],
+    )
+    body = (marker + "\n" + content) if marker else content
+    dst.write_text(body, encoding="utf-8")
 
 
 # ----------------------------------------------------------------------

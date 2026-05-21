@@ -7,7 +7,7 @@
 
 [project]
 name = "agentforge-langfuse"
-version = "0.2.2"
+version = "0.2.3"
 description = "Langfuse trace dashboard hook for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.2",
+    "agentforge-core ~= 0.2.3",
 ]
 
 [project.optional-dependencies]

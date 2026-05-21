@@ -9,6 +9,64 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.2.3] — 2026-05-21
+
+Upgrade-flow fix. v0.2.2's scaffold fixes only reached new
+scaffolds — existing v0.2.x agents couldn't pull them via
+`agentforge upgrade` because the command was non-functional. Bug-007
+fixes both halves: `agentforge new` now persists the scaffold
+answers, and `agentforge upgrade` no longer depends on Copier's
+VCS-driven `run_update`.
+
+### Fixed
+
+- **bug-007 — `agentforge upgrade` was non-functional.**
+  - Part A: `agentforge new` did not persist
+    `.agentforge-state/answers.yml`. Copier's `_answers_file`
+    directive doesn't write reliably for in-package templates;
+    `new_cmd._run_new` now writes the file itself with the
+    resolved Copier answers (including a `_template_name`
+    discriminator the upgrade path uses).
+  - Part B: `upgrade_cmd._run_upgrade` previously called Copier's
+    `run_update`, which requires the template source to be
+    VCS-versioned. AgentForge's templates ship inside the
+    framework package, not as a separate git repo. The upgrade
+    now uses `run_copy` against a temp directory and copies each
+    non-forked managed file in place — refreshing hashes,
+    preserving forked entries, and adding files the new template
+    introduced.
+
+### Changed
+
+- **34 workspace packages bumped to `0.2.3`.** Cross-package
+  pins refreshed from `~= 0.2.2` to `~= 0.2.3`.
+
+### Added
+
+- `docs/bugs/bug-007-upgrade-non-functional.md` — full
+  reproduction + root-cause analysis for both halves of the bug.
+- Three new regression tests in
+  `packages/agentforge/tests/unit/test_scaffold_state.py`:
+  `test_new_writes_answers_yml`,
+  `test_upgrade_refreshes_managed_files`,
+  `test_upgrade_preserves_forked_files`.
+
+### Notes
+
+End-to-end validated against `agents/code-reviewer/` (an agent
+scaffolded under buggy v0.2.1 templates). `agentforge upgrade
+--to 0.2.3` cleanly pulled all six v0.2.2 scaffold fixes into the
+existing agent — `agentforge-anthropic[anthropic]` + dotenv in
+pyproject.toml, `strategy: "react"` in agentforge.yaml,
+`load_dotenv()` in main.py, `[project.scripts]` entry, README
+invocation — without touching any forked files or
+`<!-- agentforge:custom -->` blocks.
+
+The v0.4 spec-aligned migration (templates as a separate
+`agentforge-templates` git repo + Copier three-way merge for
+managed files) remains a v0.4 target. The v0.2.3 fix is a clean
+band-aid that makes the upgrade contract functional today.
+
 ## [0.2.2] — 2026-05-21
 
 Validation-fix release. First-time scaffold of the `code-reviewer`
