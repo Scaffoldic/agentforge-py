@@ -17,9 +17,11 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+import yaml
 from agentforge_core.production.exceptions import ModuleError
 
 from agentforge.cli._scaffold_state import (
+    answers_path,
     prepend_markers,
     write_managed_files_lock,
 )
@@ -98,6 +100,19 @@ def _run_new(args: argparse.Namespace) -> int:
     )
     prepend_markers(dst, template_name=args.template, template_version=template_version)
 
+    # bug-007 fix: persist the resolved scaffold answers ourselves.
+    # Copier's `_answers_file` directive doesn't write reliably for
+    # in-package templates; without `answers.yml`, `agentforge upgrade`
+    # has nothing to re-render from. Must precede inject_shared_scaffold
+    # because that step reads answers.yml for its Jinja context.
+    _write_answers_file(
+        dst,
+        template_name=args.template,
+        template_version=template_version,
+        project_slug=args.project_slug,
+        llm_provider=args.provider,
+    )
+
     # feat-019: inject shared runbooks + AGENTS.md / CLAUDE.md /
     # .cursorrules / .github/copilot-instructions.md into every
     # scaffolded agent.
@@ -111,6 +126,43 @@ def _run_new(args: argparse.Namespace) -> int:
 
     sys.stdout.write(f"  → done. Next: cd {args.project_slug} && uv sync\n")
     return 0
+
+
+def _write_answers_file(
+    dst: Path,
+    *,
+    template_name: str,
+    template_version: str,
+    project_slug: str,
+    llm_provider: str | None,
+) -> None:
+    """Persist scaffold answers for `agentforge upgrade` to re-render.
+
+    Copier's `_answers_file` directive in `copier.yml` is supposed to
+    write this automatically, but doesn't reliably for in-package
+    templates (bug-007). We write it ourselves with the minimum
+    fields the upgrade path needs: `_template_name` so we can resolve
+    the template root again, plus the four Copier variables
+    (`project_name`, `project_slug`, `llm_provider`, `description`)
+    so the re-render produces the same shape.
+    """
+    target = answers_path(dst)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    project_name = " ".join(word.capitalize() for word in project_slug.split("-"))
+    payload: dict[str, object] = {
+        "_template_name": template_name,
+        "_template_version": template_version,
+        "project_name": project_name,
+        "project_slug": project_slug,
+        "llm_provider": llm_provider or "bedrock",
+        "description": f"An AgentForge agent ({template_name}).",
+    }
+    target.write_text(
+        "# AgentForge scaffold answers — DO NOT EDIT MANUALLY.\n"
+        "# Used by `agentforge upgrade` to re-render managed template files.\n"
+        + yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
 
 
 def _template_version() -> str:

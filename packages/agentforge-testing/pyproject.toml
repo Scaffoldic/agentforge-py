@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-testing"
-version = "0.2.2"
+version = "0.2.3"
 description = "Richer test helpers for AgentForge (golden-set runner, snapshot, recording analysis)"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.2",
-    "agentforge-py ~= 0.2.2",
+    "agentforge-core ~= 0.2.3",
+    "agentforge-py ~= 0.2.3",
 ]
 
 [project.urls]
