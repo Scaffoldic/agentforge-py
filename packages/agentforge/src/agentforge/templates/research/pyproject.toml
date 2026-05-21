@@ -5,10 +5,12 @@ description = "{{ description }}"
 requires-python = ">=3.13"
 dependencies = [
     "agentforge-py",
-{%- if llm_provider == 'bedrock' %}
-    "agentforge-bedrock",
-{%- endif %}
+    "agentforge-{{ llm_provider }}[{{ llm_provider }}]",
+    "python-dotenv>=1.0",
 ]
+
+[project.scripts]
+{{ project_slug }} = "{{ project_slug | replace('-', '_') }}.main:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]

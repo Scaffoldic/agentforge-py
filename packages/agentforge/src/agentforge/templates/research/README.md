@@ -7,7 +7,7 @@ into sub-tasks, then synthesises a `NarrativeFinding`.
 ```bash
 uv sync
 cp .env.example .env
-python -m {{ project_slug | replace('-', '_') }} "what changed in claude-sonnet 4.5 vs 4.7?"
+uv run {{ project_slug }} "what changed in claude-sonnet 4.5 vs 4.7?"
 ```
 
 Defaults to `web_search` (DuckDuckGo HTML scrape). Replace with a

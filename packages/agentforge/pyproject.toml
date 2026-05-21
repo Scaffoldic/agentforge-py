@@ -55,10 +55,14 @@ dependencies = [
 # resolves to `agentforge-py + agentforge-anthropic`, etc.
 # Add a new entry here every time a new sister package ships.
 
-# LLM providers
-anthropic = ["agentforge-anthropic ~= 0.2.1"]
-openai = ["agentforge-openai ~= 0.2.1"]
-bedrock = ["agentforge-bedrock ~= 0.2.1"]
+# LLM providers — for providers with a vendor-SDK extra
+# (anthropic / openai / bedrock), the extra is included so a single
+# `pip install "agentforge-py[<provider>]"` lands both the framework
+# wrapper AND the underlying SDK. ollama / litellm bundle their SDK
+# as a hard dep, so no `[<sdk>]` extra is needed.
+anthropic = ["agentforge-anthropic[anthropic] ~= 0.2.1"]
+openai = ["agentforge-openai[openai] ~= 0.2.1"]
+bedrock = ["agentforge-bedrock[bedrock] ~= 0.2.1"]
 ollama = ["agentforge-ollama ~= 0.2.1"]
 litellm = ["agentforge-litellm ~= 0.2.1"]
 
