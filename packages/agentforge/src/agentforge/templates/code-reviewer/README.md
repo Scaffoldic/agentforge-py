@@ -5,7 +5,7 @@
 ```bash
 uv sync
 cp .env.example .env
-python -m {{ project_slug | replace('-', '_') }} "review the diff at /path/to.patch"
+uv run {{ project_slug }} "review the diff at /path/to.patch"
 ```
 
 Drop in evaluator graders (faithfulness / correctness) once you

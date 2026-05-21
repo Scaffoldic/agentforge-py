@@ -1,6 +1,7 @@
 agent:
   name: "{{ project_slug }}"
   model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-sonnet-4-5-20250929{% elif llm_provider == 'anthropic' %}anthropic:claude-sonnet-4-5{% else %}openai:gpt-4o{% endif %}"
+  strategy: "react"
   system_prompt: |
     You are a careful code reviewer. For each issue, emit a
     SimpleFinding with severity, category, file, line, and a

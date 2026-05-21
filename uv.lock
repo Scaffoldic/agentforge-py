@@ -549,7 +549,7 @@ all = [
     { name = "agentforge-voyage" },
 ]
 anthropic = [
-    { name = "agentforge-anthropic" },
+    { name = "agentforge-anthropic", extra = ["anthropic"] },
 ]
 bedrock = [
     { name = "agentforge-bedrock" },
@@ -612,7 +612,7 @@ ollama = [
     { name = "agentforge-ollama" },
 ]
 openai = [
-    { name = "agentforge-openai" },
+    { name = "agentforge-openai", extra = ["openai"] },
 ]
 otel = [
     { name = "agentforge-otel" },
@@ -647,9 +647,9 @@ requires-dist = [
     { name = "agentforge-a2a", marker = "extra == 'a2a'", editable = "packages/agentforge-a2a" },
     { name = "agentforge-a2a", marker = "extra == 'all'", editable = "packages/agentforge-a2a" },
     { name = "agentforge-anthropic", marker = "extra == 'all'", editable = "packages/agentforge-anthropic" },
-    { name = "agentforge-anthropic", marker = "extra == 'anthropic'", editable = "packages/agentforge-anthropic" },
+    { name = "agentforge-anthropic", extras = ["anthropic"], marker = "extra == 'anthropic'", editable = "packages/agentforge-anthropic" },
     { name = "agentforge-bedrock", marker = "extra == 'all'", editable = "packages/agentforge-bedrock" },
-    { name = "agentforge-bedrock", marker = "extra == 'bedrock'", editable = "packages/agentforge-bedrock" },
+    { name = "agentforge-bedrock", extras = ["bedrock"], marker = "extra == 'bedrock'", editable = "packages/agentforge-bedrock" },
     { name = "agentforge-chat", marker = "extra == 'all'", editable = "packages/agentforge-chat" },
     { name = "agentforge-chat", marker = "extra == 'chat'", editable = "packages/agentforge-chat" },
     { name = "agentforge-chat-history-postgres", marker = "extra == 'all'", editable = "packages/agentforge-chat-history-postgres" },
@@ -690,7 +690,7 @@ requires-dist = [
     { name = "agentforge-ollama", marker = "extra == 'all'", editable = "packages/agentforge-ollama" },
     { name = "agentforge-ollama", marker = "extra == 'ollama'", editable = "packages/agentforge-ollama" },
     { name = "agentforge-openai", marker = "extra == 'all'", editable = "packages/agentforge-openai" },
-    { name = "agentforge-openai", marker = "extra == 'openai'", editable = "packages/agentforge-openai" },
+    { name = "agentforge-openai", extras = ["openai"], marker = "extra == 'openai'", editable = "packages/agentforge-openai" },
     { name = "agentforge-otel", marker = "extra == 'all'", editable = "packages/agentforge-otel" },
     { name = "agentforge-otel", marker = "extra == 'otel'", editable = "packages/agentforge-otel" },
     { name = "agentforge-phoenix", marker = "extra == 'all'", editable = "packages/agentforge-phoenix" },

@@ -239,10 +239,10 @@ class Agent:
             return strategy
         if strategy is None:
             raise ModuleError(
-                "No reasoning strategy provided. feat-001 ships only the "
-                "ReasoningStrategy ABC; install agentforge[react] (when feat-002 "
-                "ships) or pass a custom ReasoningStrategy instance via "
-                "Agent(strategy=...)."
+                'No reasoning strategy provided. Set `agent.strategy: "react"` '
+                'in agentforge.yaml, pass `strategy="react"` to `Agent(...)`, '
+                "or pass a custom `ReasoningStrategy` instance via "
+                "`Agent(strategy=...)`."
             )
         # String name — look up in the resolver (feat-002 will register
         # ReActLoop here when it ships).
