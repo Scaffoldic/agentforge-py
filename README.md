@@ -1,28 +1,16 @@
 # AgentForge
 
-**Production AI agents in three lines of Python — with cost
-guardrails, observability, safety, and your AI coding assistant
-already on board.**
+**Ship production AI agents in days, not months — with the boring,
+load-bearing parts already wired.**
 
-[![Latest release](https://img.shields.io/github/v/release/Scaffoldic/agentforge-py?label=release)](https://github.com/Scaffoldic/agentforge-py/releases)
-[![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/agentforge-py.svg)](https://pypi.org/project/agentforge-py/)
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#install)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
-> **Status:** `v0.2.0` shipped — 34 packages in tree, every locked
-> ABC has at least one driver, 5 LLM providers + 4 reranker
-> vendors + 4 observability backends + 4 vector stores + chat +
-> MCP + A2A all coordinated. See
-> [`docs/releases/v0.2.0.md`](./docs/releases/v0.2.0.md).
-
----
-
-## Why AgentForge
-
-The boring-but-load-bearing parts of an agent — cost limits,
-run-id propagation, distributed tracing, fallback chains,
-durable claim records, evaluator suites, prompt-injection and PII
-defenses — are wired before you write a line of code. You spend
-your time on **what your agent does**, not on plumbing.
+> **v0.2.1 — first public release on PyPI.** 34 installable
+> packages, every locked contract has a working driver, every
+> scaffolded agent ships with framework-aware instructions for
+> Claude Code / Cursor / GitHub Copilot / Aider / Codex / Windsurf.
 
 ```python
 from agentforge import Agent
@@ -32,159 +20,141 @@ async with Agent(model="anthropic:claude-sonnet-4-7") as agent:
     print(result.output)
 ```
 
-Swap the string-id (`anthropic:`, `openai:`, `bedrock:`,
-`ollama:`, `litellm:`) and the same code routes to a different
-provider. No caller changes.
+Swap `anthropic:` for `openai:`, `bedrock:`, `ollama:`, or
+`litellm:` — same code, different vendor. That's it.
+
+---
+
+## Why AgentForge
+
+### For developers
+The plumbing every production agent needs — cost limits, run-id
+propagation, distributed tracing, vendor failover, durable state,
+prompt-injection defenses, PII redaction, hybrid retrieval — is
+**configured, not coded**. You focus on what your agent *does*,
+not on the harness around it.
+
+### For organisations
+Audit-ready by default. Every call traces through OpenTelemetry
+with run_id propagation. Cost guardrails reject runs that exceed
+their budget *before* the LLM bill lands. PII redaction happens
+inside the framework, not in app code. Built-in evaluators turn
+"did this prompt change regress?" into a reproducible CI gate.
+SOC 2 / GDPR / ISO 27001 conversations get shorter.
+
+### For your AI coding assistant
+Every scaffolded agent ships with framework-aware instructions
+for **Claude Code, Cursor, GitHub Copilot, Aider, Codex CLI, and
+Windsurf** — plus 21 task-oriented runbooks. Your AI builds
+inside the framework's idioms automatically, instead of
+hallucinating LangChain patterns. `agentforge upgrade` keeps the
+instructions current as new capabilities ship, so the AI learns
+the new APIs without you teaching it.
 
 ---
 
 ## Quick start
 
+**Day 1 — install, scaffold, run:**
+
 ```bash
-pip install "agentforge-py[anthropic]"   # or [openai], [bedrock], [ollama], …
+pip install "agentforge-py[anthropic]"   # or [openai], [bedrock], [ollama], [litellm]
 agentforge new my-agent --template minimal
 cd my-agent
 
-# Set the API key for the provider you picked
 export ANTHROPIC_API_KEY=sk-ant-…
-
 agentforge run "Hi"
 ```
 
-Six starter templates ship in the wheel: `minimal`,
-`code-reviewer`, `patch-bot`, `docs-qa`, `triage`, `research`.
+Six starter templates ship in the wheel: `minimal`, `code-reviewer`,
+`patch-bot`, `docs-qa`, `triage`, `research`.
+
+**Day N — add modules, swap backends, upgrade the framework:**
+
+```bash
+# add a sister module (memory backend, reranker, observability, guard, protocol…)
+pip install agentforge-memory-postgres
+agentforge add memory-postgres
+agentforge config validate
+
+# swap providers / strategies / backends without touching code
+agentforge swap llm openai
+
+# upgrade the framework — managed files + runbooks refresh,
+# your custom code + `<!-- agentforge:custom -->` blocks survive
+agentforge upgrade --to 0.3.0
+```
+
+Every command has a matching `docs/runbooks/NN-*.md` step-by-step
+guide that ships in the scaffold — your AI coding assistant
+follows the relevant runbook automatically when you ask it for
+"add a reranker" / "configure multi-provider" / "use streaming
+guardrails".
 
 ---
 
-## AI-assisted development: how it works
+## What's in the box
 
-This is the part most agent frameworks miss. AgentForge ships
-**framework-aware instructions for every major AI coding
-assistant** inside every scaffolded agent — so the AI helping
-you build your agent follows AgentForge's idioms automatically,
-without you having to teach it.
+AgentForge is a **contracts-first** framework: ~30 locked ABCs in
+`agentforge-core` describe the agent surface; everything else is a
+plug-in module shipped as its own PyPI package. Pick the modules
+you need, swap them via config when requirements change.
 
-```
-my-agent/
-├── AGENTS.md                            # canonical (Aider, Codex, Windsurf, …)
-├── CLAUDE.md                            # → AGENTS.md pointer for Claude Code
-├── .cursorrules                         # → AGENTS.md pointer for Cursor
-├── .github/copilot-instructions.md      # → AGENTS.md pointer for GitHub Copilot
-├── docs/runbooks/                       # 21 step-by-step "how to add X" guides
-│   ├── 01-set-up-new-agent.md
-│   ├── 02-add-a-tool.md
-│   ├── …
-│   └── 21-use-streaming-guardrails.md
-├── agentforge.yaml                      # your agent's config
-└── src/my_agent/                        # your code
-```
+### Pluggable providers
+LLMs: Anthropic · OpenAI · AWS Bedrock · Ollama (local) · LiteLLM
+(100+ underlying providers). Embeddings: OpenAI Matryoshka · Voyage
+multimodal · Bedrock · Ollama. One string ID
+(`anthropic:claude-sonnet-4-7`) selects the model; no
+provider-specific code paths in your agent.
 
-Open your scaffolded agent in **Claude Code**, **Cursor**,
-**Aider**, **Codex CLI**, **Windsurf**, or with **GitHub
-Copilot** — each tool reads its pointer file (or the canonical
-`AGENTS.md` directly), then follows the framework's:
+### Reasoning strategies
+ReAct · Plan-and-Execute · Tree-of-Thoughts · Multi-Agent
+Supervisor. Pick the loop in YAML, compose your own from the
+strategy ABC when you need to.
 
-- **File ownership rules** — `AGENTFORGE-MANAGED:` files are
-  framework-owned; AI must suggest YAML config changes instead
-  of editing them directly. Forked files (`AGENTFORGE-FORKED:`)
-  edit freely.
-- **Architecture invariants** — don't import vendor SDKs
-  directly (use `agent.providers["…"]`), don't write SQL (use
-  `agent.memory.put / .get / .query`), don't bypass
-  `BudgetPolicy`, don't invent correlation IDs.
-- **21 runbooks** — when you ask "add a reranker" / "configure
-  multi-provider" / "use streaming guardrails", your AI reads
-  the matching runbook and follows it.
-- **Anti-patterns** — explicit "do not suggest LangChain idioms
-  / `Runnable` / hand-rolled JSON schemas / `try/except` around
-  tool code" so AI doesn't hallucinate the wrong framework's
-  patterns.
+### Persistence + retrieval
+One `MemoryStore` + `VectorStore` (+ `GraphStore`) contract, four
+backends: SQLite · Postgres · Neo4j · SurrealDB. Hybrid retrieval
+(vector + BM25 over native indexes, RRF fusion), four reranker
+vendors, GraphRAG expansion for graph backends, schema migrations
+across all stores via `agentforge db migrate`.
 
-### The developer workflow
+### Guardrails — cost, safety, reliability
+**Cost.** `BudgetPolicy` checks every LLM, tool, and retriever
+call against the run's budget — over-budget runs fail fast,
+before the bill lands.
+**Safety.** Input / output / tool-call validator pipelines with
+four built-in basics + four vendor wrappers — **LLM Guard,
+Microsoft Presidio, NVIDIA NeMo Guardrails, Meta Llama Guard** —
+for PII, prompt injection, toxicity, and off-topic detection.
+**Reliability.** Run-id propagation, `idempotency_key_for()` for
+side-effecting tools, `FallbackChain` cross-provider failover.
 
-1. **Scaffold.** `agentforge new my-support-agent` — instructions
-   + 21 runbooks + YAML config land in your repo.
-2. **Design.** You focus on **what** your agent does: which
-   tools, which reasoning strategy, which memory backend,
-   which guardrails. Edit `agentforge.yaml`.
-3. **Build.** Your AI coding assistant generates the code,
-   reading the relevant runbook and staying inside the
-   architecture invariants. You review and iterate.
-4. **Upgrade.** `agentforge upgrade --to <new-version>` — new
-   runbooks, refreshed instructions, and managed-file diffs
-   land via three-way merge. Your custom sections survive
-   untouched.
+### Observability
+JSON-structured logs + OpenTelemetry (with child spans, A2A
+trace propagation, PII redaction) + Langfuse + Arize Phoenix +
+Evidently + StatsD. Everything wires in via config; nothing to
+instrument in your agent code.
 
-Result: the framework keeps your AI's instructions current as
-new capabilities ship. When v0.2.0 added the 5 new runbooks
-(reranker, hybrid search, GraphRAG, schema migrations,
-streaming guardrails), running `agentforge upgrade` on a v0.1
-agent silently teaches your Claude / Cursor / Copilot how to
-use them.
+### Evaluation
+Deterministic graders — Coverage, FormatCompliance,
+RegressionVsBaseline, Consistency — plus six LLM judges
+(Correctness, Faithfulness, Groundedness, Hallucination,
+Relevance, Helpfulness). Turn prompt and model upgrades into a
+CI gate.
 
----
+### Chat + protocols
+`ChatSession` with in-memory / SQLite / Postgres / Redis history,
+four truncation strategies, sentence-window streaming guardrails
+(PII redaction over a streamed response), and a Slack adapter.
+**MCP** stdio + HTTP/SSE servers. **A2A** HTTP + streaming +
+discovery + bearer / mTLS auth.
 
-## What's in the box (v0.2)
-
-| Layer | Modules |
-|---|---|
-| **LLM providers** | `anthropic`, `openai`, `bedrock`, `ollama` (local), `litellm` (100+ underlying providers) |
-| **Embeddings** | `openai` (Matryoshka), `voyage` (multimodal), `bedrock`, `ollama` |
-| **Reasoning loops** | ReAct, Plan-Execute, Tree-of-Thoughts, Multi-Agent Supervisor |
-| **Persistence** | SQLite, Postgres, Neo4j, SurrealDB — all with `MemoryStore` + `VectorStore` (+ `GraphStore` for graph backends) |
-| **Retrieval** | Vector + BM25 hybrid (native: tsvector / FTS5 / Neo4j fulltext / SurrealDB BM25) + RRF fusion + reranker (4 vendor drivers) + GraphRAG expansion |
-| **Schema migrations** | `agentforge db migrate` across all 4 vector stores + parameterised vector-dimension migrations |
-| **Eval** | Deterministic graders (`Coverage`, `FormatCompliance`, `RegressionVsBaseline`, `Consistency`) + 6 LLM judges (`Correctness`, `Faithfulness`, `Groundedness`, `Hallucination`, `Relevance`, `Helpfulness`) |
-| **Production rails** | `BudgetPolicy`, `RunContext` with run_id propagation, `idempotency_key_for`, `FallbackChain` cross-provider failover |
-| **Observability** | JSON logs + OTel (with child spans + A2A trace propagation + PII redaction) + Langfuse + Phoenix + Evidently + StatsD |
-| **Safety** | Input / Output / Tool-call validators + 4 built-in basics + 4 vendor wrappers (LLM Guard, Presidio, NeMo, Llama Guard) |
-| **Protocols** | MCP (stdio + HTTP/SSE) + A2A (HTTP + streaming + discovery + bearer / mTLS auth) |
-| **Chat** | `ChatSession` + in-memory / SQLite / Postgres / Redis history + Slack adapter + 4 truncation strategies + sentence-window streaming guardrails |
-| **HTTP** | FastAPI chat server (REST + WS + SSE + bearer + rate limit) |
-| **CLI** | `agentforge run / eval / debug / db / health / config / list / add / remove / swap / new / upgrade / fork / unfork / status / docs` |
-
-Full per-package list: [`docs/releases/v0.2.0.md`](./docs/releases/v0.2.0.md).
-
----
-
-## Repository structure
-
-uv workspace — one git repo, **34 installable packages** in
-lock-step.
-
-```
-agentforge-py/
-├── pyproject.toml                       workspace root + shared tool config
-├── uv.lock
-├── packages/
-│   ├── agentforge-core/                 stable contracts (ABCs, value types)
-│   ├── agentforge/                      default runtime, CLI, templates
-│   ├── agentforge-anthropic/            Anthropic native provider
-│   ├── agentforge-openai/               OpenAI provider + embeddings
-│   ├── agentforge-bedrock/              AWS Bedrock provider
-│   ├── agentforge-litellm/              LiteLLM router wrapper
-│   ├── agentforge-ollama/               local Ollama
-│   ├── agentforge-voyage/               Voyage embeddings
-│   ├── agentforge-memory-{sqlite,postgres,neo4j,surrealdb}/
-│   ├── agentforge-chat / chat-http / chat-history-{postgres,redis} / chat-slack/
-│   ├── agentforge-reranker-{sentence-transformers,cohere,voyage,mixedbread}/
-│   ├── agentforge-guard-{llmguard,presidio,nemo,llamaguard}/
-│   ├── agentforge-{mcp,a2a}/            protocols
-│   ├── agentforge-{otel,langfuse,phoenix,evidently,statsd}/   observability
-│   ├── agentforge-eval-geval/           LLM-judge engine
-│   └── agentforge-testing/              golden sets + recordings
-├── tests/                               cross-package integration / conformance
-├── docs/
-│   ├── features/                        canonical feat-NNN specs
-│   ├── adr/                             architectural decision records
-│   ├── design/                          load-bearing design docs
-│   ├── roadmap.md                       shipped + backlog
-│   └── releases/                        release notes
-└── .github/workflows/                   CI (Linux per-PR; macOS / Windows on demand)
-```
-
-Users `pip install` only what they need; each sister package
-publishes to PyPI as its own distribution.
+### CLI
+`agentforge run` · `eval` · `debug` · `db migrate` · `health` ·
+`config validate` · `list` / `add` / `remove` / `swap` (module
+management) · `new` · `upgrade` · `fork` / `unfork` · `status` ·
+`docs`.
 
 ---
 
@@ -192,67 +162,84 @@ publishes to PyPI as its own distribution.
 
 ```bash
 pip install "agentforge-py[anthropic]"
-# or
-pip install agentforge-py agentforge-openai agentforge-memory-postgres
+# combine extras
+pip install "agentforge-py[anthropic,openai,memory-postgres,otel]"
+# or install sister packages directly
+pip install agentforge-py agentforge-memory-postgres agentforge-langfuse
 ```
 
-Provider modules (`agentforge-anthropic`, `-openai`,
-`-bedrock`, `-ollama`, `-litellm`), embedding modules
-(`agentforge-voyage`, etc.), persistence modules
-(`agentforge-memory-sqlite` / `-postgres` / `-neo4j`
-/ `-surrealdb`), reranker modules, observability backends, and
-chat-history adapters all ship as separate packages.
+Every module is its own PyPI distribution. Install only what you
+use; the framework lazy-imports vendor SDKs so unused providers
+don't add startup cost.
+
+---
+
+## Repository structure
+
+uv workspace — one git repo, 34 installable packages in lock-step.
+
+```
+agentforge-py/
+├── packages/
+│   ├── agentforge-core/                                          locked contracts (~30 ABCs)
+│   ├── agentforge/                                               default runtime + CLI + templates
+│   ├── agentforge-{anthropic,openai,bedrock,ollama,litellm}/     LLM providers
+│   ├── agentforge-voyage/                                        embeddings
+│   ├── agentforge-memory-{sqlite,postgres,neo4j,surrealdb}/      persistence
+│   ├── agentforge-reranker-{cohere,voyage,mixedbread,sentence-transformers}/
+│   ├── agentforge-guard-{llmguard,presidio,nemo,llamaguard}/     safety
+│   ├── agentforge-{otel,langfuse,phoenix,evidently,statsd}/      observability
+│   ├── agentforge-{mcp,a2a}/                                     protocols
+│   ├── agentforge-chat / chat-http / chat-history-{postgres,redis} / chat-slack/
+│   ├── agentforge-eval-geval/                                    LLM judges
+│   └── agentforge-testing/                                       golden sets + recordings
+├── docs/features/                                                canonical feat-NNN specs
+├── docs/design/                                                  architecture + module system
+├── docs/adr/                                                     immutable decision records
+└── docs/roadmap.md                                               shipped + backlog
+```
 
 ---
 
 ## Development
 
-Prerequisites: Python 3.13, [uv](https://docs.astral.sh/uv/).
+Prereqs: Python 3.13 + [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone git@github.com:Scaffoldic/agentforge-py.git
 cd agentforge-py
-uv sync --all-extras --dev        # venv + members + dev deps
-uv run pre-commit install         # git hooks (mirror CI)
-uv run pre-commit run --all-files # full gate (ruff + mypy + bandit + pytest + ≥90% cov)
+uv sync --all-extras --dev
+uv run pre-commit install
+uv run pre-commit run --all-files   # ruff + mypy + bandit + pytest + ≥90 % cov
 ```
 
-CI is split per-OS:
+Linux CI runs on every PR. Windows and macOS CI run on
+`workflow_dispatch` — invoke before cutting a release or when
+touching path / subprocess / filesystem code.
 
-- **`ci-linux.yml`** runs on every PR + push to `main` — lint,
-  types, tests, live integration (Postgres + Redis services),
-  coverage ratchet.
-- **`ci-windows.yml`** + **`ci-mac.yml`** run on
-  `workflow_dispatch` only — invoke before cutting a release
-  or when touching path / subprocess / filesystem code.
+---
+
+## Contributing
+
+Read [`AGENTS.md`](./AGENTS.md) before opening a PR — it has the
+workflow, branch naming, anti-patterns reviewers will reject,
+and the pre-commit gate.
+
+- Branch from `main`: `feat/<NNN>-<slug>`, `fix/<slug>`,
+  `docs/<slug>`, `chore/<slug>`
+- Conventional Commits
+- One feature = one PR, squash-merged
+- 90 % coverage floor
+- Every feature PR updates its spec's `Implementation status`
 
 ---
 
 ## Roadmap
 
 [`docs/roadmap.md`](./docs/roadmap.md) tracks shipped + backlog.
-v0.3 candidates: `down` migrations, native single-Cypher
-GraphRAG, multi-cluster Redlock, true streaming-aware redact,
-Evidently Cloud, optional eval adapters (Ragas / DeepEval /
-Toxicity / CodeExec), TypeScript port.
-
----
-
-## Contributing
-
-Before you start: read [`AGENTS.md`](./AGENTS.md) for repo
-conventions (workspace layout, locked contract layer,
-anti-patterns reviewers will reject, pre-commit gate, how to
-add a new module package).
-
-- Branch from `main`: `feat/<NNN>-<slug>`, `fix/<slug>`,
-  `docs/<slug>`, `chore/<slug>`.
-- Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`,
-  `refactor:`, `chore:`, `perf:`, `revert:`.
-- One feature = one PR. Squash-merge to `main`.
-- 90% coverage gate; pre-commit + CI block below.
-- Every feature PR updates its canonical spec's
-  `Implementation status` section before merge.
+v0.3 candidates: `down` migrations, native single-Cypher GraphRAG,
+multi-cluster Redlock, true streaming-aware redact, optional eval
+adapters (Ragas / DeepEval / Toxicity / CodeExec), TypeScript port.
 
 ---
 
