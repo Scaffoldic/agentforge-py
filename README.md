@@ -7,10 +7,16 @@ load-bearing parts already wired.**
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#install)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
-> **v0.2.1 — first public release on PyPI.** 34 installable
-> packages, every locked contract has a working driver, every
-> scaffolded agent ships with framework-aware instructions for
-> Claude Code / Cursor / GitHub Copilot / Aider / Codex / Windsurf.
+> **The production engineer's framework for AI agents in Python —
+> contracts-first, vendor-neutral, audit-ready.** Pick your LLM
+> provider, memory backend, observability stack, and safety
+> wrappers à la carte; swap any of them via config when
+> requirements change. Cost guardrails, distributed tracing,
+> vendor failover, and reproducible evals are wired before you
+> write a line of agent code. Every scaffolded agent ships with
+> framework-aware instructions for **Claude Code, Cursor, GitHub
+> Copilot, Aider, Codex, and Windsurf** — so the AI helping you
+> build stays inside the framework's idioms automatically.
 
 ```python
 from agentforge import Agent
