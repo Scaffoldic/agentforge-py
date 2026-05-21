@@ -7,7 +7,7 @@ keeps cost bounded.
 ```bash
 uv sync
 cp .env.example .env
-python -m {{ project_slug | replace('-', '_') }} "triage this issue text..."
+uv run {{ project_slug }} "triage this issue text..."
 ```
 
 Add a `Coverage` evaluator with a known-issue reference set to

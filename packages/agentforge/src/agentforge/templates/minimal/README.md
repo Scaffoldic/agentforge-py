@@ -8,7 +8,7 @@
 uv sync
 cp .env.example .env
 # Fill in credentials in .env, then:
-python -m {{ project_slug | replace('-', '_') }} "your task here"
+uv run {{ project_slug }} "your task here"
 ```
 
 ## Configuration

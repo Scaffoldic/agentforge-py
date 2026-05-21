@@ -11,7 +11,7 @@ This package is the default runtime. It ships:
 
 For provider clients, persistence drivers, MCP, observability backends,
 and safety modules, install the corresponding `agentforge-<X>` packages
-or use the `agentforge[<extra>]` install (per ADR-0003).
+or use the `agentforge-py[<extra>]` install (per ADR-0003).
 
 See the project docs at `docs/README.md` (in the design workspace) and
 the per-feature specs under `docs/features/`.
