@@ -41,7 +41,12 @@ def test_minimal_template_renders_with_no_prompts(tmp_path: Path, capsys):
     main_py = (dst / "src" / "my_agent" / "main.py").read_text()
     # Templated path-imports + content rendered with the slug.
     assert "{{ project_slug" not in main_py
-    assert "my_agent" in main_py  # snake_case import path
+    assert "my-agent" in main_py  # kebab slug in the Usage hint
+
+    # The kebab→snake transform produces the right console-script
+    # entry point in pyproject.toml.
+    pyproject = (dst / "pyproject.toml").read_text()
+    assert "my_agent.main:main" in pyproject
 
     # Lock file + answers file are written by chunk 3
     # (`.agentforge-state/` plumbing).
@@ -169,3 +174,44 @@ def test_rendered_python_package_has_underscore_name(tmp_path: Path):
     )
     assert (dst / "src" / "my_pr_reviewer" / "__init__.py").exists()
     assert not (dst / "src" / "my-pr-reviewer").exists()
+
+
+def test_scaffold_resolves_runnable_end_to_end(tmp_path: Path):
+    """Regression for bugs 001, 002, 003, 006 — the scaffolded agent
+    must contain everything needed to run end-to-end after
+    ``uv sync`` + ``cp .env.example .env``. Together, these checks
+    lock in:
+
+    - bug-001: provider package + SDK extra in pyproject deps.
+    - bug-002: default reasoning strategy in agentforge.yaml.
+    - bug-003: console-script entry in pyproject [project.scripts].
+    - bug-006: load_dotenv() in main.py.
+    """
+    dst = tmp_path / "agent"
+    _run_new(
+        argparse.Namespace(
+            project_slug="agent",
+            template="minimal",
+            provider="anthropic",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+
+    pyproject = (dst / "pyproject.toml").read_text()
+    # bug-001 — provider's SDK extra reaches the agent's deps.
+    assert "agentforge-anthropic[anthropic]" in pyproject
+    # bug-006 — python-dotenv shipped so .env loading works.
+    assert "python-dotenv" in pyproject
+    # bug-003 — agent is invokable as a CLI command.
+    assert "[project.scripts]" in pyproject
+    assert "agent.main:main" in pyproject
+
+    # bug-002 — default reasoning strategy is wired.
+    cfg = yaml.safe_load((dst / "agentforge.yaml").read_text())
+    assert cfg["agent"].get("strategy"), "agentforge.yaml missing agent.strategy"
+
+    # bug-006 — main.py actually calls load_dotenv().
+    main_py = (dst / "src" / "agent" / "main.py").read_text()
+    assert "from dotenv import load_dotenv" in main_py
+    assert "load_dotenv()" in main_py

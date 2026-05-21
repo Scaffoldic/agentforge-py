@@ -1,6 +1,7 @@
 agent:
   name: "{{ project_slug }}"
   model: "{% if llm_provider == 'bedrock' %}bedrock:us.anthropic.claude-haiku-4-5{% elif llm_provider == 'anthropic' %}anthropic:claude-haiku-4-5{% else %}openai:gpt-4o-mini{% endif %}"
+  strategy: "react"
   system_prompt: |
     You triage incoming issues / tickets / alerts. For each item
     emit a `SimpleFinding` with `severity` in

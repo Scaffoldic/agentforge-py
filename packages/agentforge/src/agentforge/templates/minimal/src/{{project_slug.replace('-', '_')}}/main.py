@@ -11,7 +11,11 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from dotenv import load_dotenv
+
 from agentforge import Agent
+
+load_dotenv()
 
 
 async def run_agent(task: str) -> str:
@@ -23,7 +27,7 @@ async def run_agent(task: str) -> str:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print('Usage: python -m {{ project_slug | replace("-", "_") }} "<task>"')
+        print('Usage: {{ project_slug }} "<task>"')
         sys.exit(1)
     task = " ".join(sys.argv[1:])
     output = asyncio.run(run_agent(task))

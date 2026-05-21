@@ -9,8 +9,12 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from dotenv import load_dotenv
+
 from agentforge import Agent
 from agentforge.tools import web_search
+
+load_dotenv()
 
 
 async def run_agent(question: str) -> str:
@@ -21,7 +25,7 @@ async def run_agent(question: str) -> str:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print('Usage: python -m {{ project_slug | replace("-", "_") }} "<research question>"')
+        print('Usage: {{ project_slug }} "<research question>"')
         sys.exit(1)
     output = asyncio.run(run_agent(" ".join(sys.argv[1:])))
     print(output)

@@ -6,7 +6,7 @@ Outputs `NarrativeFinding`s — markdown prose with citations.
 ```bash
 uv sync
 cp .env.example .env
-python -m {{ project_slug | replace('-', '_') }} "how does the auth flow work?"
+uv run {{ project_slug }} "how does the auth flow work?"
 ```
 
 For real RAG, install `agentforge-memory-sqlite` (or postgres),
