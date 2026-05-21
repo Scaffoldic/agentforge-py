@@ -7,7 +7,7 @@
 
 [project]
 name = "agentforge-reranker-cohere"
-version = "0.2.1"
+version = "0.2.2"
 description = "Cohere managed-API reranker for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.1",
+    "agentforge-core ~= 0.2.2",
 ]
 
 [project.optional-dependencies]
