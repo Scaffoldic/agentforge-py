@@ -286,6 +286,9 @@ def test_status_empty_repo_handled(tmp_path: Path, capsys):
 
 
 def test_upgrade_dry_run_returns_zero(tmp_path: Path, capsys):
+    """`agentforge new` writes answers.yml (bug-007 fix), so dry-run
+    upgrade now works without the manual hand-write workaround the
+    test previously needed."""
     dst = tmp_path / "agent"
     _run_new(
         argparse.Namespace(
@@ -296,15 +299,101 @@ def test_upgrade_dry_run_returns_zero(tmp_path: Path, capsys):
             dst=dst,
         )
     )
-    # Write an answers.yml manually since Copier's auto-write isn't
-    # reliable for local-path templates.
-    (dst / ".agentforge-state").mkdir(parents=True, exist_ok=True)
-    (dst / ".agentforge-state" / "answers.yml").write_text(
-        yaml.safe_dump({"_src_path": "fake", "project_slug": "agent"})
-    )
     code = _run_upgrade(argparse.Namespace(to=None, dry_run=True), cwd=dst)
     assert code == 0
     assert "dry-run" in capsys.readouterr().out
+
+
+def test_new_writes_answers_yml(tmp_path: Path):
+    """Regression for bug-007 Part A — `agentforge new` must persist
+    `.agentforge-state/answers.yml` with the resolved template
+    answers, including `_template_name`, so `agentforge upgrade`
+    can re-render against the same template."""
+    dst = tmp_path / "agent"
+    _run_new(
+        argparse.Namespace(
+            project_slug="agent",
+            template="code-reviewer",
+            provider="anthropic",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    answers_file = dst / ".agentforge-state" / "answers.yml"
+    assert answers_file.exists(), "answers.yml must be written by `agentforge new`"
+    answers = yaml.safe_load(answers_file.read_text())
+    assert answers["_template_name"] == "code-reviewer"
+    assert answers["project_slug"] == "agent"
+    assert answers["llm_provider"] == "anthropic"
+    assert "project_name" in answers
+    assert "description" in answers
+
+
+def test_upgrade_refreshes_managed_files(tmp_path: Path, capsys):
+    """Regression for bug-007 Part B — `agentforge upgrade` must
+    re-render the template and overwrite managed files in place.
+    We simulate a "drifted" managed file (user edited a managed
+    file), run upgrade, and assert the file is restored to its
+    template-rendered content."""
+    dst = tmp_path / "agent"
+    _run_new(
+        argparse.Namespace(
+            project_slug="agent",
+            template="minimal",
+            provider="anthropic",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    # Drift: append junk to a managed file.
+    main_py = dst / "src" / "agent" / "main.py"
+    original = main_py.read_text()
+    main_py.write_text(original + "\n# user-added drift\n")
+    assert "drift" in main_py.read_text()
+
+    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False), cwd=dst)
+    assert code == 0, capsys.readouterr().err
+
+    # Drift was overwritten by the re-rendered template content.
+    assert "drift" not in main_py.read_text(), "upgrade must overwrite drifted managed files"
+    out = capsys.readouterr().out
+    assert "refreshed" in out
+    assert "upgrade complete" in out
+
+
+def test_upgrade_preserves_forked_files(tmp_path: Path):
+    """Regression for bug-007 Part B — `agentforge fork` flags a file
+    as developer-owned. `agentforge upgrade` must leave forked files
+    untouched, even if the template content would otherwise change."""
+    dst = tmp_path / "agent"
+    _run_new(
+        argparse.Namespace(
+            project_slug="agent",
+            template="minimal",
+            provider="anthropic",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    main_py = dst / "src" / "agent" / "main.py"
+    custom = "# I forked this file; the framework must not touch it.\n"
+    # Flag the file as forked in the lock, then write custom content.
+    from agentforge.cli._scaffold_state import read_lock as _read_lock  # noqa: PLC0415
+    from agentforge.cli._scaffold_state import write_lock as _write_lock  # noqa: PLC0415
+
+    lock = _read_lock(dst)
+    rel = "src/agent/main.py"
+    assert rel in lock
+    lock[rel] = {**lock[rel], "forked": True}
+    _write_lock(dst, lock)
+    main_py.write_text(custom)
+
+    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False), cwd=dst)
+    assert code == 0
+
+    assert main_py.read_text() == custom, "forked file must survive upgrade"
+    lock_after = _read_lock(dst)
+    assert lock_after[rel].get("forked") is True, "forked flag must persist"
 
 
 def test_upgrade_without_answers_file_errors(tmp_path: Path, capsys):

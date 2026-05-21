@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-reranker-mixedbread"
-version = "0.2.2"
+version = "0.2.3"
 description = "Mixedbread AI managed-API reranker for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.2",
+    "agentforge-core ~= 0.2.3",
 ]
 
 [project.optional-dependencies]

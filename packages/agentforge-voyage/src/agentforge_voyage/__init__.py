@@ -5,6 +5,6 @@ from __future__ import annotations
 from agentforge_voyage._runner import VoyageRunner
 from agentforge_voyage.embedding import VoyageEmbeddingClient
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = ["VoyageEmbeddingClient", "VoyageRunner", "__version__"]

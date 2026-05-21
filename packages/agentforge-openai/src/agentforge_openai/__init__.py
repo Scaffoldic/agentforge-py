@@ -6,7 +6,7 @@ from agentforge_openai._runner import OpenAIRunner
 from agentforge_openai.client import OpenAIClient
 from agentforge_openai.embedding import OpenAIEmbeddingClient
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = [
     "OpenAIClient",
