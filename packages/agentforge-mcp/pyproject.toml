@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-mcp"
-version = "0.2.2"
+version = "0.2.3"
 description = "Model Context Protocol integration for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -26,7 +26,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.2",
+    "agentforge-core ~= 0.2.3",
 ]
 
 # feat-013 v0.2: the `mcp` SDK is required only for the production

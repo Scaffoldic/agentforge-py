@@ -14,6 +14,6 @@ from __future__ import annotations
 from agentforge_memory_postgres.memory import PostgresMemoryStore
 from agentforge_memory_postgres.vector import PostgresVectorStore
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 __all__ = ["PostgresMemoryStore", "PostgresVectorStore", "__version__"]
