@@ -119,6 +119,32 @@ ticked.
 - [ ] Verify the GitHub Release page renders the notes
       correctly; attach any binary artefacts if applicable.
 
+> **Do NOT skip the tag + GitHub Release step even when PyPI
+> publishing is partial.** A common temptation when the
+> new-project quota (see
+> [`feedback_pypi_new_project_quota`](../../../.claude/projects/...))
+> means only a subset of the 34 packages can publish: skip
+> tagging so `release.yml` doesn't fire and 429 on the
+> unpublished ones. **Wrong.** `release.yml` is idempotent
+> (`skip-existing: true` on `pypa/gh-action-pypi-publish`); a
+> partial publish leaves no broken state and re-runs cleanly via
+> `gh workflow run release.yml --ref vX.Y.Z` once the quota
+> window resets. **Always tag**, always create the GitHub
+> Release. Skipping cascades into:
+>
+> - Missing GitHub Releases page for the version.
+> - No `git log vX.Y.0..vX.Y.Z` diff view between releases.
+> - `last_shipped` in `.claude/state/current.md` drifts away
+>   from PyPI reality.
+> - Future contributors can't reproduce which commit shipped
+>   what bytes to PyPI.
+>
+> Manually-uploaded wheels live on PyPI forever once uploaded;
+> the git tag is the only durable record of "commit X became
+> version Y". Bug-007 retro (v0.2.2/v0.2.3, 2026-05-21) shipped
+> *manually* without tags for two releases — recovery required
+> back-dating tags after the fact, which loses the trigger-an-on-time-release.yml-run benefit.
+
 ## 10. Post-release
 
 - [ ] PyPI: each workspace package built and uploaded
