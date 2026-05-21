@@ -13,7 +13,7 @@ from __future__ import annotations
 from agentforge_bedrock.client import BedrockClient, accumulate_stream
 from agentforge_bedrock.embedding import BedrockEmbeddingClient
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 __all__ = [
     "BedrockClient",

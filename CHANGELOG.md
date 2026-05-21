@@ -9,6 +9,87 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-05-21
+
+Validation-fix release. First-time scaffold of the `code-reviewer`
+agent against published v0.2.1 surfaced six framework bugs —
+every step between `agentforge new` and a working LLM API call
+was broken in some way. v0.2.2 fixes all six and adds a
+regression test that locks in scaffolded-agent end-to-end
+runnability.
+
+No new features. No breaking changes. Existing v0.2.1 installs
+without scaffolded agents are unaffected.
+
+### Fixed
+
+- **bug-001 — Scaffolded `pyproject.toml` missing provider
+  package + SDK extra.** `agentforge new --provider <name>`
+  previously rendered `dependencies = ["agentforge-py"]` only,
+  leaving the user with `ModuleError: No LLM provider
+  registered` on the first run. Templates now declare
+  `"agentforge-{{ llm_provider }}[{{ llm_provider }}]"` so the
+  scaffold's `uv sync` lands both the framework wrapper and
+  the vendor SDK in one step. Affects all six templates.
+- **bug-002 — Scaffolded `agentforge.yaml` missing required
+  `agent.strategy`.** No default was wired, so every fresh
+  agent raised `ModuleError: No reasoning strategy provided`
+  on `Agent()` construction. All templates except `research`
+  (which already shipped `plan-execute`) now default to
+  `strategy: "react"`.
+- **bug-003 — Scaffold README documented `python -m <pkg>`
+  but no `__main__.py` shipped.** Replaced with a real CLI
+  entry via `[project.scripts] {{ slug }} = "{{ snake }}.main:main"`
+  in every template's `pyproject.toml`; READMEs updated to use
+  `uv run {{ slug }} "..."`. Cleaner, survives reinstall, and
+  matches how `agentforge` itself ships.
+- **bug-004 — Stale `(when feat-002 ships)` parenthetical** in
+  the missing-strategy error in `Agent._resolve_strategy`.
+  feat-002 (ReActLoop) has shipped; the error now points at
+  the current fix paths.
+- **bug-005 — Install hints referenced `agentforge[<extra>]`
+  but the PyPI distribution is `agentforge-py`.** `pip install
+  agentforge[react]` 404s. Fixed in `agentforge/__init__.py`
+  and `agentforge/agent.py`.
+- **bug-006 — Scaffolded `.env.example` → `.env` never
+  loaded.** Templates now ship `python-dotenv` as a dep and
+  call `load_dotenv()` at module load in `main.py`, so the
+  credentials the README walks users through actually reach
+  the provider SDK.
+
+### Changed
+
+- **`agentforge-py[<provider>]` extras chain to provider SDK
+  extras.** `pip install "agentforge-py[anthropic]"` now
+  resolves to `agentforge-anthropic[anthropic]` (i.e., the
+  `anthropic` SDK lands too), so the public install path
+  documented in the README is end-to-end runnable without
+  scaffolding. Applies to `anthropic`, `openai`, `bedrock`.
+  `ollama`, `litellm`, `voyage` bundle their SDK as a hard
+  dep and are unchanged.
+- **All 34 workspace members bumped to `0.2.2`.** Every
+  `__version__` constant updated. Cross-package pins
+  refreshed from `~= 0.2.1` to `~= 0.2.2`.
+
+### Added
+
+- **`docs/bugs/` directory** with a canonical bug-doc format
+  (status / severity / found-in / found-via + symptom /
+  reproduction / root cause / fix / verification). Seven docs:
+  `README.md` + `bug-001..006`. Institutional memory for the
+  validation findings.
+- **`test_scaffold_resolves_runnable_end_to_end`** regression
+  test in `packages/agentforge/tests/unit/test_new_cmd.py` —
+  locks in bug-001 / 002 / 003 / 006 fixes against future
+  template drift.
+
+### Notes
+
+Existing scaffolded agents on v0.2.1 should upgrade with
+`agentforge upgrade --to 0.2.2` to pull in the template
+fixes — managed files refresh, custom `<!-- agentforge:custom -->`
+sections survive.
+
 ## [0.2.1] — 2026-05-15
 
 First PyPI-published release. v0.2.0 was tagged but never
