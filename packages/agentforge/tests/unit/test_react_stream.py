@@ -96,6 +96,29 @@ async def test_stream_emits_per_step_then_canonical_done() -> None:
 
 
 @pytest.mark.asyncio
+async def test_stream_assistant_turn_round_trips_tool_calls() -> None:
+    """bug-009 (stream path): the assistant Message re-fed on iteration 2
+    must carry the previous iteration's tool_calls so provider clients
+    can emit matching tool-use blocks."""
+    tc = ToolCall(id="t-1", name="search", arguments={"query": "x"})
+    fake = FakeLLMClient(
+        responses=[
+            _llm_response(content="I'll search.", stop_reason="tool_use", tool_calls=(tc,)),
+            _llm_response(content="found it", stop_reason="end_turn"),
+        ],
+    )
+    agent = Agent(model=fake, tools=[_FakeSearchTool()], strategy=ReActLoop())
+
+    async for _ in agent.stream("find x"):
+        pass
+
+    _, iter2_messages, _ = fake.captured[1]
+    assistant_turns = [m for m in iter2_messages if m.role == "assistant"]
+    assert len(assistant_turns) == 1
+    assert assistant_turns[0].tool_calls == (tc,)
+
+
+@pytest.mark.asyncio
 async def test_strategy_stream_yields_strategy_level_done_when_driven_directly() -> None:
     """When a caller drives `strategy.stream(state)` directly (bypassing
     Agent.stream), the strategy's own `done` event surfaces — it carries
