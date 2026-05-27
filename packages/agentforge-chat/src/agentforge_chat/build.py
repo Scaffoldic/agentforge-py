@@ -48,6 +48,7 @@ async def build_chat_session_from_config(
     per_session = None
     idem_window = 60.0
     safety_mode: SafetyMode = "buffer-then-stream"
+    persist_steps = True
     if chat_cfg is not None:
         if chat_cfg.history is not None:
             history = await _build_history(chat_cfg.history.driver, chat_cfg.history.config)
@@ -57,6 +58,7 @@ async def build_chat_session_from_config(
         per_session = chat_cfg.session.per_session_budget_usd
         idem_window = chat_cfg.session.idempotency_window_s
         safety_mode = chat_cfg.session.safety_mode
+        persist_steps = chat_cfg.session.persist_steps
     return ChatSession(
         agent=agent,
         session_id=session_id,
@@ -68,6 +70,7 @@ async def build_chat_session_from_config(
         per_session_budget_usd=per_session,
         idempotency_window_s=idem_window,
         safety_mode=safety_mode,
+        persist_steps=persist_steps,
     )
 
 

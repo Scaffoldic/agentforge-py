@@ -23,6 +23,7 @@ streaming work documented in feat-020 §10 deferrals.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any, Literal
@@ -36,6 +37,7 @@ from agentforge_core.production.exceptions import (
     GuardrailViolation,
 )
 from agentforge_core.values.chat import ChatChunk, ChatResponse, ChatTurn, StreamingEvent
+from agentforge_core.values.messages import ToolCall
 
 from agentforge_chat._idempotency import IdempotencyCache
 from agentforge_chat._locks import (
@@ -74,6 +76,7 @@ class ChatSession:
         on_turn: OnTurnHook | None = None,
         session_lock_factory: SessionLockFactory | None = None,
         safety_mode: SafetyMode = "buffer-then-stream",
+        persist_steps: bool = True,
     ) -> None:
         self._agent = agent
         self._session_id = session_id if session_id is not None else uuid4().hex
@@ -97,6 +100,7 @@ class ChatSession:
         self._turn_count = 0
         self._closed = False
         self._safety_mode: SafetyMode = safety_mode
+        self._persist_steps = persist_steps
 
     # ------------------------------------------------------------------
     # Public properties
@@ -200,13 +204,17 @@ class ChatSession:
         result = await self._agent.run(task)
         duration_ms = int((time.monotonic() - start) * 1000)
         validated_out = await self._agent._guardrails.check_output(self._extract_text(result), ctx)
+        # Persist intermediate tool steps BEFORE the final assistant turn so
+        # the chat history reflects causal ordering (user → tool calls →
+        # tool results → final answer). bug-010.
+        tool_calls = await self._persist_steps_from_result(result)
         assistant_turn = await self._persist_assistant(validated_out, result, duration_ms)
         self._enforce_budgets(result.cost_usd)
         response = ChatResponse(
             content=validated_out,
             turn_id=assistant_turn.id,
             run_id=result.run_id,
-            tool_calls=(),
+            tool_calls=tool_calls,
             tokens_in=result.tokens_in,
             tokens_out=result.tokens_out,
             cost_usd=result.cost_usd,
@@ -253,6 +261,103 @@ class ChatSession:
         if isinstance(output, str):
             return output
         return str(output)
+
+    async def _persist_steps_from_result(self, result: Any) -> tuple[ToolCall, ...]:
+        """Persist `act` and `observe` steps from `result.steps` as
+        `ChatTurn`s ahead of the final assistant turn (bug-010).
+
+        Returns the aggregated tool_calls so the caller can attach them
+        to both the final assistant `ChatTurn.tool_calls` and the
+        synchronous `ChatResponse.tool_calls`. No-op when
+        `self._persist_steps` is False.
+        """
+        if not self._persist_steps:
+            return ()
+        tool_calls: list[ToolCall] = []
+        for step in result.steps:
+            if step.tool_call is None:
+                continue
+            if step.kind == "act":
+                tool_calls.append(step.tool_call)
+                content = (
+                    step.content if isinstance(step.content, str) else json.dumps(step.content)
+                )
+                turn = ChatTurn(
+                    id=uuid4().hex,
+                    session_id=self._session_id,
+                    role="assistant",
+                    content=content,
+                    run_id=result.run_id,
+                    tool_calls=(step.tool_call,),
+                    tokens_in=step.tokens_in,
+                    tokens_out=step.tokens_out,
+                    cost_usd=step.cost_usd,
+                )
+                await self._history.append(turn)
+                if self._on_turn is not None:
+                    self._on_turn(turn)
+            elif step.kind == "observe":
+                content = (
+                    step.content if isinstance(step.content, str) else json.dumps(step.content)
+                )
+                turn = ChatTurn(
+                    id=uuid4().hex,
+                    session_id=self._session_id,
+                    role="tool",
+                    content=content,
+                    tool_call_id=step.tool_call.id,
+                    run_id=result.run_id,
+                )
+                await self._history.append(turn)
+                if self._on_turn is not None:
+                    self._on_turn(turn)
+        return tuple(tool_calls)
+
+    async def _persist_steps_from_events(
+        self,
+        events: list[StreamingEvent],
+        *,
+        run_id: str,
+    ) -> None:
+        """Stream-path mirror of `_persist_steps_from_result` (bug-010).
+
+        Walks the buffered `kind="step"` events captured during
+        `agent.stream(...)`. `tool_call` rides on `event.metadata` as a
+        serialised dict (see `strategies._base._events_for_new_steps`)
+        so the session can persist tool turns without reaching into
+        `AgentState`.
+        """
+        if not self._persist_steps:
+            return
+        for event in events:
+            meta = event.metadata
+            kind = meta.get("kind")
+            tool_call_dict = meta.get("tool_call")
+            if kind not in ("act", "observe") or not isinstance(tool_call_dict, dict):
+                continue
+            tool_call = ToolCall.model_validate(tool_call_dict)
+            content = event.content if isinstance(event.content, str) else json.dumps(event.content)
+            if kind == "act":
+                turn = ChatTurn(
+                    id=uuid4().hex,
+                    session_id=self._session_id,
+                    role="assistant",
+                    content=content,
+                    run_id=run_id,
+                    tool_calls=(tool_call,),
+                )
+            else:  # observe
+                turn = ChatTurn(
+                    id=uuid4().hex,
+                    session_id=self._session_id,
+                    role="tool",
+                    content=content,
+                    tool_call_id=tool_call.id,
+                    run_id=run_id,
+                )
+            await self._history.append(turn)
+            if self._on_turn is not None:
+                self._on_turn(turn)
 
     async def _persist_assistant(
         self,
@@ -343,7 +448,7 @@ class ChatSession:
             async for chunk in self._chunks_for(response):
                 yield chunk
 
-    async def _stream_per_token(  # noqa: PLR0912
+    async def _stream_per_token(  # noqa: PLR0912, PLR0915
         self,
         message: str,
         *,
@@ -370,6 +475,10 @@ class ChatSession:
         assistant_turn_id = uuid4().hex
         cumulative = ""
         run_summary: dict[str, Any] | None = None
+        # Collected step events (bug-010): persisted as ChatTurns after
+        # the stream finishes but before the final assistant turn, so
+        # tool calls + results appear in causal order on disk.
+        step_events: list[StreamingEvent] = []
         start = time.monotonic()
         buffered = self._safety_mode in ("sentence-window", "stream-then-redact")
         window = _SentenceWindowBuffer() if buffered else None
@@ -381,6 +490,8 @@ class ChatSession:
                 # event and complete naturally so `Agent.stream`'s
                 # `finally: reset_run(token)` fires deterministically.
                 continue
+            if event.kind == "step":
+                step_events.append(event)
             if event.kind == "text" and isinstance(event.content, str):
                 if window is not None:
                     for sentence in window.push(event.content):
@@ -431,6 +542,11 @@ class ChatSession:
                 else cumulative
             )
             validated_out = await self._agent._guardrails.check_output(final_text, ctx)
+        # Persist intermediate tool steps before the final assistant
+        # turn (bug-010, stream path mirror of `_persist_steps_from_result`).
+        await self._persist_steps_from_events(
+            step_events, run_id=str(run_summary.get("run_id", ""))
+        )
         assistant_turn = ChatTurn(
             id=assistant_turn_id,
             session_id=self._session_id,
