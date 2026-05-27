@@ -2,7 +2,7 @@
 status: fixed in 0.2.4
 severity: P2
 found-in: v0.2.3
-found-via: live design review for a downstream consumer Generative-UI integration
+found-via: live design review for a Generative-UI integration
 ---
 
 # bug-010 — `ChatSession._run_turn` drops intermediate tool steps from history
@@ -102,11 +102,11 @@ bug-009 is also fixed and assistant turns carry tool_calls in
 ## Notes
 
 - Found while implementing the Generative-UI integration in
-  `a downstream consumer` ([a downstream consumer gap #3]).
+  `a downstream consumer` ([Generative-UI consumer gap]).
 - Workaround: downstream consumers can monkey-patch
   `ChatSession._persist_assistant` to invoke the proposal above.
-  a downstream consumer ships such a patch in
-  `src/downstream_consumer/_patches.py`; they'll remove it when this
+  downstream consumers ship such a patch in
+  `_patches.py`; they'll remove it when this
   bug is fixed in the framework.
 - Related to bug-009 (assistant turns also drop tool_calls). The
   two together mean: even with bug-010 fixed, you can't tell which

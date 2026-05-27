@@ -12,7 +12,7 @@ found-via: post-fix retro
 Bug-009 (ReAct dropped `response.tool_calls` when re-feeding the
 assistant turn) shipped in v0.2.3 with a fully green unit suite. The
 real Bedrock Converse validator rejected every tool-using prompt on
-the first call once `a downstream consumer` integrated the library — but
+the first call once a downstream consumer integrated the library — but
 no test in the workspace ever exercised that path end-to-end.
 
 ## Root cause

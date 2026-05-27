@@ -23,8 +23,8 @@ Both shipped together on a single branch because they're two
 halves of the same problem: bug-009 round-trips `tool_calls`
 in-flight (LLM history within one agent run), bug-010 round-trips
 them across runs (chat history persisted to disk). External
-adopter `a downstream consumer` surfaced both during
-a Generative-UI integration design review on 2026-05-27.
+downstream consumer surfaced both during a Generative-UI
+integration design review on 2026-05-27.
 
 **Branch:** `fix/bug-009-react-loop-drops-tool-calls` (off main @ `97eb35a`). Pushed.
 

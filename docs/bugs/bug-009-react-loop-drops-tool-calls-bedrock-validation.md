@@ -2,7 +2,7 @@
 status: fixed in 0.2.4
 severity: P0
 found-in: v0.2.3
-found-via: live smoke test from a downstream consumer
+found-via: live integration test of a Bedrock-backed agent
 ---
 
 # bug-009 — ReAct loop drops `tool_calls` on assistant messages, Bedrock rejects every tool-using turn
@@ -148,7 +148,7 @@ The same fix shape applies to the OpenAI and Anthropic-direct clients
 ## Notes
 
 - Downstream consumer (a downstream consumer) is shipping a monkey-patch in
-  `src/downstream_consumer/_patches.py` that smuggles `tool_calls` through
+  `_patches.py` that smuggles `tool_calls` through
   the unused `Message.name` field as a JSON sentinel. They will remove
   the patch on framework upgrade to the version that fixes this.
 - The bug is invisible in unit tests that don't actually call Bedrock

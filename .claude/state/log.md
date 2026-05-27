@@ -2809,9 +2809,9 @@ fear was misplaced.
 
 ## 2026-05-27T22:00 — bug-009 + bug-010 fix landed on a single branch (PR pending)
 
-External adopter `a downstream consumer` surfaced two
-related defects in v0.2.3 during a Generative-UI integration
-design review. Both shipped together on
+A downstream consumer surfaced two related defects in v0.2.3
+during a Generative-UI integration design review. Both shipped
+together on
 `fix/bug-009-react-loop-drops-tool-calls` because they're two
 halves of the same problem — `tool_calls` must round-trip both
 in-flight (LLM history within a run) and across runs (chat
