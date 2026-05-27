@@ -1,24 +1,32 @@
 ---
-feature: null
-state: idle
-branch: main
-started_at: null
-last_milestone_at: 2026-05-21
-last_shipped: v0.2.3 — Upgrade-flow fix (bug-007) — PR #55 merged 2026-05-21; tag v0.2.3 pushed; GitHub Release published. 8 of 34 packages live on PyPI.
+feature: bug-009 (ReAct + provider clients must round-trip tool_calls)
+state: in-progress
+branch: fix/bug-009-react-loop-drops-tool-calls
+started_at: 2026-05-27
+last_milestone_at: 2026-05-27
+last_shipped: v0.2.3 — Upgrade-flow fix (bug-007) — PR #55 merged 2026-05-21; tag v0.2.3 pushed; GitHub Release published. 32 of 34 packages live on PyPI (presidio/nemo/llamaguard/evidently added 2026-05-27; phoenix + statsd remain).
 blocker: null
 flags_for_user:
-  - "26 of 34 packages still pending PyPI publish at v0.2.3 (blocked by daily new-project quota). Run `gh workflow run release.yml --ref v0.2.3` once per day until they all land, or until admin@pypi.org grants the quota-increase request."
-  - "v0.2.2 git tag is local-only (intentional — v0.2.3 supersedes). If a complete GitHub Releases history matters, push `git push origin v0.2.2` + `gh release create v0.2.2 --notes-file docs/releases/v0.2.2.md`. Note: pushing the tag triggers another `release.yml` run that burns a daily quota window without landing anything new."
-  - "PR #56 (docs only — bug-008 + pre-release tag callout) is open and ready to merge."
-  - "bug-008 queued for v0.2.4: `_template_version()` renders `0.0.0+unknown` because `importlib.metadata.version()` looks up the import name (`agentforge`) instead of the PyPI distribution name (`agentforge-py`). Cosmetic — affects marker headers and answers.yml, not functionality."
+  - "32 of 34 packages live on PyPI at v0.2.3 (phoenix + statsd pending — final drip window 2026-05-28)."
+  - "bug-009 in flight: P0 reported by a downstream consumer 2026-05-27. ReAct drops response.tool_calls when re-feeding assistant turns; Bedrock Converse rejects every tool-using prompt on iteration 2. Fix touches core + ReAct + bedrock/openai/anthropic clients; targets v0.2.4."
+  - "bug-008 also queued for v0.2.4: `version(\"agentforge\")` should be `version(\"agentforge-py\")` in cli/new_cmd.py and cli/_shared_scaffold.py. ~5 lines. Could fold into the v0.2.4 train or ship in a separate PR."
+  - "v0.2.2 git tag is local-only (intentional — v0.2.3 supersedes). Pushing it burns a quota window without landing anything new."
   - "Production PyPI token still sitting in `~/.pypirc [pypi]` (one-time rescue path from 2026-05-20). Should be revoked on PyPI's web UI when convenient."
 ---
 
 ## Active feature
 
-**None.** v0.2.3 shipped 2026-05-21. Pick the next item when
-ready — either drip the 26 pending packages, land bug-008 →
-v0.2.4, or move to the v0.3 backlog.
+**bug-009 — ReAct + provider clients must round-trip `tool_calls`.**
+
+Plan approved 2026-05-27. Targeting v0.2.4. Six implementation
+chunks: (1) core `Message.tool_calls` field, (2) ReActLoop run +
+stream populate, (3) `_message_to_<provider>` branches for bedrock /
+openai / anthropic, (4) regression tests per layer, (5) docs +
+release plumbing, (6) file bug-010 follow-up for the conformance-
+harness gap.
+
+Plan file: `/Users/khemchandjoshi/.claude/plans/cosmic-puzzling-shell.md`.
+Branch: `fix/bug-009-react-loop-drops-tool-calls` (off main @ 97eb35a).
 
 ## Last shipped
 
