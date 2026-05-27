@@ -9,6 +9,43 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.2.4] — 2026-05-27
+
+Tool-call round-trip fix. Bug-009 (P0) made every tool-using ReAct
+prompt on Bedrock fail on iteration 2 — `Message` had no
+`tool_calls` field, so `ReActLoop` dropped them when re-feeding the
+assistant turn, and provider clients emitted no native tool-use
+blocks. Converse rejected the orphaned `toolResult`. Same latent
+shape was present in OpenAI and Anthropic-direct; all three are
+fixed in this release.
+
+### Fixed
+
+- **bug-009 — ReAct dropped `tool_calls` on assistant turns; Bedrock
+  rejected every tool-using prompt on iteration 2.** Four packages
+  touched:
+  - `agentforge-core` — `Message` gains `tool_calls:
+    tuple[ToolCall, ...] = ()` (frozen, default-empty, backwards-
+    compatible with every existing call site).
+  - `agentforge` — `ReActLoop.run` and `ReActLoop.stream` populate
+    `Message.tool_calls` from `response.tool_calls` when appending
+    the assistant turn.
+  - `agentforge-bedrock` — `_message_to_bedrock` emits Converse
+    `toolUse` content blocks for assistant turns carrying
+    `tool_calls`.
+  - `agentforge-openai` — `_message_to_openai` emits the parallel
+    `tool_calls` array with JSON-encoded `arguments` per Chat
+    Completions schema.
+  - `agentforge-anthropic` — `_message_to_anthropic` emits typed
+    `tool_use` content blocks. Regression tests added per layer.
+
+### Added
+
+- **bug-011 (filed, not fixed)** — Provider conformance harness
+  testing-coverage gap. Bug-009 shipped because the unit suite uses
+  fakes that accept ANY payload; no test in the workspace hits a
+  real provider validator. Tracked for v0.3.
+
 ## [0.2.3] — 2026-05-21
 
 Upgrade-flow fix. v0.2.2's scaffold fixes only reached new
