@@ -1,32 +1,67 @@
 ---
-feature: bug-009 (ReAct + provider clients must round-trip tool_calls)
-state: in-progress
+feature: bug-009 + bug-010 (tool_calls round-trip end-to-end)
+state: pr-pending
 branch: fix/bug-009-react-loop-drops-tool-calls
 started_at: 2026-05-27
 last_milestone_at: 2026-05-27
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007) — PR #55 merged 2026-05-21; tag v0.2.3 pushed; GitHub Release published. 32 of 34 packages live on PyPI (presidio/nemo/llamaguard/evidently added 2026-05-27; phoenix + statsd remain).
 blocker: null
 flags_for_user:
-  - "32 of 34 packages live on PyPI at v0.2.3 (phoenix + statsd pending — final drip window 2026-05-28)."
-  - "bug-009 in flight: P0 reported by a downstream consumer 2026-05-27. ReAct drops response.tool_calls when re-feeding assistant turns; Bedrock Converse rejects every tool-using prompt on iteration 2. Fix touches core + ReAct + bedrock/openai/anthropic clients; targets v0.2.4."
-  - "bug-008 also queued for v0.2.4: `version(\"agentforge\")` should be `version(\"agentforge-py\")` in cli/new_cmd.py and cli/_shared_scaffold.py. ~5 lines. Could fold into the v0.2.4 train or ship in a separate PR."
+  - "PR NOT OPENED YET. Branch fix/bug-009-react-loop-drops-tool-calls pushed with 6 green commits covering bug-009 + bug-010. URL: https://github.com/Scaffoldic/agentforge-py/pull/new/fix/bug-009-react-loop-drops-tool-calls. Suggested title: \"fix: round-trip tool_calls end-to-end (bug-009 + bug-010)\"."
+  - "9 NEW untracked bug docs filed by user in parallel during this session: bug-012 through bug-020 in docs/bugs/. Not reviewed or committed yet — user WIP. (The earlier bug-011 collision was self-resolved: the runtime-doesnt-wire-mcp-bridge content is now at bug-020.)"
+  - "32 of 34 packages live on PyPI at v0.2.3 (phoenix + statsd pending — final drip window 2026-05-28 ≈ 11:05 UTC)."
+  - "bug-008 also queued for v0.2.4 (NOT IN THIS BRANCH): `version(\"agentforge\")` should be `version(\"agentforge-py\")` in cli/new_cmd.py and cli/_shared_scaffold.py. ~5 lines. Either fold into the v0.2.4 train (add a 7th commit) or ship as a separate small PR before tagging v0.2.4."
   - "v0.2.2 git tag is local-only (intentional — v0.2.3 supersedes). Pushing it burns a quota window without landing anything new."
   - "Production PyPI token still sitting in `~/.pypirc [pypi]` (one-time rescue path from 2026-05-20). Should be revoked on PyPI's web UI when convenient."
 ---
 
 ## Active feature
 
-**bug-009 — ReAct + provider clients must round-trip `tool_calls`.**
+**bug-009 + bug-010 — tool_calls round-trip end-to-end.**
 
-Plan approved 2026-05-27. Targeting v0.2.4. Six implementation
-chunks: (1) core `Message.tool_calls` field, (2) ReActLoop run +
-stream populate, (3) `_message_to_<provider>` branches for bedrock /
-openai / anthropic, (4) regression tests per layer, (5) docs +
-release plumbing, (6) file bug-010 follow-up for the conformance-
-harness gap.
+Both shipped together on a single branch because they're two
+halves of the same problem: bug-009 round-trips `tool_calls`
+in-flight (LLM history within one agent run), bug-010 round-trips
+them across runs (chat history persisted to disk). External
+adopter `a downstream consumer` surfaced both during
+a Generative-UI integration design review on 2026-05-27.
 
-Plan file: `/Users/khemchandjoshi/.claude/plans/cosmic-puzzling-shell.md`.
-Branch: `fix/bug-009-react-loop-drops-tool-calls` (off main @ 97eb35a).
+**Branch:** `fix/bug-009-react-loop-drops-tool-calls` (off main @ `97eb35a`). Pushed.
+
+**6 commits, all green through full pre-commit:**
+
+| # | Commit | Bug | Scope |
+|---|---|---|---|
+| 1 | `294ab12` | 009 | core `Message.tool_calls` + ReActLoop populate + tests |
+| 2 | `23be0e0` | 009 | bedrock/openai/anthropic `_message_to_<provider>` + tests |
+| 3 | `638700a` | 009 | bug-009 status → fixed, new bug-011 (provider-conformance-harness) follow-up, CHANGELOG |
+| 4 | `a53d68d` | 009 | workspace bump 0.2.3 → 0.2.4 (34 pyprojects + uv.lock + state/current.md) |
+| 5 | `74e02eb` | 010 | `persist_steps` schema + helpers + StreamingEvent metadata enrichment + ChatResponse.tool_calls population |
+| 6 | `f25b7f8` | 010 | 4 regression tests + bug-010 doc → fixed + CHANGELOG amend |
+
+**Test count:** 1318 → 1332 (+14 regression tests across both bugs).
+
+**Plan file:** `/Users/khemchandjoshi/.claude/plans/cosmic-puzzling-shell.md`.
+
+## Pickup on resume (2026-05-28)
+
+1. **Triage the 9 new bug docs (bug-012 … bug-020).** They appeared
+   untracked during this session. Review each, decide which need
+   fixes in v0.2.4 vs deferred, commit the doc files in a `docs:`
+   chunk (likely a separate PR from the bug-009+010 branch). At
+   minimum bug-020 (runtime-doesnt-wire-mcp-bridge) was previously
+   colliding with the bug-011 slot and is now resolved.
+2. **Decide bug-008 inclusion.** ~5-line fix
+   (`version("agentforge")` → `version("agentforge-py")` in
+   `cli/new_cmd.py` + `cli/_shared_scaffold.py`). Either fold into
+   this branch as a 7th commit, or ship as a separate small PR before
+   tagging v0.2.4.
+3. **Open the PR.** `gh pr create` against main with the title above.
+4. **Drip-publish phoenix + statsd at v0.2.3.** Final two packages.
+   Window opens ≈ 2026-05-28 11:05 UTC. See `PYPI_PUBLISH_TRACKER.md`.
+5. **After v0.2.3 drip completes AND bug-009+010 PR merges:** tag
+   `v0.2.4`, push, run `release.yml`. 34 packages already version-
+   bumped on this branch.
 
 ## Last shipped
 
