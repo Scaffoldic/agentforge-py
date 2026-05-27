@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
-from agentforge_core.values.messages import Message, ToolSpec
+from agentforge_core.values.messages import Message, ToolCall, ToolSpec
 from agentforge_openai import OpenAIClient
 from agentforge_openai._inmem_runner import FakeOpenAIRunner
 from agentforge_openai._pricing import chat_cost_usd
@@ -225,6 +227,46 @@ async def test_tool_role_messages_pass_with_tool_call_id(
     assert sent["role"] == "tool"
     assert sent["tool_call_id"] == "call_1"
     assert sent["content"] == "42"
+
+
+@pytest.mark.asyncio
+async def test_assistant_turn_with_tool_calls_emits_openai_tool_calls(
+    client: OpenAIClient,
+    fake_runner: FakeOpenAIRunner,
+) -> None:
+    """bug-009: an assistant Message carrying framework tool_calls must
+    serialise to OpenAI's `tool_calls` array with JSON-encoded arguments,
+    so the subsequent role="tool" message pairs cleanly via tool_call_id."""
+    fake_runner.set_chat_response(
+        {
+            "model": "gpt-4o-mini",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": ""},
+                    "finish_reason": "stop",
+                },
+            ],
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        },
+    )
+    await client.call(
+        system="",
+        messages=[
+            Message(
+                role="assistant",
+                content="calling",
+                tool_calls=(ToolCall(id="call_1", name="search", arguments={"q": "x"}),),
+            ),
+            Message(role="tool", content="result", tool_call_id="call_1"),
+        ],
+    )
+    sent = fake_runner.chat_calls[0].messages[0]
+    assert sent["role"] == "assistant"
+    assert sent["tool_calls"][0]["id"] == "call_1"
+    assert sent["tool_calls"][0]["type"] == "function"
+    assert sent["tool_calls"][0]["function"]["name"] == "search"
+    assert json.loads(sent["tool_calls"][0]["function"]["arguments"]) == {"q": "x"}
 
 
 @pytest.mark.asyncio
