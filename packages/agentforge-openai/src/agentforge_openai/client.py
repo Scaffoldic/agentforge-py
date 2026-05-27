@@ -14,6 +14,7 @@ Finish reasons normalised:
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
@@ -298,6 +299,24 @@ def _message_to_openai(message: Message) -> dict[str, Any]:
     if message.role == "system":
         # Should be hoisted by the caller; defensive passthrough.
         return {"role": "system", "content": message.content}
+    if message.role == "assistant" and message.tool_calls:
+        # Round-trip tool_calls so the subsequent role="tool" message
+        # pairs cleanly via tool_call_id (bug-009).
+        return {
+            "role": "assistant",
+            "content": message.content or None,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.name,
+                        "arguments": json.dumps(dict(tc.arguments)),
+                    },
+                }
+                for tc in message.tool_calls
+            ],
+        }
     return {"role": message.role, "content": message.content}
 
 

@@ -343,6 +343,22 @@ def _message_to_anthropic(message: Message) -> dict[str, Any]:
     if message.role == "system":
         # Should be hoisted by the caller; defensive fallback.
         return {"role": "user", "content": message.content}
+    if message.role == "assistant" and message.tool_calls:
+        # Round-trip tool_calls into Anthropic tool_use content blocks so
+        # the next iteration's tool_result pairs by id (bug-009).
+        blocks: list[dict[str, Any]] = []
+        if message.content:
+            blocks.append({"type": "text", "text": message.content})
+        blocks.extend(
+            {
+                "type": "tool_use",
+                "id": tc.id,
+                "name": tc.name,
+                "input": dict(tc.arguments),
+            }
+            for tc in message.tool_calls
+        )
+        return {"role": "assistant", "content": blocks}
     return {"role": message.role, "content": message.content}
 
 

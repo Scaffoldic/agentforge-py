@@ -608,6 +608,23 @@ def _message_to_bedrock(message: Message) -> dict[str, Any]:
     if message.role == "system":
         # Should be hoisted by the caller; keep a defensive fallback.
         return {"role": "user", "content": [{"text": message.content}]}
+    if message.role == "assistant" and message.tool_calls:
+        # Round-trip tool_calls into Converse toolUse blocks so the next
+        # iteration's toolResult pairs cleanly (bug-009).
+        content: list[dict[str, Any]] = []
+        if message.content:
+            content.append({"text": message.content})
+        content.extend(
+            {
+                "toolUse": {
+                    "toolUseId": tc.id,
+                    "name": tc.name,
+                    "input": dict(tc.arguments),
+                }
+            }
+            for tc in message.tool_calls
+        )
+        return {"role": "assistant", "content": content}
     return {
         "role": message.role,
         "content": [{"text": message.content}],

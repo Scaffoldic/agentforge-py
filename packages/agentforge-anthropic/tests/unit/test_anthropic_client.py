@@ -7,7 +7,7 @@ from agentforge_anthropic import AnthropicClient
 from agentforge_anthropic._inmem_runner import FakeAnthropicRunner
 from agentforge_anthropic._pricing import compute_cost_usd
 from agentforge_core.production.exceptions import CapabilityNotSupported
-from agentforge_core.values.messages import Message, ToolSpec
+from agentforge_core.values.messages import Message, ToolCall, ToolSpec
 
 
 def _user(text: str) -> Message:
@@ -219,6 +219,45 @@ async def test_tool_role_messages_encode_as_user_tool_result(
     assert sent["content"][0]["type"] == "tool_result"
     assert sent["content"][0]["tool_use_id"] == "toolu_xyz"
     assert sent["content"][0]["content"] == "42"
+
+
+@pytest.mark.asyncio
+async def test_assistant_turn_with_tool_calls_emits_tool_use_blocks(
+    client: AnthropicClient,
+    fake_runner: FakeAnthropicRunner,
+) -> None:
+    """bug-009: an assistant Message carrying framework tool_calls must
+    serialise to Anthropic `tool_use` content blocks, paired by id with
+    the subsequent tool_result."""
+    fake_runner.set_response(
+        {
+            "model": "claude-sonnet-4-7",
+            "content": [{"type": "text", "text": ""}],
+            "stop_reason": "end_turn",
+            "usage": {"input_tokens": 0, "output_tokens": 0},
+        },
+    )
+    await client.call(
+        system="",
+        messages=[
+            _user("ping example.com"),
+            Message(
+                role="assistant",
+                content="pinging",
+                tool_calls=(
+                    ToolCall(id="toolu_xyz", name="ping", arguments={"target": "example.com"}),
+                ),
+            ),
+            Message(role="tool", content='{"ok": true}', tool_call_id="toolu_xyz"),
+        ],
+    )
+    sent_assistant = fake_runner.create_calls[0].messages[1]
+    assert sent_assistant["role"] == "assistant"
+    tool_use_blocks = [b for b in sent_assistant["content"] if b.get("type") == "tool_use"]
+    assert len(tool_use_blocks) == 1
+    assert tool_use_blocks[0]["id"] == "toolu_xyz"
+    assert tool_use_blocks[0]["name"] == "ping"
+    assert tool_use_blocks[0]["input"] == {"target": "example.com"}
 
 
 # ----------------------------------------------------------------------
