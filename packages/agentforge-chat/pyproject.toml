@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-chat"
-version = "0.2.3"
+version = "0.2.4"
 description = "Chat-agent runtime (ChatSession + history drivers + truncation) for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.3",
-    "agentforge-py ~= 0.2.3",
+    "agentforge-core ~= 0.2.4",
+    "agentforge-py ~= 0.2.4",
 ]
 
 [project.optional-dependencies]
