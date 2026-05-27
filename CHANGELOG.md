@@ -11,16 +11,44 @@ release tag bumps every workspace member to the same minor version.
 
 ## [0.2.4] — 2026-05-27
 
-Tool-call round-trip fix. Bug-009 (P0) made every tool-using ReAct
-prompt on Bedrock fail on iteration 2 — `Message` had no
-`tool_calls` field, so `ReActLoop` dropped them when re-feeding the
-assistant turn, and provider clients emitted no native tool-use
-blocks. Converse rejected the orphaned `toolResult`. Same latent
-shape was present in OpenAI and Anthropic-direct; all three are
-fixed in this release.
+Tool-call round-trip fix. Two related bugs surfaced by external
+adopter `a downstream consumer` ship together because they're two halves
+of the same problem — tool_calls must survive both the in-flight
+LLM history (bug-009) and the persisted chat history (bug-010).
+
+Bug-009 (P0) made every tool-using ReAct prompt on Bedrock fail on
+iteration 2 — `Message` had no `tool_calls` field, so `ReActLoop`
+dropped them when re-feeding the assistant turn, and provider
+clients emitted no native tool-use blocks. Converse rejected the
+orphaned `toolResult`. Same latent shape was present in OpenAI and
+Anthropic-direct; all three are fixed.
+
+Bug-010 (P2) dropped intermediate tool steps from
+`ChatHistoryStore`, so Generative-UI clients couldn't render tool
+activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-010 — `ChatSession` dropped intermediate tool steps from
+  persisted history.** Tool-using chats stored only the user prompt
+  and final assistant text; intermediate `act` / `observe` steps
+  never reached `ChatHistoryStore`, so Generative-UI clients
+  couldn't render tool activity and the next turn's prompt lost
+  prior tool context. Fix:
+  - New `ChatSessionConfig.persist_steps: bool = True` (and matching
+    `ChatSession(persist_steps=...)` kwarg). Default-on.
+  - `ChatSession._persist_steps_from_result` walks `result.steps`
+    and persists `act` → `ChatTurn(role="assistant",
+    tool_calls=(...))` and `observe` →
+    `ChatTurn(role="tool", tool_call_id=...)`. Called in the
+    synchronous `.send()` path before the final assistant turn.
+  - `ChatSession._persist_steps_from_events` mirrors the same shape
+    on the streaming path; relies on a new `tool_call` field added
+    to `StreamingEvent.metadata` by
+    `strategies._base._events_for_new_steps` (additive,
+    backwards-compatible).
+  - `ChatResponse.tool_calls` (sync API) is now populated from the
+    aggregated act-step tool calls instead of the hardcoded `()`.
 - **bug-009 — ReAct dropped `tool_calls` on assistant turns; Bedrock
   rejected every tool-using prompt on iteration 2.** Four packages
   touched:
