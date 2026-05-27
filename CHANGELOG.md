@@ -11,10 +11,10 @@ release tag bumps every workspace member to the same minor version.
 
 ## [0.2.4] — 2026-05-27
 
-Tool-call round-trip fix. Two related bugs surfaced by external
-adopter `a downstream consumer` ship together because they're two halves
-of the same problem — tool_calls must survive both the in-flight
-LLM history (bug-009) and the persisted chat history (bug-010).
+Tool-call round-trip fix. Two related bugs surfaced by a downstream
+consumer integration ship together because they're two halves of
+the same problem — tool_calls must survive both the in-flight LLM
+history (bug-009) and the persisted chat history (bug-010).
 
 Bug-009 (P0) made every tool-using ReAct prompt on Bedrock fail on
 iteration 2 — `Message` had no `tool_calls` field, so `ReActLoop`
