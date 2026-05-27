@@ -269,6 +269,14 @@ class ChatSessionConfig(BaseModel):
     per_session_budget_usd: float | None = Field(default=None, ge=0.0)
     idempotency_window_s: float = Field(default=60.0, ge=0.0)
     concurrency: Literal["queue", "reject", "replace"] = "queue"
+    persist_steps: bool = True
+    """When True (default), intermediate `act` / `observe` agent steps
+    are persisted to `ChatHistoryStore` as `role="assistant"` (with
+    `tool_calls`) and `role="tool"` (with `tool_call_id`) turns
+    respectively, in addition to the final assistant turn. Tool-using
+    chat agents need this on for the next turn's prompt to reflect
+    what tools ran. Opt out by setting to False when an external
+    consumer reconstructs history from another source (bug-010)."""
     safety_mode: Literal["buffer-then-stream", "sentence-window", "stream-then-redact"] = (
         "buffer-then-stream"
     )

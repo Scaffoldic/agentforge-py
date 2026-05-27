@@ -54,18 +54,29 @@ log = logging.getLogger(__name__)
 def _events_for_new_steps(steps: list[Step], before: int) -> list[StreamingEvent]:
     """Build ``step`` `StreamingEvent`s for every step appended since
     the ``before`` index. Keeps the streaming-side rendering of state
-    deltas separate from the strategy's recording semantics."""
-    return [
-        StreamingEvent(
-            kind="step",
-            content=step.content,
-            metadata={
-                "iteration": step.iteration,
-                "kind": step.kind,
-            },
+    deltas separate from the strategy's recording semantics.
+
+    ``tool_call`` is mirrored into metadata as a serialised dict when
+    present, so streaming consumers (e.g. `ChatSession._stream_per_token`,
+    bug-010) can persist tool turns alongside the final assistant turn
+    without needing access to the underlying `AgentState`.
+    """
+    out: list[StreamingEvent] = []
+    for step in steps[before:]:
+        metadata: dict[str, Any] = {
+            "iteration": step.iteration,
+            "kind": step.kind,
+        }
+        if step.tool_call is not None:
+            metadata["tool_call"] = step.tool_call.model_dump()
+        out.append(
+            StreamingEvent(
+                kind="step",
+                content=step.content,
+                metadata=metadata,
+            )
         )
-        for step in steps[before:]
-    ]
+    return out
 
 
 def get_runtime(state: AgentState) -> RuntimeContext:
