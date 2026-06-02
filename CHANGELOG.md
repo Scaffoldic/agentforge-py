@@ -9,7 +9,18 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
-## [0.2.4] — 2026-05-27
+## [0.2.4] — unreleased
+
+Tool-call round-trip fix **plus the MCP runtime-wiring cluster** —
+both sets of defects surfaced from the first live Bedrock-backed MCP
+integration and ship together.
+
+MCP runtime wiring (bug-020 + bug-014): `modules.protocols.mcp` was
+validated but never instantiated, so the documented config was a
+no-op — no subprocess spawned, no MCP tools in the agent's tool
+list. `build_agent_from_config` now resolves `modules.protocols`,
+starts each handler, and merges its tools into the agent;
+`MCPBridge.from_config` no longer breaks inside a running event loop.
 
 Tool-call round-trip fix. Two related bugs surfaced by a downstream
 consumer integration ship together because they're two halves of
@@ -27,8 +38,37 @@ Bug-010 (P2) dropped intermediate tool steps from
 `ChatHistoryStore`, so Generative-UI clients couldn't render tool
 activity and the next chat turn's prompt lost prior tool context.
 
+### Added
+
+- **`agentforge_core.contracts.protocol_bridge.ProtocolBridge`** — a
+  `@runtime_checkable` Protocol (`tools` / `start` / `close`) for
+  `modules.protocols` handlers, so the runtime wires them without
+  `agentforge` importing the optional handler packages.
+- **`Agent(protocol_bridges=...)`** — additive constructor kwarg
+  (safe default); the agent closes every protocol bridge on
+  `Agent.close()`.
+- **`MCPBridge.attach_local_tools(tools)` + `MCPServer.set_tools(tools)`**
+  — inject the agent's own tools into an exposed server after
+  construction (closes a previously-undefined-method loose end).
+
 ### Fixed
 
+- **bug-020 — runtime never wired `modules.protocols.mcp`.**
+  Declaring an MCP server in `agentforge.yaml` was a no-op: no
+  subprocess spawned, no MCP tools in `agent.tools`. The config was
+  validated then ignored. `build_agent_from_config` now resolves the
+  `protocols` category, builds each handler via `from_config`, awaits
+  `start()`, merges its tools (alongside native `agent.tools`, which
+  this path also previously failed to wire) into `Agent(tools=...)`,
+  and closes the started bridges on `Agent.close()`. Server-side
+  `expose` is rejected with a clear error for now (it would hijack the
+  agent process's stdio); expose runtime-wiring is a follow-up.
+- **bug-014 — `MCPBridge.from_config` raised inside a running event
+  loop.** It eagerly built clients via
+  `get_event_loop().run_until_complete`, so any async startup hook hit
+  `RuntimeError: this event loop is already running`. `from_config` is
+  now pure data; the async `start()` materialises the clients. A
+  list-form `command:` (e.g. `["uv", "run", "x"]`) is now accepted.
 - **bug-010 — `ChatSession` dropped intermediate tool steps from
   persisted history.** Tool-using chats stored only the user prompt
   and final assistant text; intermediate `act` / `observe` steps

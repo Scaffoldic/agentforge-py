@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 from agentforge import Agent, InMemoryStore
@@ -12,6 +12,7 @@ from agentforge.cli._build import (
     build_agent_from_config,
     build_evaluators_from_config,
     build_memory_from_config,
+    build_protocols_from_config,
     load_and_build,
 )
 from agentforge_core.config.schema import (
@@ -20,13 +21,18 @@ from agentforge_core.config.schema import (
     EvaluatorEntry,
     MemoryModuleConfig,
     ModulesConfig,
+    ObservabilityEntry,
     ProviderConfig,
 )
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.strategy import ReasoningStrategy
+from agentforge_core.contracts.tool import Tool
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.resolver import Resolver, register
 from agentforge_core.values.claim import Claim
+from agentforge_core.values.state import AgentState
+from pydantic import BaseModel
 
 
 class _FakeMemory(MemoryStore):
@@ -225,3 +231,135 @@ async def test_in_memory_store_used_when_no_module_section() -> None:
 def _silence_unused() -> Agent | Resolver:
     """Keep Agent/Resolver imports live for ruff (used implicitly)."""
     raise NotImplementedError
+
+
+# ----------------------------------------------------------------------
+# feat-013 / bug-020 — modules.protocols wiring
+# ----------------------------------------------------------------------
+
+
+class _ProtoInput(BaseModel):
+    pass
+
+
+class _ProtoTool(Tool):
+    name = "proto.echo"
+    description = "Tool contributed by a protocol bridge."
+    input_schema = _ProtoInput
+
+    async def run(self, **kwargs: Any) -> str:
+        del kwargs
+        return "ok"
+
+
+class _FakeBridge:
+    """Structurally satisfies `ProtocolBridge` (tools / start / close)."""
+
+    built: ClassVar[list[_FakeBridge]] = []
+
+    def __init__(self) -> None:
+        self._tools: list[Tool] = []
+        self.started = False
+        self.closed = False
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> _FakeBridge:
+        del config
+        inst = cls()
+        cls.built.append(inst)
+        return inst
+
+    @property
+    def tools(self) -> list[Tool]:
+        return list(self._tools)
+
+    async def start(self) -> None:
+        self.started = True
+        self._tools = [_ProtoTool()]
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _NotABridge:
+    """Resolves but doesn't implement the ProtocolBridge surface."""
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> _NotABridge:
+        del config
+        return cls()
+
+
+class _NoopStrategy(ReasoningStrategy):
+    async def run(self, state: AgentState) -> AgentState:
+        return state
+
+
+@pytest.mark.asyncio
+async def test_build_protocols_resolves_starts_and_collects_tools() -> None:
+    register("protocols", "build-fake-proto")(_FakeBridge)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        modules=ModulesConfig(protocols=[ObservabilityEntry(name="build-fake-proto")]),
+    )
+    tools, bridges = await build_protocols_from_config(cfg)
+    assert [type(t).name for t in tools] == ["proto.echo"]
+    assert len(bridges) == 1
+    assert bridges[0].started is True  # type: ignore[attr-defined]
+
+
+@pytest.mark.asyncio
+async def test_build_protocols_empty_when_none_configured() -> None:
+    cfg = AgentForgeConfig(agent=AgentConfig(), modules=ModulesConfig())
+    tools, bridges = await build_protocols_from_config(cfg)
+    assert tools == []
+    assert bridges == []
+
+
+@pytest.mark.asyncio
+async def test_build_protocols_rejects_server_side_expose() -> None:
+    register("protocols", "build-expose-proto")(_FakeBridge)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        modules=ModulesConfig(
+            protocols=[
+                ObservabilityEntry(
+                    name="build-expose-proto",
+                    config={"expose": {"enabled": True}},
+                )
+            ]
+        ),
+    )
+    with pytest.raises(ModuleError, match="expose"):
+        await build_protocols_from_config(cfg)
+
+
+@pytest.mark.asyncio
+async def test_build_protocols_errors_when_not_a_bridge() -> None:
+    register("protocols", "build-not-a-bridge")(_NotABridge)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        modules=ModulesConfig(protocols=[ObservabilityEntry(name="build-not-a-bridge")]),
+    )
+    with pytest.raises(ModuleError, match="does not implement ProtocolBridge"):
+        await build_protocols_from_config(cfg)
+
+
+@pytest.mark.asyncio
+async def test_build_agent_wires_protocol_tools_and_closes_bridges() -> None:
+    _FakeBridge.built.clear()
+    register("protocols", "build-agent-proto")(_FakeBridge)
+    register("strategies", "build-noop-strat")(_NoopStrategy)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(strategy="build-noop-strat"),
+        modules=ModulesConfig(protocols=[ObservabilityEntry(name="build-agent-proto")]),
+    )
+    agent = await build_agent_from_config(cfg)
+    # The bridge's tool is merged into the agent's tool list.
+    assert "proto.echo" in [type(t).name for t in agent.tools]
+    # Bridge was started by the builder and is closed on agent.close().
+    bridge = _FakeBridge.built[-1]
+    assert bridge.started is True
+    assert bridge.closed is False
+    await agent.close()
+    assert bridge.closed is True
