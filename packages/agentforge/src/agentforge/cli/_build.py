@@ -20,6 +20,7 @@ deterministic exit codes (per feat-017 §4 — config invalid → 2).
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -30,6 +31,7 @@ from agentforge_core.contracts.evaluator import Evaluator
 from agentforge_core.contracts.graph_store import GraphStore
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.protocol_bridge import ProtocolBridge
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.vector_store import VectorStore
 from agentforge_core.production.exceptions import ModuleError
@@ -82,18 +84,35 @@ async def build_agent_from_config(
     llm = _resolve_llm(config)
     strategy = config.agent.strategy if isinstance(config.agent.strategy, str) else None
 
-    return Agent(
-        model=llm,
-        memory=memory if memory is not None else InMemoryStore(),
-        evaluators=evaluators,
-        strategy=strategy,
-        retriever=retriever,
-        system_prompt=config.agent.system_prompt,
-        budget_usd=config.agent.budget.usd,
-        max_iterations=config.agent.max_iterations,
-        record_runs=memory if enable_recording and memory is not None else None,
-        pipeline=pipeline,
-    )
+    # feat-013 (bug-020): wire `modules.protocols` — resolve + start each
+    # handler (e.g. the MCP bridge), merge its tools with the native
+    # `agent.tools`, and hand the started bridges to the Agent so they're
+    # closed on `Agent.close()`. `build_protocols_from_config` has already
+    # awaited `start()` for every bridge it returns.
+    native_tools = build_tools_from_config(config)
+    mcp_tools, protocol_bridges = await build_protocols_from_config(config)
+    all_tools = [*native_tools, *mcp_tools]
+
+    try:
+        return Agent(
+            model=llm,
+            tools=all_tools or None,
+            memory=memory if memory is not None else InMemoryStore(),
+            evaluators=evaluators,
+            strategy=strategy,
+            retriever=retriever,
+            system_prompt=config.agent.system_prompt,
+            budget_usd=config.agent.budget.usd,
+            max_iterations=config.agent.max_iterations,
+            record_runs=memory if enable_recording and memory is not None else None,
+            pipeline=pipeline,
+            protocol_bridges=protocol_bridges,
+        )
+    except BaseException:
+        # Agent construction failed after bridges were started — don't
+        # leak the open transports / spawned subprocesses.
+        await _close_bridges(protocol_bridges)
+        raise
 
 
 def build_memory_from_config(config: AgentForgeConfig) -> MemoryStore | None:
@@ -259,6 +278,83 @@ def build_tools_from_config(config: AgentForgeConfig) -> list[Tool]:
     return tools
 
 
+async def build_protocols_from_config(
+    config: AgentForgeConfig,
+) -> tuple[list[Tool], list[ProtocolBridge]]:
+    """Resolve + start every `modules.protocols` handler (feat-013).
+
+    For each entry: resolve its name under the ``protocols`` resolver
+    category, build the handler via its ``from_config(config)``
+    classmethod, ``await start()`` to open connections and discover
+    tools, then collect the merged tool list. The started bridges are
+    returned so the caller can ``close()`` them on agent teardown.
+
+    Returns an empty ``([], [])`` when no protocols are configured.
+
+    Raises:
+        ModuleError: a protocol isn't registered, lacks a
+            ``from_config`` classmethod, doesn't implement
+            `ProtocolBridge`, or requests server-side ``expose`` (not
+            wired into the runtime yet — see `_reject_unsupported_expose`).
+    """
+    from agentforge_core.contracts.tool import Tool as ToolBase  # noqa: PLC0415
+
+    tools: list[ToolBase] = []
+    bridges: list[ProtocolBridge] = []
+    for entry in config.modules.protocols:
+        _reject_unsupported_expose(entry.name, entry.config)
+        cls = _resolve_class("protocols", entry.name)
+        from_config = getattr(cls, "from_config", None)
+        if not callable(from_config):
+            msg = (
+                f"Resolved protocol {entry.name!r} ({cls.__name__}) has no "
+                f"from_config(config) classmethod."
+            )
+            raise ModuleError(msg)
+        bridge = from_config(entry.config)
+        if not isinstance(bridge, ProtocolBridge):
+            msg = (
+                f"Resolved protocol {entry.name!r} ({cls.__name__}) does not "
+                f"implement ProtocolBridge (needs tools / start / close)."
+            )
+            raise ModuleError(msg)
+        try:
+            await bridge.start()
+        except BaseException:
+            # A later bridge failing must not leak earlier ones.
+            await _close_bridges(bridges)
+            raise
+        bridges.append(bridge)
+        tools.extend(bridge.tools)
+    return tools, bridges
+
+
+def _reject_unsupported_expose(name: str, cfg: dict[str, Any]) -> None:
+    """Fail loud on server-side `expose`, which the runtime can't wire yet.
+
+    Auto-serving an MCP server from inside the agent process would hijack
+    the process's stdio. Consume-only is supported; expose runtime-wiring
+    is a follow-up (tracked alongside enh-001, MCP HTTP server transport).
+    """
+    expose = cfg.get("expose") or {}
+    if expose.get("enabled"):
+        msg = (
+            f"modules.protocols[{name!r}]: server-side `expose` is not wired "
+            "into the agent runtime yet (it would hijack the agent process's "
+            "stdio). Use consume-only config for now; expose runtime-wiring is "
+            "a follow-up (see enh-001)."
+        )
+        raise ModuleError(msg)
+
+
+async def _close_bridges(bridges: list[ProtocolBridge]) -> None:
+    """Close every started bridge, swallowing teardown errors so one bad
+    close doesn't mask the original failure."""
+    for bridge in bridges:
+        with contextlib.suppress(Exception):
+            await bridge.close()
+
+
 def _resolve_llm(config: AgentForgeConfig) -> LLMClient | str | None:
     """Pick the LLM definition out of `config.agent.model` /
     `config.providers["default"]`.
@@ -317,6 +413,7 @@ __all__ = [
     "build_evaluators_from_config",
     "build_memory_from_config",
     "build_pipeline_from_config",
+    "build_protocols_from_config",
     "build_retriever_from_config",
     "build_tools_from_config",
     "load_and_build",
