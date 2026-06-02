@@ -15,7 +15,7 @@ from agentforge_core.production.exceptions import (
     ServiceError,
 )
 from agentforge_core.resolver import Resolver
-from agentforge_core.values.messages import Message, ToolSpec
+from agentforge_core.values.messages import Message, ToolCall, ToolSpec
 from botocore.exceptions import ClientError
 
 from tests.conftest import _FakeBedrockClient, _FakeSession, converse_response
@@ -186,6 +186,39 @@ async def test_call_translates_tool_messages_to_tool_results(
     # Tool result is encoded as a user message with toolResult content.
     assert sent_messages[1]["role"] == "user"
     assert sent_messages[1]["content"][0]["toolResult"]["toolUseId"] == "tu_1"
+
+
+@pytest.mark.asyncio
+async def test_call_round_trips_tool_calls_on_assistant_turn(
+    fake_bedrock: _FakeBedrockClient, fake_session: _FakeSession
+) -> None:
+    """bug-009: an assistant Message carrying tool_calls must serialise to a
+    Converse toolUse content block, paired by toolUseId with the subsequent
+    tool result. Without this, Converse rejects the request."""
+    fake_bedrock.responses.append(converse_response())
+    client = BedrockClient(model_id="anthropic.claude-3-haiku-20240307-v1:0", session=fake_session)
+    await client.call(
+        "sys",
+        [
+            Message(role="user", content="what time"),
+            Message(
+                role="assistant",
+                content="checking",
+                tool_calls=(ToolCall(id="tu_1", name="now", arguments={}),),
+            ),
+            Message(role="tool", tool_call_id="tu_1", content='{"now": "noon"}'),
+        ],
+    )
+    sent_messages = fake_bedrock.calls[0]["messages"]
+    # The assistant turn must emit a toolUse block whose toolUseId matches
+    # the subsequent toolResult's toolUseId — this is the exact invariant
+    # Converse validates.
+    assistant_blocks = sent_messages[1]["content"]
+    tool_use_blocks = [b for b in assistant_blocks if "toolUse" in b]
+    assert len(tool_use_blocks) == 1
+    assert tool_use_blocks[0]["toolUse"]["toolUseId"] == "tu_1"
+    assert tool_use_blocks[0]["toolUse"]["name"] == "now"
+    assert sent_messages[2]["content"][0]["toolResult"]["toolUseId"] == "tu_1"
 
 
 @pytest.mark.asyncio

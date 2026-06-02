@@ -19,6 +19,7 @@ from agentforge_core.values.messages import (
     LLMResponse,
     Message,
     TokenUsage,
+    ToolCall,
     ToolSpec,
 )
 from agentforge_core.values.state import AgentState, Step
@@ -241,3 +242,110 @@ async def test_close_is_idempotent() -> None:
     session = _session(session_id="t14")
     await session.close()
     await session.close()
+
+
+# ----------------------------------------------------------------------
+# bug-010 — persist intermediate tool steps to history
+# ----------------------------------------------------------------------
+
+
+class _ToolUseStrategy(ReasoningStrategy):
+    """Strategy that simulates one think/act/observe iteration with a
+    tool call, then a final think with the answer. Used to exercise
+    bug-010 persistence."""
+
+    def __init__(self, *, tool_id: str = "tc-1", tool_name: str = "ping") -> None:
+        self._tool_id = tool_id
+        self._tool_name = tool_name
+
+    async def run(self, state: AgentState) -> AgentState:
+        runtime = state.metadata.get(RUNTIME_KEY)
+        if runtime is not None:
+            runtime.budget.commit(0.01)
+        tc = ToolCall(id=self._tool_id, name=self._tool_name, arguments={"target": "x"})
+        state.steps.append(Step(iteration=0, kind="think", content="planning"))
+        state.steps.append(
+            Step(
+                iteration=0,
+                kind="act",
+                content={"tool": tc.name, "arguments": dict(tc.arguments)},
+                tool_call=tc,
+                cost_usd=0.0,
+            )
+        )
+        state.steps.append(
+            Step(
+                iteration=0,
+                kind="observe",
+                content='{"ok": true}',
+                tool_call=tc,
+                cost_usd=0.0,
+            )
+        )
+        state.steps.append(
+            Step(iteration=1, kind="think", content="all good", cost_usd=0.01),
+        )
+        return state
+
+
+def _tool_session(**kwargs: Any) -> ChatSession:
+    agent = Agent(model=_FakeLLM(), strategy=_ToolUseStrategy())
+    return ChatSession(agent, history_store=InMemoryChatHistory(), **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_persist_steps_records_act_and_observe_turns() -> None:
+    """bug-010: tool steps from result.steps must persist to chat history
+    so generative-UI clients can render them and the next turn's prompt
+    sees prior tool context."""
+    session = _tool_session(session_id="t-bug010-run")
+    await session.send("do the thing")
+    turns = await session.history()
+    roles_then_ids = [(t.role, t.tool_call_id, t.tool_calls) for t in turns]
+    # Expected shape: user, assistant(act with tool_calls), tool(observation),
+    # assistant(final answer).
+    assert [r for r, _, _ in roles_then_ids] == ["user", "assistant", "tool", "assistant"]
+    _, _, act_tcs = roles_then_ids[1]
+    assert len(act_tcs) == 1
+    assert act_tcs[0].id == "tc-1"
+    assert act_tcs[0].name == "ping"
+    _, observe_tcid, _ = roles_then_ids[2]
+    assert observe_tcid == "tc-1"
+
+
+@pytest.mark.asyncio
+async def test_response_tool_calls_populated_from_steps() -> None:
+    """bug-010: ChatResponse.tool_calls aggregates the tool calls from
+    `result.steps` instead of being the previously-hardcoded empty tuple."""
+    session = _tool_session(session_id="t-bug010-resp")
+    response = await session.send("do the thing")
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].id == "tc-1"
+
+
+@pytest.mark.asyncio
+async def test_persist_steps_false_keeps_history_lean() -> None:
+    """bug-010 opt-out: setting persist_steps=False reverts to the
+    pre-fix shape (user + final assistant only). Useful when an
+    external consumer reconstructs tool history from another source."""
+    session = _tool_session(session_id="t-bug010-off", persist_steps=False)
+    response = await session.send("do the thing")
+    turns = await session.history()
+    assert [t.role for t in turns] == ["user", "assistant"]
+    # And the response still surfaces an empty tool_calls (opt-out is
+    # consistent across persistence + response).
+    assert response.tool_calls == ()
+
+
+@pytest.mark.asyncio
+async def test_stream_persists_step_turns() -> None:
+    """bug-010 stream path: `_stream_per_token` must persist tool turns
+    via `_persist_steps_from_events` so streaming and non-streaming
+    paths produce the same on-disk shape."""
+    session = _tool_session(session_id="t-bug010-stream")
+    async for _ in await session.stream("do the thing"):
+        pass
+    turns = await session.history()
+    assert [t.role for t in turns] == ["user", "assistant", "tool", "assistant"]
+    # tool turn pairs by id with the prior assistant turn's tool_calls
+    assert turns[1].tool_calls[0].id == turns[2].tool_call_id

@@ -10,7 +10,7 @@
 
 [project]
 name = "agentforge-chat-history-redis"
-version = "0.2.3"
+version = "0.2.4"
 description = "Redis-backed ChatHistoryStore and SessionLock for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -32,8 +32,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.3",
-    "agentforge-chat ~= 0.2.3",
+    "agentforge-core ~= 0.2.4",
+    "agentforge-chat ~= 0.2.4",
     "redis>=5.0",
 ]
 

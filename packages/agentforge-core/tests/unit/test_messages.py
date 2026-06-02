@@ -39,6 +39,17 @@ def test_message_accepts_each_valid_role(role: str) -> None:
     Message(role=role, content="ok")  # type: ignore[arg-type]
 
 
+def test_message_default_tool_calls_is_empty_tuple() -> None:
+    m = Message(role="assistant", content="hi")
+    assert m.tool_calls == ()
+
+
+def test_message_carries_tool_calls() -> None:
+    tc = ToolCall(id="t-1", name="search", arguments={"q": "hi"})
+    m = Message(role="assistant", content="", tool_calls=(tc,))
+    assert m.tool_calls == (tc,)
+
+
 # ---- ToolCall ----
 
 

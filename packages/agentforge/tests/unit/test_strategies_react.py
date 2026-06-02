@@ -138,6 +138,34 @@ async def test_dispatches_tool_call_then_finishes() -> None:
 
 
 @pytest.mark.asyncio
+async def test_assistant_turn_round_trips_tool_calls() -> None:
+    """bug-009: the assistant Message re-fed on iteration 2 must carry
+    the previous iteration's tool_calls so provider clients can emit
+    matching tool-use blocks (Bedrock toolUse, OpenAI tool_calls,
+    Anthropic tool_use)."""
+    tc = ToolCall(id="t1", name="ping", arguments={"target": "example.com"})
+    fake = FakeLLMClient(
+        responses=[
+            _resp(
+                content="I'll ping example.com.",
+                tool_calls=(tc,),
+                stop_reason="tool_use",
+            ),
+            _resp(content="example.com is up."),
+        ]
+    )
+    state = _state_for(fake, tools=(_PingTool(),))
+
+    await ReActLoop().run(state)
+
+    # captured[1] is the iteration-2 call: (system, messages, tools).
+    _, iter2_messages, _ = fake.captured[1]
+    assistant_turns = [m for m in iter2_messages if m.role == "assistant"]
+    assert len(assistant_turns) == 1
+    assert assistant_turns[0].tool_calls == (tc,)
+
+
+@pytest.mark.asyncio
 async def test_unknown_tool_recorded_as_error_observation() -> None:
     """LLM emits a tool name that isn't in the agent's catalogue —
     recorded as observation; error_streak increments; agent continues."""

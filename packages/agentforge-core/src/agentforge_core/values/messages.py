@@ -24,6 +24,16 @@ StopReason = Literal["end_turn", "tool_use", "max_tokens", "stop_sequence", "oth
 """Provider-normalised reason the LLM stopped emitting tokens."""
 
 
+class ToolCall(BaseModel):
+    """A tool invocation emitted by the LLM."""
+
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    id: str
+    name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
 class Message(BaseModel):
     """One turn in the chat-completion exchange."""
 
@@ -33,16 +43,7 @@ class Message(BaseModel):
     content: str
     name: str | None = None
     tool_call_id: str | None = None
-
-
-class ToolCall(BaseModel):
-    """A tool invocation emitted by the LLM."""
-
-    model_config = ConfigDict(frozen=True, strict=True)
-
-    id: str
-    name: str
-    arguments: dict[str, Any] = Field(default_factory=dict)
+    tool_calls: tuple[ToolCall, ...] = ()
 
 
 class ToolSpec(BaseModel):
