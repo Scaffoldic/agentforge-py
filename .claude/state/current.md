@@ -1,67 +1,67 @@
 ---
-feature: bug-009 + bug-010 (tool_calls round-trip end-to-end)
+feature: v0.2.4 MCP/chat/config cluster — bug-020 + bug-014 (MCP runtime wiring)
 state: pr-pending
-branch: fix/bug-009-react-loop-drops-tool-calls
-started_at: 2026-05-27
-last_milestone_at: 2026-05-27
-last_shipped: v0.2.3 — Upgrade-flow fix (bug-007) — PR #55 merged 2026-05-21; tag v0.2.3 pushed; GitHub Release published. 32 of 34 packages live on PyPI (presidio/nemo/llamaguard/evidently added 2026-05-27; phoenix + statsd remain).
+branch: fix/bug-020-mcp-runtime-wiring
+started_at: 2026-06-02
+last_milestone_at: 2026-06-02
+last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
+resume: evening IST 2026-06-02
 flags_for_user:
-  - "PR NOT OPENED YET. Branch fix/bug-009-react-loop-drops-tool-calls pushed with 6 green commits covering bug-009 + bug-010. URL: https://github.com/Scaffoldic/agentforge-py/pull/new/fix/bug-009-react-loop-drops-tool-calls. Suggested title: \"fix: round-trip tool_calls end-to-end (bug-009 + bug-010)\"."
-  - "9 NEW untracked bug docs filed by user in parallel during this session: bug-012 through bug-020 in docs/bugs/. Not reviewed or committed yet — user WIP. (The earlier bug-011 collision was self-resolved: the runtime-doesnt-wire-mcp-bridge content is now at bug-020.)"
-  - "32 of 34 packages live on PyPI at v0.2.3 (phoenix + statsd pending — final drip window 2026-05-28 ≈ 11:05 UTC)."
-  - "bug-008 also queued for v0.2.4 (NOT IN THIS BRANCH): `version(\"agentforge\")` should be `version(\"agentforge-py\")` in cli/new_cmd.py and cli/_shared_scaffold.py. ~5 lines. Either fold into the v0.2.4 train (add a 7th commit) or ship as a separate small PR before tagging v0.2.4."
-  - "v0.2.2 git tag is local-only (intentional — v0.2.3 supersedes). Pushing it burns a quota window without landing anything new."
-  - "Production PyPI token still sitting in `~/.pypirc [pypi]` (one-time rescue path from 2026-05-20). Should be revoked on PyPI's web UI when convenient."
+  - "PR #59 OPEN (fix/bug-020-mcp-runtime-wiring): bug-020 P0 + bug-014 P1. 2 commits (9282000, 25a43bb), full gate green, pushed. https://github.com/Scaffoldic/agentforge-py/pull/59 — awaiting merge."
+  - "PRs #57 (docs triage) + #58 (bug-009/010 fix) MERGED to main. main at version 0.2.4."
+  - "REMAINING v0.2.4 cluster (not started), suggested order: bug-012 (adapter .→_ separator) → bug-017 (Bedrock tool-name validator + docs) → bug-015 (meta extra chain agentforge-py[mcp]→agentforge-mcp[mcp] + audit other vendor modules) → bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
+  - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
+  - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
+  - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
 ---
 
 ## Active feature
 
-**bug-009 + bug-010 — tool_calls round-trip end-to-end.**
+**v0.2.4 MCP/chat/config cluster.** Eight framework defects + one
+enhancement filed against v0.2.3 from the first live Bedrock-backed
+MCP integration. Triaged, verified against source, and tracked in
+`docs/bugs/bug-012…020` + `docs/enhancements/enh-001` (PR #57, merged).
+Each bug doc carries a "Framework-level vs derived-agent-level"
+section; all eight are framework-level. The whole cluster folds into
+**v0.2.4** (no release until it all lands).
 
-Both shipped together on a single branch because they're two
-halves of the same problem: bug-009 round-trips `tool_calls`
-in-flight (LLM history within one agent run), bug-010 round-trips
-them across runs (chat history persisted to disk). External
-downstream consumer surfaced both during a Generative-UI
-integration design review on 2026-05-27.
-
-**Branch:** `fix/bug-009-react-loop-drops-tool-calls` (off main @ `97eb35a`). Pushed.
-
-**6 commits, all green through full pre-commit:**
+**In flight — PR #59** (`fix/bug-020-mcp-runtime-wiring`, off main):
 
 | # | Commit | Bug | Scope |
 |---|---|---|---|
-| 1 | `294ab12` | 009 | core `Message.tool_calls` + ReActLoop populate + tests |
-| 2 | `23be0e0` | 009 | bedrock/openai/anthropic `_message_to_<provider>` + tests |
-| 3 | `638700a` | 009 | bug-009 status → fixed, new bug-011 (provider-conformance-harness) follow-up, CHANGELOG |
-| 4 | `a53d68d` | 009 | workspace bump 0.2.3 → 0.2.4 (34 pyprojects + uv.lock + state/current.md) |
-| 5 | `74e02eb` | 010 | `persist_steps` schema + helpers + StreamingEvent metadata enrichment + ChatResponse.tool_calls population |
-| 6 | `f25b7f8` | 010 | 4 regression tests + bug-010 doc → fixed + CHANGELOG amend |
+| 1 | `9282000` | 014 | `MCPBridge.from_config` pure-data; async `start()` materialises deferred client specs; `_await_sync` deleted; `attach_local_tools` + `MCPServer.set_tools`; list-form `command:`. Tests. |
+| 2 | `25a43bb` | 020 | `agentforge_core.contracts.protocol_bridge.ProtocolBridge` (runtime_checkable); `Agent(protocol_bridges=)` + close on exit; `build_protocols_from_config` wired into `build_agent_from_config` (also wires native `agent.tools` — previously zero-caller gap); expose rejected (stdio-hijack guard). Tests. feat-013 §10 + CHANGELOG. |
 
-**Test count:** 1318 → 1332 (+14 regression tests across both bugs).
+Full pre-commit gate green on both commits. Scope: **consume path
+only**; server-side `expose` runtime-wiring deferred (with enh-001).
 
-**Plan file:** `/Users/khemchandjoshi/.claude/plans/cosmic-puzzling-shell.md`.
+## Pickup on resume (evening IST 2026-06-02)
 
-## Pickup on resume (2026-05-28)
-
-1. **Triage the 9 new bug docs (bug-012 … bug-020).** They appeared
-   untracked during this session. Review each, decide which need
-   fixes in v0.2.4 vs deferred, commit the doc files in a `docs:`
-   chunk (likely a separate PR from the bug-009+010 branch). At
-   minimum bug-020 (runtime-doesnt-wire-mcp-bridge) was previously
-   colliding with the bug-011 slot and is now resolved.
-2. **Decide bug-008 inclusion.** ~5-line fix
-   (`version("agentforge")` → `version("agentforge-py")` in
-   `cli/new_cmd.py` + `cli/_shared_scaffold.py`). Either fold into
-   this branch as a 7th commit, or ship as a separate small PR before
-   tagging v0.2.4.
-3. **Open the PR.** `gh pr create` against main with the title above.
-4. **Drip-publish phoenix + statsd at v0.2.3.** Final two packages.
-   Window opens ≈ 2026-05-28 11:05 UTC. See `PYPI_PUBLISH_TRACKER.md`.
-5. **After v0.2.3 drip completes AND bug-009+010 PR merges:** tag
-   `v0.2.4`, push, run `release.yml`. 34 packages already version-
-   bumped on this branch.
+1. **Merge PR #59** (bug-020 + bug-014) once reviewed/CI-green.
+2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
+   branch off main, folding into v0.2.4), suggested order:
+   - **bug-012** — adapter `.`→`_` separator (`adapter.py:34`).
+   - **bug-017** — defensive Bedrock tool-name validator
+     (`[a-zA-Z0-9_-]+`) + document the constraint (feat-004/003/013
+     specs + `@tool` docstring + templates). Backs up bug-012.
+   - **bug-015** — meta extra chain: `agentforge/pyproject.toml:105`
+     `mcp = ["agentforge-mcp ~= 0.2.4"]` → `["agentforge-mcp[mcp] ~= 0.2.4"]`;
+     fix the `ModuleError` text; audit other vendor modules for the
+     same broken chain.
+   - **bug-019** — `mode="before"` string→{name} normaliser for
+     `modules.evaluators` + guardrail `input`/`output`/`tool_gates`
+     (both EvaluatorEntry AND GuardrailEntry are broken).
+   - **bug-018** — `SqliteChatHistory.update_session_metadata` upsert
+     (option 1, minimal) + `ChatHistoryStore.create_session()` ABC
+     (option 2, contract fix) — both in one PR.
+   - **bug-013** — `from_stdio`/`from_http` auto-call `register_tools()`.
+   - **enh-001** — HTTP MCP server transport (may slip to 0.2.5).
+3. **bug-008** (~5 lines) — fold in somewhere before tagging.
+4. **Tag v0.2.4** only after the cluster lands: set CHANGELOG date,
+   push tag, run `release.yml` (34 packages already at 0.2.4 on main).
+5. **PyPI post-drip chores** (drip is 34/34 done): revoke `~/.pypirc`
+   token, Trusted Publishing conversion, delete `PYPI_PUBLISH_TRACKER.md`.
 
 ## Last shipped
 
@@ -71,9 +71,9 @@ integration design review on 2026-05-27.
 - Tag: `v0.2.3` annotated at the merge commit.
 - GitHub Release: <https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.3>.
 - Release notes file: `docs/releases/v0.2.3.md`.
-- 34 workspace packages at `0.2.3`; **8 of those live on PyPI**
-  (`agentforge-core`, `-py`, `-anthropic`, `-bedrock`, `-chat`,
-  `-a2a`, `-memory-sqlite`, `-testing`).
+- 34 workspace packages at `0.2.3`; **ALL 34 now live on PyPI**
+  (drip-publish completed 2026-05-28 — phoenix + statsd were the
+  final two; see `PYPI_PUBLISH_TRACKER.md`).
 - Theme: `agentforge upgrade` is functional again. Bug-007
   was a P0 in two parts — `agentforge new` didn't persist
   `answers.yml`, and `agentforge upgrade` delegated to Copier's
