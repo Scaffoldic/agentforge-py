@@ -83,7 +83,16 @@ class ReActLoop(StrategyBase):
                     break
 
                 # Record the assistant's turn for the next iteration's context.
-                messages.append(Message(role="assistant", content=response.content))
+                # `tool_calls` must round-trip so provider clients can emit
+                # native tool-use blocks matching the subsequent tool result
+                # (bug-009 — Bedrock Converse rejects orphaned toolResult).
+                messages.append(
+                    Message(
+                        role="assistant",
+                        content=response.content,
+                        tool_calls=response.tool_calls,
+                    )
+                )
 
                 # Dispatch every tool call the LLM emitted.
                 for tool_call in response.tool_calls:
@@ -174,7 +183,13 @@ class ReActLoop(StrategyBase):
                 if not response.tool_calls:
                     break
 
-                messages.append(Message(role="assistant", content=response.content))
+                messages.append(
+                    Message(
+                        role="assistant",
+                        content=response.content,
+                        tool_calls=response.tool_calls,
+                    )
+                )
 
                 for tool_call in response.tool_calls:
                     self._record_step(

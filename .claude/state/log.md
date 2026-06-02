@@ -2804,3 +2804,91 @@ fear was misplaced.
 - 7 bug docs landed under `docs/bugs/`.
 - Two memory updates: `project_v02_cut_in_flight.md` (full
   sign-off snapshot), `feedback_workflow.md` (tag-skip rule).
+
+---
+
+## 2026-05-27T22:00 — bug-009 + bug-010 fix landed on a single branch (PR pending)
+
+A downstream consumer surfaced two related defects in v0.2.3
+during a Generative-UI integration design review. Both shipped
+together on
+`fix/bug-009-react-loop-drops-tool-calls` because they're two
+halves of the same problem — `tool_calls` must round-trip both
+in-flight (LLM history within a run) and across runs (chat
+history persisted to disk).
+
+**bug-009 — P0 — ReAct dropped `response.tool_calls`; Bedrock
+Converse rejected every tool-using prompt on iteration 2.**
+Root cause was a three-point interaction: `Message` had no
+`tool_calls` field, `ReActLoop.run`/`stream` discarded
+`response.tool_calls` when re-feeding assistant turns, and each
+provider's `_message_to_<provider>` translated messages in
+isolation (no native tool-use blocks on assistant turns).
+OpenAI and Anthropic-direct had the same latent shape; all three
+fixed.
+
+**bug-010 — P2 (arguably P1 functionally) —
+`ChatSession._persist_assistant` only wrote the final assistant
+text; intermediate `act` / `observe` steps stayed on
+`result.steps` and never reached `ChatHistoryStore`.** Generative-
+UI clients couldn't render tool activity, AND the next chat
+turn's prompt (built from `history.load()` in `_compose_task`)
+lost prior tool context entirely. Fixed via new
+`ChatSessionConfig.persist_steps: bool = True` knob + new
+`_persist_steps_from_result` / `_persist_steps_from_events`
+helpers covering both `.send()` and `.stream()`. `ChatResponse.tool_calls`
+(previously hardcoded `()`) populated from aggregated act-step
+calls. `StreamingEvent.metadata["tool_call"]` enriched additively
+so chat session can persist tool turns from the stream path
+without reaching into `AgentState`.
+
+**Branch state:**
+
+- 6 commits, all green through full pre-commit gate
+  (ruff/mypy --strict/bandit/pytest/coverage ≥ 90).
+  - `294ab12` core `Message.tool_calls` + ReActLoop populate + tests
+  - `23be0e0` bedrock/openai/anthropic providers + per-provider tests
+  - `638700a` bug-009 doc → fixed, new bug-011 follow-up, CHANGELOG
+  - `a53d68d` workspace bump 0.2.3 → 0.2.4 (34 pyprojects + uv.lock)
+  - `74e02eb` bug-010 impl (schema, session.py, build.py, _base.py)
+  - `f25b7f8` bug-010 tests + doc → fixed + CHANGELOG amend
+- Branch pushed to origin; tracking set.
+- **PR NOT opened.** Title suggestion:
+  *"fix: round-trip tool_calls end-to-end (bug-009 + bug-010)"*.
+  URL: <https://github.com/Scaffoldic/agentforge-py/pull/new/fix/bug-009-react-loop-drops-tool-calls>.
+- Test count growth: 1318 → 1332 (+14 regression tests).
+
+**Files in flight at end-of-session:**
+
+- `docs/bugs/bug-009-react-loop-drops-tool-calls-bedrock-validation.md` — committed; status fixed in 0.2.4.
+- `docs/bugs/bug-010-chatsession-drops-tool-steps.md` — committed; status fixed in 0.2.4. (Was previously untracked WIP from earlier the same day; folded into this PR.)
+- `docs/bugs/bug-011-provider-conformance-harness.md` — committed; open; v0.3 backlog.
+- `docs/bugs/bug-012-*.md` through `docs/bugs/bug-020-*.md` — 9 NEW untracked bug docs filed by the user in parallel during this session. Not reviewed or committed; user WIP. The originally-colliding `bug-011-runtime-doesnt-wire-mcp-bridge.md` was self-resolved by the user moving its content to `bug-020-runtime-doesnt-wire-mcp-bridge.md`.
+
+**v0.2.4 release queue (when this PR merges):**
+
+- All 34 `packages/*/pyproject.toml` already at `0.2.4`.
+- `uv.lock` regenerated.
+- `CHANGELOG.md` `[0.2.4]` entry covers bug-009 + bug-010 +
+  bug-011 (filed).
+- Two unrelated v0.2.4-queued items (no scope on this branch):
+  - **bug-008** — `_template_version()` looks up wrong dist name. ~5-line fix. Will need its own commit (or fold into a chore PR) before tagging v0.2.4.
+  - PR #56 — bug-008 doc + checklist callout — already merged into main (came across in today's `git pull --ff-only`, was on `docs/v0.2.3-followups-bug-008-tag-rule` branch which is no longer the current branch).
+
+**PyPI publish state (unchanged today):** 32 of 34 live at
+v0.2.3. `agentforge-phoenix` + `agentforge-statsd` remain;
+final drip-publish window 2026-05-28 ≈ 11:05 UTC. See
+`PYPI_PUBLISH_TRACKER.md` at workspace root. **v0.2.4 publish
+will be a coordinated 34-package upload AFTER the two stragglers
+land at 0.2.3, OR may be released as the first 34-at-once cut if
+admin@pypi.org has lifted the quota by then.**
+
+**Next session pick-up:**
+
+1. Triage the 9 new untracked bug docs (bug-012 through bug-020) the
+   user filed in parallel during this session. Decide which need
+   v0.2.4 fixes and commit the doc files (probably in a separate
+   `docs:` PR from the current branch).
+2. Open the PR for `fix/bug-009-react-loop-drops-tool-calls`.
+3. Decide whether to fold bug-008 into the same PR or its own.
+4. Finish the v0.2.3 drip-publish (2 packages) so v0.2.4 has a clean baseline.

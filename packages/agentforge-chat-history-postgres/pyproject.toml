@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-chat-history-postgres"
-version = "0.2.3"
+version = "0.2.4"
 description = "Postgres-backed ChatHistoryStore for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -30,7 +30,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.3",
+    "agentforge-core ~= 0.2.4",
     "asyncpg>=0.30",
 ]
 
