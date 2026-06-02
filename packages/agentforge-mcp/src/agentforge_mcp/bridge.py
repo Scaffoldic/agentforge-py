@@ -37,8 +37,13 @@ class MCPBridge:
         *,
         clients: Iterable[MCPServerClient] = (),
         server: MCPServer | None = None,
+        client_specs: Iterable[dict[str, Any]] = (),
     ) -> None:
         self._clients = list(clients)
+        # Deferred client entries from `from_config`. Materialised into
+        # live `MCPServerClient`s inside `start()` (async) so no event
+        # loop is driven at construction time (bug-014).
+        self._client_specs = [dict(spec) for spec in client_specs]
         self._server = server
         self._tools: list[Tool] = []
         self._serve_task: asyncio.Task[None] | None = None
@@ -48,30 +53,44 @@ class MCPBridge:
         """Build a bridge from the parsed `modules.protocols.mcp.config`
         block.
 
-        Construction is async-friendly: the clients are created via
-        their factories which return synchronously, then `start()`
-        opens transports + discovers tools. Tests typically bypass
-        this and inject pre-built clients via `__init__`.
+        Pure data — no transports are opened and no event loop is
+        driven here. The server entries are stashed as ``client_specs``
+        and materialised inside ``start()`` (which is async and safe to
+        call from within a running loop). Tests typically bypass this
+        and inject pre-built clients via ``__init__``.
         """
-        clients = [_client_from_entry(entry) for entry in config.get("servers", []) or []]
+        specs = list(config.get("servers", []) or [])
         server: MCPServer | None = None
         expose = config.get("expose") or {}
         if expose.get("enabled"):
             # The agent's own tools aren't known at config-load time;
             # call `bridge.attach_local_tools(tools)` after Agent
-            # construction. The server is built lazily so the
-            # transport spec lives here.
+            # construction. The server is built here so the transport
+            # spec lives with the bridge.
             server = _server_placeholder(expose)
-        return cls(clients=clients, server=server)
+        return cls(client_specs=specs, server=server)
 
     @property
     def tools(self) -> list[Tool]:
         """Merged Tool catalogue (populated by `start`)."""
         return list(self._tools)
 
+    def attach_local_tools(self, tools: Iterable[Tool]) -> None:
+        """Inject the agent's own tools into the exposed server.
+
+        No-op when this bridge has no `expose` server configured. Call
+        after `Agent` construction (when the tool list is known) and
+        before `start()`.
+        """
+        if self._server is not None:
+            self._server.set_tools(tools)
+
     async def start(self) -> None:
-        """Open every client, discover their tools, and (optionally)
-        start the exposed server."""
+        """Materialise deferred clients, open every client, discover
+        their tools, and (optionally) start the exposed server."""
+        for spec in self._client_specs:
+            self._clients.append(await _client_from_entry_async(spec))
+        self._client_specs = []
         for client in self._clients:
             self._tools.extend(await client.discover_tools())
         if self._server is not None:
@@ -89,41 +108,49 @@ class MCPBridge:
             await client.close()
 
 
-def _client_from_entry(entry: dict[str, Any]) -> MCPServerClient:  # pragma: no cover — live wiring
+async def _client_from_entry_async(
+    entry: dict[str, Any],
+) -> MCPServerClient:  # pragma: no cover — live wiring
     """Construct an `MCPServerClient` from a config entry.
 
-    Excluded from coverage because it depends on the upstream
-    `mcp` SDK; tests inject pre-built clients into `MCPBridge`
-    directly. The function is the documented bridge between
-    config-as-data and the live integration path.
+    Awaits the async transport factory directly, so it must be called
+    from within an event loop (it is — `start()` is async). Excluded
+    from coverage because it depends on the upstream `mcp` SDK; tests
+    inject pre-built clients into `MCPBridge` or monkeypatch this
+    function.
     """
     transport = entry.get("transport", "stdio")
     name = str(entry["name"])
     tool_filter = tuple(entry.get("tool_filter") or ())
+    timeout_s = float(entry.get("timeout_s", 30.0))
     if transport == "stdio":
-        result: MCPServerClient = _await_sync(
-            MCPServerClient.from_stdio(
-                name=name,
-                command=str(entry["command"]),
-                env=dict(entry.get("env") or {}),
-                tool_filter=tool_filter,
-                timeout_s=float(entry.get("timeout_s", 30.0)),
-            )
+        return await MCPServerClient.from_stdio(
+            name=name,
+            command=_command_str(entry["command"]),
+            env=dict(entry.get("env") or {}),
+            tool_filter=tool_filter,
+            timeout_s=timeout_s,
         )
-        return result
     if transport in {"http", "sse"}:
         factory = MCPServerClient.from_http if transport == "http" else MCPServerClient.from_sse
-        return _await_sync(  # type: ignore[no-any-return]
-            factory(
-                name=name,
-                url=str(entry["url"]),
-                headers=dict(entry.get("headers") or {}),
-                tool_filter=tool_filter,
-                timeout_s=float(entry.get("timeout_s", 30.0)),
-            )
+        return await factory(
+            name=name,
+            url=str(entry["url"]),
+            headers=dict(entry.get("headers") or {}),
+            tool_filter=tool_filter,
+            timeout_s=timeout_s,
         )
     msg = f"MCP server {name!r}: unsupported transport {transport!r}."
     raise ValueError(msg)
+
+
+def _command_str(command: Any) -> str:
+    """Normalise a `command:` entry to the shell string `from_stdio`
+    expects. YAML may give a list (``["uv", "run", "x"]``) or a plain
+    string (``"uv run x"``); both collapse to a space-joined string."""
+    if isinstance(command, (list, tuple)):
+        return " ".join(str(part) for part in command)
+    return str(command)
 
 
 def _server_placeholder(expose: dict[str, Any]) -> MCPServer:  # pragma: no cover — live wiring
@@ -140,11 +167,6 @@ def _server_placeholder(expose: dict[str, Any]) -> MCPServer:  # pragma: no cove
         return MCPServer.from_http(tools=[], allowed=allowed)
     msg = f"unsupported expose transport {transport!r}; expected 'stdio' or 'http'."
     raise ValueError(msg)
-
-
-def _await_sync(coro: Any) -> Any:  # pragma: no cover — live wiring path
-    """Run an async factory inside a synchronous `from_config`."""
-    return asyncio.get_event_loop().run_until_complete(coro)
 
 
 class _Suppress:

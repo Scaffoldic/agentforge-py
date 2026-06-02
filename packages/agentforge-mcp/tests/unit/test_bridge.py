@@ -130,3 +130,71 @@ async def test_bridge_starts_optional_exposed_server() -> None:
 def test_bridge_from_config_with_no_servers_returns_empty_bridge() -> None:
     bridge = MCPBridge.from_config({})
     assert bridge.tools == []
+
+
+@pytest.mark.asyncio
+async def test_from_config_is_safe_inside_running_loop() -> None:
+    """bug-014 regression: `from_config` must not drive the event loop.
+
+    This test body runs inside a live asyncio loop; the pre-fix
+    implementation called `get_event_loop().run_until_complete` here
+    and raised `RuntimeError: this event loop is already running`.
+    """
+    bridge = MCPBridge.from_config(
+        {"servers": [{"name": "x", "transport": "stdio", "command": "cat"}]}
+    )
+    # Deferred — nothing is opened until `start()`.
+    assert bridge.tools == []
+
+
+@pytest.mark.asyncio
+async def test_start_materialises_deferred_client_specs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`from_config` stashes specs; `start()` turns them into live
+    clients (here via a monkeypatched factory) and discovers tools."""
+    import agentforge_mcp.bridge as bridge_mod  # noqa: PLC0415
+
+    fake = _client("fs", ("read_file",))
+
+    async def _fake_from_entry(entry: dict[str, Any]) -> MCPServerClient:
+        assert entry["name"] == "fs"
+        return fake
+
+    monkeypatch.setattr(bridge_mod, "_client_from_entry_async", _fake_from_entry)
+
+    bridge = MCPBridge.from_config(
+        {"servers": [{"name": "fs", "transport": "stdio", "command": ["cat"]}]}
+    )
+    assert bridge.tools == []
+    await bridge.start()
+    assert sorted(type(t).name for t in bridge.tools) == ["fs.read_file"]
+
+
+@pytest.mark.asyncio
+async def test_attach_local_tools_exposes_them_on_serve() -> None:
+    """`attach_local_tools` injects the agent's tools into the exposed
+    server after construction (the loose end called out in bug-020)."""
+    server_runner = MCPFakeServerRunner()
+    server = MCPServer(tools=[], runner=server_runner, allowed=())
+    bridge = MCPBridge(server=server)
+    bridge.attach_local_tools([_Echo()])
+    await bridge.start()
+    import asyncio  # noqa: PLC0415
+
+    await asyncio.sleep(0)
+    assert {r["name"] for r in server_runner.registered} == {"echo"}
+    await bridge.close()
+
+
+def test_attach_local_tools_is_noop_without_server() -> None:
+    bridge = MCPBridge(clients=[])
+    # No exposed server configured — must not raise.
+    bridge.attach_local_tools([_Echo()])
+
+
+def test_command_str_joins_list_form() -> None:
+    from agentforge_mcp.bridge import _command_str  # noqa: PLC0415
+
+    assert _command_str(["uv", "run", "filesystem-mcp"]) == "uv run filesystem-mcp"
+    assert _command_str("uv run filesystem-mcp") == "uv run filesystem-mcp"
