@@ -43,6 +43,7 @@ class MCPServer:
         self._tools = list(tools)
         self._runner = runner
         self._allowed = set(allowed)
+        self._registered = False
 
     @classmethod
     def from_stdio(
@@ -51,9 +52,20 @@ class MCPServer:
         tools: Iterable[Tool],
         allowed: tuple[str, ...] = (),
         server_name: str = "agentforge",
+        runner: MCPServerRunner | None = None,
     ) -> MCPServer:
-        runner = _build_stdio_server_runner(server_name=server_name)
-        return cls(tools=tools, runner=runner, allowed=allowed)
+        """Build a stdio MCP server with `tools` already registered.
+
+        `register_tools()` is called here so a freshly-built server
+        actually advertises its tools — calling `serve()` straight after
+        `from_stdio(...)` no longer yields an empty `ListTools` (bug-013).
+        Pass `runner` to inject a fake for testing; otherwise the upstream
+        `mcp` stdio runner is built lazily.
+        """
+        runner = runner or _build_stdio_server_runner(server_name=server_name)
+        server = cls(tools=tools, runner=runner, allowed=allowed)
+        server.register_tools()
+        return server
 
     @classmethod
     def from_http(
@@ -64,30 +76,47 @@ class MCPServer:
         port: int = 8765,
         allowed: tuple[str, ...] = (),
         server_name: str = "agentforge",
+        runner: MCPServerRunner | None = None,
     ) -> MCPServer:
-        runner = _build_http_server_runner(
+        """Build an HTTP MCP server with `tools` already registered.
+
+        Like `from_stdio`, registers tools up front so `serve()` advertises
+        them without a manual `register_tools()` call (bug-013).
+        """
+        runner = runner or _build_http_server_runner(
             server_name=server_name,
             host=host,
             port=port,
         )
-        return cls(tools=tools, runner=runner, allowed=allowed)
+        server = cls(tools=tools, runner=runner, allowed=allowed)
+        server.register_tools()
+        return server
 
     def set_tools(self, tools: Iterable[Tool]) -> None:
         """Replace the tool set to expose.
 
         Used by `MCPBridge.attach_local_tools` to inject the agent's
         own tools after construction (the agent's tool list isn't known
-        at config-load time). Call before `register_tools()` / `serve()`.
+        at config-load time). Re-arms registration so the next
+        `register_tools()` publishes the new set.
         """
         self._tools = list(tools)
+        self._registered = False
 
     def register_tools(self) -> int:
         """Register each whitelisted tool with the underlying runner.
 
-        Returns the count of registrations. A tool whose name is
-        not in `allowed` (when `allowed` is non-empty) is skipped
-        with no error — the contract is allowlist, not error.
+        Returns the number of tools registered by *this* call. A tool
+        whose name is not in `allowed` (when `allowed` is non-empty) is
+        skipped with no error — the contract is allowlist, not error.
+
+        Idempotent: a second call without an intervening `set_tools`
+        registers nothing and returns 0, so the auto-registration in
+        `from_stdio` / `from_http` is safe even if a caller also invokes
+        this explicitly (bug-013).
         """
+        if self._registered:
+            return 0
         count = 0
         for tool in self._tools:
             tool_name = type(tool).name
@@ -100,6 +129,7 @@ class MCPServer:
                 _make_handler(tool),
             )
             count += 1
+        self._registered = True
         return count
 
     async def serve(self) -> None:

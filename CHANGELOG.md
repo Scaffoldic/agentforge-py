@@ -64,6 +64,14 @@ activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-013 — `MCPServer.from_stdio` / `from_http` served an empty tool
+  list.** The factories constructed the server holding the tool list but
+  never registered the tools with the runner, so a server built straight
+  from the factory answered `ListTools` with `[]` unless the caller also
+  called `register_tools()` (undocumented). The factories now register up
+  front; `register_tools()` is idempotent (so an explicit extra call is a
+  no-op) and `set_tools()` re-arms it for the bridge expose path. Both
+  factories gained an optional `runner=` injection for testing.
 - **bug-018 — `POST /sessions` 500'd on a fresh SQLite/Postgres/Redis
   store.** `ChatServer._create_session` records the session owner before
   any turn is appended, but the SQL/Redis history drivers only inserted
