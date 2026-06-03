@@ -281,9 +281,10 @@ class ChatServer:
         async with self._sessions_lock:
             self._sessions[session.session_id] = session
             self._session_owners[session.session_id] = principal.id
-        # Persist an initial owner record on the store so list_sessions
-        # filtering works before the first turn.
-        await self._history.update_session_metadata(session.session_id, {"owner": principal.id})
+        # Create the session row up front so list_sessions filtering works
+        # before the first turn (bug-018). create_session upserts via the
+        # store, so this is safe on a fresh process / SQLite driver.
+        await self._history.create_session(session.session_id, owner=principal.id)
         return session
 
     async def _get_session(self, session_id: str, principal: Principal) -> ChatSession:

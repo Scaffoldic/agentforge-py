@@ -815,6 +815,29 @@ async def run_task_conformance(
 # ----------------------------------------------------------------------
 
 
+async def _assert_create_before_first_turn(store: ChatHistoryStore) -> None:
+    """A session must be creatable / metadata-settable before its first
+    turn is appended (bug-018), and listable as soon as it is."""
+    from uuid import uuid4  # noqa: PLC0415
+
+    fresh = f"conf-{uuid4().hex[:8]}"
+    await store.create_session(fresh, owner="carol")
+    listed = await store.list_sessions()
+    assert fresh in {s.id for s in listed}, (
+        "create_session() must make a session listable before any turn"
+    )
+    assert any(s.id == fresh and s.owner == "carol" for s in listed), (
+        "create_session(owner=...) must persist the owner"
+    )
+    fresh2 = f"conf-{uuid4().hex[:8]}"
+    await store.update_session_metadata(fresh2, {"owner": "dave"})
+    assert fresh2 in {s.id for s in await store.list_sessions()}, (
+        "update_session_metadata() on an unknown session must upsert it, not raise"
+    )
+    await store.delete_session(fresh)
+    await store.delete_session(fresh2)
+
+
 async def run_chat_history_conformance(store: ChatHistoryStore) -> None:
     """Validate that a `ChatHistoryStore` honours the locked contract.
 
@@ -905,6 +928,9 @@ async def run_chat_history_conformance(store: ChatHistoryStore) -> None:
     far_future = datetime(2099, 1, 1, tzinfo=UTC)
     removed_b = await store.expire_before(far_future)
     assert isinstance(removed_b, int), "expire_before must return an int"
+
+    # 11. create_session / metadata before any turn (bug-018).
+    await _assert_create_before_first_turn(store)
 
     # 11. capabilities is a set.
     caps = store.capabilities()

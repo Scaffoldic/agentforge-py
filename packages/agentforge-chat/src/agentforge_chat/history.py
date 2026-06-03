@@ -77,7 +77,10 @@ class InMemoryChatHistory(ChatHistoryStore):
         before: datetime | None = None,
     ) -> list[SessionInfo]:
         async with self._lock:
-            out = [self._build_info(sid) for sid in self._turns]
+            # Include sessions that exist only via metadata (created before
+            # their first turn — bug-018), not just sessions with turns.
+            sids = set(self._turns) | set(self._meta)
+            out = [self._build_info(sid) for sid in sids]
         if owner is not None:
             out = [s for s in out if s.owner == owner]
         if before is not None:
@@ -92,6 +95,11 @@ class InMemoryChatHistory(ChatHistoryStore):
                 bag[k] = v
             if "owner" in metadata:
                 self._owners[session_id] = metadata["owner"]
+            # Register timestamps so a metadata-only session (created before
+            # its first turn — bug-018) carries sane created/last_active.
+            now = datetime.now(UTC)
+            self._created_at.setdefault(session_id, now)
+            self._last_active.setdefault(session_id, now)
 
     async def expire_before(self, cutoff: datetime) -> int:
         async with self._lock:
