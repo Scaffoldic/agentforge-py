@@ -17,7 +17,35 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+def _normalise_named_entry(value: Any) -> Any:
+    """Normalise the terse YAML sugar for `name + config` entries into the
+    canonical mapping before strict validation (bug-019).
+
+    Three shapes are accepted; the first two are sugar:
+
+    - String form ``faithfulness`` → ``{"name": "faithfulness"}``
+    - Single-key mapping ``{geval: {rubric: "..."}}`` →
+      ``{"name": "geval", "config": {"rubric": "..."}}``
+    - Canonical mapping ``{name: x, config: {...}}`` → returned unchanged.
+
+    Anything else is returned untouched so the model's own validation
+    raises a clear error. Used by `EvaluatorEntry` and `GuardrailEntry`,
+    so every list that holds them (`modules.evaluators` and guardrails'
+    `input` / `output` / `tool_gates`) accepts all three forms.
+    """
+    if isinstance(value, str):
+        return {"name": value}
+    if isinstance(value, dict) and "name" not in value and len(value) == 1:
+        ((key, cfg),) = value.items()
+        if isinstance(key, str):
+            entry: dict[str, Any] = {"name": key}
+            if cfg is not None:
+                entry["config"] = cfg
+            return entry
+    return value
 
 
 class BudgetConfig(BaseModel):
@@ -178,19 +206,25 @@ class RetrievalConfig(BaseModel):
 
 
 class EvaluatorEntry(BaseModel):
-    """An entry in `modules.evaluators:`. Two YAML shapes are valid:
+    """An entry in `modules.evaluators:`. Three YAML shapes are valid:
 
     - String form: `- faithfulness` (just the name).
-    - Mapping form: `- faithfulness: {cost_cap_usd: 0.05, ...}`.
+    - Single-key mapping: `- faithfulness: {cost_cap_usd: 0.05, ...}`.
+    - Canonical mapping: `- {name: faithfulness, config: {...}}`.
 
-    We model the mapping form here; the loader normalises strings to
-    `EvaluatorEntry(name=..., config={})` before validation.
+    The first two are sugar; a `mode="before"` validator normalises them
+    to `EvaluatorEntry(name=..., config={...})` before strict validation.
     """
 
     model_config = ConfigDict(strict=True, extra="forbid")
 
     name: str = Field(min_length=1)
     config: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_sugar(cls, value: Any) -> Any:
+        return _normalise_named_entry(value)
 
 
 class ObservabilityEntry(BaseModel):
@@ -226,19 +260,25 @@ class GuardrailPolicy(BaseModel):
 class GuardrailEntry(BaseModel):
     """One entry inside `modules.guardrails.{input,output,tool_gates}`.
 
-    Two YAML shapes are valid (mirrors `EvaluatorEntry`):
+    Three YAML shapes are valid (mirrors `EvaluatorEntry`):
 
     - String form: `- prompt_injection_basic` (just the name).
-    - Mapping form: `- presidio: {entities: ["EMAIL_ADDRESS"]}`.
+    - Single-key mapping: `- presidio: {entities: ["EMAIL_ADDRESS"]}`.
+    - Canonical mapping: `- {name: presidio, config: {...}}`.
 
-    Both normalise to `GuardrailEntry(name=..., config={})` before
-    validation.
+    The first two are sugar; a `mode="before"` validator normalises them
+    to `GuardrailEntry(name=..., config={...})` before strict validation.
     """
 
     model_config = ConfigDict(strict=True, extra="forbid")
 
     name: str = Field(min_length=1)
     config: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_sugar(cls, value: Any) -> Any:
+        return _normalise_named_entry(value)
 
 
 class ChatHistoryDriverConfig(BaseModel):

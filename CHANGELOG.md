@@ -59,6 +59,18 @@ activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-019 — documented terse config syntax for evaluators/guardrails
+  was rejected.** `EvaluatorEntry` and `GuardrailEntry` are
+  `strict=True, extra="forbid"`, and their docstrings + the shipped
+  example YAML promised a string form (`- faithfulness`) and a
+  single-key-mapping form (`- geval: {rubric: ...}`) — but nothing
+  normalised either, so both raised `ValidationError`. A
+  `model_validator(mode="before")` on each entry now normalises all
+  three shapes (string, single-key mapping, canonical
+  `{name, config}`) before strict validation, so the terse syntax in
+  `modules.evaluators` and guardrails' `input` / `output` /
+  `tool_gates` works as documented. (The mapping-sugar form was broken
+  too, not just the string form the report first showed.)
 - **bug-015 — `agentforge-py` extras didn't pull their vendor SDKs.**
   Sister packages keep their vendor SDK behind an optional `[<sdk>]`
   extra (lazy-import pattern), but most meta extras requested the bare
