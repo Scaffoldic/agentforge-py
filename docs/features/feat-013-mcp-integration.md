@@ -310,6 +310,7 @@ nothing.
 | 2 | `agentforge_core.contracts.protocol_bridge.ProtocolBridge` — a `@runtime_checkable` Protocol (`tools` / `start` / `close`) so the runtime wires protocol handlers without `agentforge` importing `agentforge-mcp`. `Agent` gains a `protocol_bridges` kwarg and closes each on `close()`. |
 | 3 | **bug-020** — `build_protocols_from_config` resolves each `modules.protocols` entry under the `protocols` category, builds it via `from_config`, awaits `start()`, and collects its tools. `build_agent_from_config` merges native `agent.tools` (previously never wired through this path) + protocol tools into `Agent(tools=...)` and passes the started bridges. Server-side `expose` is rejected with a clear error (would hijack the agent process's stdio); expose runtime-wiring is a follow-up. |
 | 4 | **bug-013** — `MCPServer.from_stdio` / `from_http` now call `register_tools()` before returning, so a server built straight from the factory advertises its tools instead of serving an empty `ListTools`. `register_tools()` is idempotent (guarded), and `set_tools()` re-arms it, so the bridge expose path (build empty → `attach_local_tools` → `start()` registers) and an explicit caller both stay correct. Both factories gained an optional `runner=` injection for testing. |
+| 5 | **enh-001** — `MCPServer` HTTP server transport. `_SDKServerRunner.serve()` branches on transport: `http` runs the SDK's `StreamableHTTPSessionManager` mounted at `/mcp` in a Starlette app under uvicorn (`stop()` signals graceful exit); unsupported transports are rejected at construction. The client HTTP transport was migrated off the deprecated `streamablehttp_client` to `streamable_http_client` + `create_mcp_http_client`. Live test covers an HTTP list+call round-trip. SSE server transport stays deferred. |
 
 ### Out-of-scope (deferred to a later v0.x follow-up)
 
@@ -417,7 +418,7 @@ tools = await client.discover_tools()
 | Symptom | Cause | Fix |
 |---|---|---|
 | `ModuleError: mcp SDK is not installed` | upstream missing | `pip install agentforge-mcp[mcp]` (or `agentforge add module mcp` to install both) |
-| `MCP server transport 'http' is not yet implemented` | v0.2.1 polish gap | use `transport: stdio` in `modules.protocols.mcp.expose` for now; HTTP server transport lands as a v0.2.1 chore |
+| `MCP server transport 'sse' is not supported` | only `stdio` + `http` server transports ship | use `transport: stdio` or `transport: http`; SSE server transport is still deferred (enh-001 phase 2). HTTP server transport landed in v0.2.4 (enh-001). |
 | Tool name collision | two servers expose the same name | both arrive prefixed with their server name (`fs__read_file` vs `s3__read_file`) — collision avoided |
 | Subprocess won't terminate on agent close | `bridge.close` not called | use `async with Agent(...)` so the framework's `__aexit__` invokes the bridge close path |
 | Non-text content blocks dropped from `call_tool` result | `_SDKClientRunner` concatenates `TextContent` blocks and ignores `ImageContent` / `EmbeddedResource` for v0.2 | follow-up when a real use case justifies the wire-format change; meanwhile route binary tools through a different adapter shape |

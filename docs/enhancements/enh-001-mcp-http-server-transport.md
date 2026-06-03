@@ -14,7 +14,7 @@
 |---|---|
 | **ID** | enh-001 |
 | **Title** | Implement server-side HTTP transport for `MCPServer` |
-| **Status** | `proposed` |
+| **Status** | `implemented in 0.2.4` |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-02 |
 | **Target version** | 0.2.4 (or 0.2.5 if scope slips) |
@@ -116,3 +116,27 @@ Fail-fast improvement to fold in: `MCPServer.from_http` / the bridge's
 - Improved feature: feat-013 (MCP)
 - Reclassified from: bug-016 (removed)
 - Related: bug-013 (auto-register tools), bug-020 (runtime wiring)
+
+## 9. Resolution (v0.2.4)
+
+`_SDKServerRunner.serve()` now branches on transport: `stdio` via
+`stdio_server()` (unchanged) and `http` via the SDK's
+`StreamableHTTPSessionManager` mounted at `/mcp` in a minimal Starlette
+app under uvicorn. `stop()` signals uvicorn to exit gracefully. The
+shared `@list_tools` / `@call_tool` handlers register once before the
+transport split. `MCPServer.from_http(...).serve()` now serves instead of
+raising. The fail-fast improvement landed too: `_SDKServerRunner.__init__`
+rejects an unsupported transport at construction (not deferred to
+`serve()`).
+
+`starlette` + `uvicorn` are already transitive deps of `mcp`, so
+`agentforge-mcp[mcp]` covers the HTTP stack — no new dependency.
+
+While wiring the round-trip, the **client** HTTP transport was migrated
+off the SDK's deprecated `streamablehttp_client` to `streamable_http_client`
+(+ `create_mcp_http_client` for headers), which the SDK now requires.
+
+A `@pytest.mark.live` integration test (`test_mcp_live.py`) starts an HTTP
+`MCPServer`, connects `MCPServerClient.from_http`, and asserts a
+list + call round-trip. **SSE server transport remains deferred** (phase 2,
+pending the SDK's SSE server adapter) — only HTTP shipped.
