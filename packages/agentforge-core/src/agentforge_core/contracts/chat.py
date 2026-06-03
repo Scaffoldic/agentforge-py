@@ -71,8 +71,31 @@ class ChatHistoryStore(ABC):
         """Merge ``metadata`` into the session's metadata dict.
 
         Implementations may overwrite top-level keys; nested merging
-        is the caller's responsibility.
+        is the caller's responsibility. The session need **not** already
+        exist: if it doesn't, the driver creates it (upsert), so callers
+        can record metadata before the first turn is appended (bug-018).
         """
+
+    async def create_session(
+        self,
+        session_id: str,
+        *,
+        owner: str | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Ensure a session row exists before any turn is appended.
+
+        Concrete (non-abstract) so it is additive to this locked ABC
+        (ADR-0007): existing and third-party drivers inherit it without
+        change. The default records the initial ``owner`` / ``metadata``
+        via :meth:`update_session_metadata`, which every shipped driver
+        upserts. Idempotent — calling it for an existing session merges
+        the given metadata. Drivers may override with a direct insert.
+        """
+        merged: dict[str, Any] = dict(metadata or {})
+        if owner is not None:
+            merged["owner"] = owner
+        await self.update_session_metadata(session_id, merged)
 
     @abstractmethod
     async def expire_before(self, cutoff: datetime) -> int:

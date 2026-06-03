@@ -173,7 +173,21 @@ class RedisChatHistory(ChatHistoryStore):
     async def update_session_metadata(self, session_id: str, metadata: Mapping[str, Any]) -> None:
         raw = await self._r.hgetall(_SESSION_KEY.format(session_id))
         if not raw:
-            raise ModuleError(f"Cannot update metadata for unknown session {session_id!r}")
+            # Create the session if it doesn't exist yet (bug-018):
+            # ChatServer records owner/metadata before the first turn.
+            now = datetime.now(UTC).isoformat()
+            await self._r.hset(
+                _SESSION_KEY.format(session_id),
+                {
+                    "id": session_id,
+                    "owner": "",
+                    "created_at": now,
+                    "last_active_at": now,
+                    "metadata": "{}",
+                },
+            )
+            await self._r.sadd(_SESSIONS_INDEX_KEY, session_id)
+            raw = {"metadata": "{}"}
         existing: dict[str, Any] = json.loads(raw.get("metadata", "{}"))
         existing.update(dict(metadata))
         update: dict[str, str] = {"metadata": json.dumps(existing)}
