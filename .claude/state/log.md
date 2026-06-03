@@ -2892,3 +2892,32 @@ admin@pypi.org has lifted the quota by then.**
 2. Open the PR for `fix/bug-009-react-loop-drops-tool-calls`.
 3. Decide whether to fold bug-008 into the same PR or its own.
 4. Finish the v0.2.3 drip-publish (2 packages) so v0.2.4 has a clean baseline.
+
+## 2026-06-02T11:30 — v0.2.4 MCP cluster: triage shipped, runtime wiring opened
+
+PyPI v0.2.3 drip COMPLETE (34/34 live — phoenix + statsd landed
+2026-05-28).
+
+Triaged the 9 untracked bug docs against real source via 3 parallel
+verification agents (corrected several as-filed claims), added a
+"Framework-level vs derived-agent-level" section to each, reclassified
+bug-016 → enh-001 (HTTP transport = feature gap, not a defect). Also
+added that triage to the workspace doc templates (bug/enhancement/README).
+
+PRs:
+- **#57** docs/triage (bug-012…020 + enh-001) — MERGED.
+- **#58** fix bug-009/010 (tool_calls round-trip) — MERGED. main now at 0.2.4.
+- **#59** fix bug-020 (P0, runtime never wired modules.protocols) +
+  bug-014 (P1, from_config crashed inside a running loop) — OPEN.
+  2 commits (`9282000`, `25a43bb`), full gate green. Consume path only;
+  server-side `expose` rejected (stdio-hijack guard) — deferred with
+  enh-001. New `ProtocolBridge` core contract; `Agent(protocol_bridges=)`;
+  `build_protocols_from_config` wired into `build_agent_from_config`
+  (also fixed latent zero-caller `build_tools_from_config` gap).
+
+**Paused 2026-06-02, resuming evening IST.** Remaining v0.2.4 cluster
+(each its own branch off main): bug-012 → bug-017 → bug-015 → bug-019 →
+bug-018 → bug-013 → enh-001, plus bug-008 (~5 lines). Tag v0.2.4 only
+after the cluster lands (CHANGELOG header is `[0.2.4] — unreleased`).
+PyPI post-drip chores: revoke ~/.pypirc token, Trusted Publishing,
+delete PYPI_PUBLISH_TRACKER.md.

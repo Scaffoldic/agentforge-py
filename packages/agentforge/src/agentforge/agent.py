@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -37,6 +37,7 @@ from agentforge_core.contracts.guardrails import (
 )
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
+from agentforge_core.contracts.protocol_bridge import ProtocolBridge
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.tool import Tool
 from agentforge_core.observability import get_tracer
@@ -119,6 +120,7 @@ class Agent:
         tool_gates: list[ToolCallGate] | None = None,
         guardrail_policy: GuardrailPolicy | None = None,
         pipeline: Pipeline | None = None,
+        protocol_bridges: Sequence[ProtocolBridge] | None = None,
     ) -> None:
         self._config: AgentForgeConfig = load_config(config_path)
 
@@ -197,6 +199,11 @@ class Agent:
         if pipeline is not None:
             self._pipeline_tool = PipelineFindingsTool()
             self._tools.append(self._pipeline_tool)
+
+        # feat-013: protocol handlers (e.g. MCP bridges) already started
+        # by the config builder. Their tools are passed in via `tools=`;
+        # the Agent only owns tearing them down on `close()`.
+        self._protocol_bridges: list[ProtocolBridge] = list(protocol_bridges or [])
 
         self._closed = False
 
@@ -677,6 +684,8 @@ class Agent:
         await self._memory.close()
         if self._graph_store is not None:
             await self._graph_store.close()
+        for bridge in self._protocol_bridges:
+            await bridge.close()
         uninstall_run_id_filter()
         uninstall_json_formatter()
 

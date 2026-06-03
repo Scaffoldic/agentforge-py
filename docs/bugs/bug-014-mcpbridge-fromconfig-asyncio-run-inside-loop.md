@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P1
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)

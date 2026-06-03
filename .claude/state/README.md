@@ -32,8 +32,20 @@ ended.
   description; the user will see it on next session resume.
 - **When you find a bug from a previous feature.** Append a
   `[BUG-CARRIED]` entry to `log.md` under the active feature.
+- **At session end / when pausing mid-feature.** Update `current.md`
+  (`state:`, a `resume:` marker, and a concrete pickup list with open
+  PR URLs + branch names), append a dated `log.md` milestone, then
+  **commit and push both** on the current branch. Never leave
+  `current.md` / `log.md` as a local-only working-tree change — unpushed
+  state is invisible to a resume from another clone and silently drifts.
+  Rule of thumb: if someone else pulled right now, could they continue?
 
 ## Pre-commit enforcement
+
+> **Note:** the `check_state_updated.py` hook described below is not
+> currently wired into `.pre-commit-config.yaml` (aspirational). State
+> currency is maintained by the "When to write" discipline above until
+> the hook lands.
 
 `scripts/check_state_updated.py` runs on every commit and verifies:
 
