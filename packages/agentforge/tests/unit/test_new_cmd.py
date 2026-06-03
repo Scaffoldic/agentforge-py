@@ -52,6 +52,27 @@ def test_minimal_template_renders_with_no_prompts(tmp_path: Path, capsys):
     # (`.agentforge-state/` plumbing).
 
 
+def test_scaffold_records_real_framework_version(tmp_path: Path):
+    """bug-008: the lock/answers `_template_version` must be the real
+    installed framework version, not the `0.0.0+unknown` sentinel — the
+    version lookup keys off the distribution name `agentforge-py`."""
+    from importlib.metadata import version  # noqa: PLC0415
+
+    dst = tmp_path / "agent"
+    _run_new(
+        argparse.Namespace(
+            project_slug="agent",
+            template="minimal",
+            provider="bedrock",
+            no_prompts=True,
+            dst=dst,
+        )
+    )
+    answers = yaml.safe_load((dst / ".agentforge-state" / "answers.yml").read_text())
+    assert answers["_template_version"] != "0.0.0+unknown"
+    assert answers["_template_version"] == version("agentforge-py")
+
+
 def test_anthropic_provider_routes_to_correct_model(tmp_path: Path):
     dst = tmp_path / "agent"
     _run_new(

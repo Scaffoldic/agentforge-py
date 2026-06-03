@@ -72,6 +72,15 @@ activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-008 — scaffolds recorded `_template_version: 0.0.0+unknown`.**
+  `_template_version` / `_framework_version` looked the version up by the
+  import name `agentforge`, but the PyPI distribution is `agentforge-py`
+  (renamed in v0.2.1 around a squatted name), so `importlib.metadata.version`
+  raised on every install and fell back to the sentinel — every scaffolded
+  agent's `answers.yml` and `AGENTFORGE-MANAGED:` markers lied about which
+  framework version produced them. Both call sites now look up
+  `agentforge-py` (with a comment so it isn't "fixed" back). Regression
+  test asserts a scaffold records the real installed version.
 - **bug-013 — `MCPServer.from_stdio` / `from_http` served an empty tool
   list.** The factories constructed the server holding the tool list but
   never registered the tools with the runner, so a server built straight
