@@ -172,6 +172,61 @@ def test_evaluator_entry_invalid_config_raises():
         validate_module_configs(cfg)
 
 
+# --- bug-019: terse string / single-key-mapping sugar normalises ----
+
+
+def test_evaluators_accept_all_three_sugar_forms() -> None:
+    """String, single-key-mapping, and canonical forms all parse from raw
+    YAML-shaped dicts (bug-019)."""
+    modules = ModulesConfig.model_validate(
+        {
+            "evaluators": [
+                "faithfulness",  # string sugar
+                {"geval": {"rubric": "be nice"}},  # single-key mapping sugar
+                {"name": "correctness", "config": {"ground_truth_field": "ref"}},  # canonical
+            ]
+        }
+    )
+    assert [(e.name, e.config) for e in modules.evaluators] == [
+        ("faithfulness", {}),
+        ("geval", {"rubric": "be nice"}),
+        ("correctness", {"ground_truth_field": "ref"}),
+    ]
+
+
+@pytest.mark.parametrize("gate", ["input", "output", "tool_gates"])
+def test_guardrail_gates_accept_all_three_sugar_forms(gate: str) -> None:
+    modules = ModulesConfig.model_validate(
+        {
+            "guardrails": {
+                gate: [
+                    "prompt_injection_basic",  # string sugar
+                    {"presidio": {"entities": ["EMAIL_ADDRESS"]}},  # single-key mapping sugar
+                    {"name": "capability_check", "config": {}},  # canonical
+                ]
+            }
+        }
+    )
+    entries = getattr(modules.guardrails, gate)
+    assert [(e.name, e.config) for e in entries] == [
+        ("prompt_injection_basic", {}),
+        ("presidio", {"entities": ["EMAIL_ADDRESS"]}),
+        ("capability_check", {}),
+    ]
+
+
+def test_string_sugar_rejects_empty_name() -> None:
+    """An empty string still fails (name has min_length=1)."""
+    with pytest.raises(ValueError, match="evaluators"):
+        ModulesConfig.model_validate({"evaluators": [""]})
+
+
+def test_canonical_form_still_forbids_extra_keys() -> None:
+    """Normalisation must not loosen strict/extra=forbid for canonical dicts."""
+    with pytest.raises(ValueError, match="evaluators"):
+        ModulesConfig.model_validate({"evaluators": [{"name": "x", "config": {}, "bogus": 1}]})
+
+
 # --- non-class schema attribute (defensive) --------------------
 
 

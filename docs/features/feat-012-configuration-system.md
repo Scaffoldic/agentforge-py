@@ -253,11 +253,12 @@ The two implementations are tested against the same fixture set.
   `Agent(budget_usd=, max_iterations=)` kwargs (locked under
   feat-001) are unchanged.
 - **Evaluator string-shorthand** `- faithfulness` mentioned in
-  spec §4.1 is not implemented. The YAML must spell out
-  `- name: faithfulness`. Normalising the bare-string form to
-  `EvaluatorEntry(name=..., config={})` is a small loader follow-
-  up; the runtime cost is zero (constructed graders work
-  identically).
+  spec §4.1 was not implemented at feat-012 ship; the YAML had to
+  spell out `- name: faithfulness`. **Resolved in v0.2.4 (bug-019):**
+  a `model_validator(mode="before")` on `EvaluatorEntry` and
+  `GuardrailEntry` normalises the bare-string form (and the
+  single-key-mapping sugar) to `{name, config}` before strict
+  validation, so all three documented shapes load.
 - **`Resolver` lateness**: `agentforge_core.config.module_schemas`
   imports `Resolver` lazily inside `validate_module_configs` to
   avoid a load-order cycle with the values / contracts modules
@@ -270,7 +271,6 @@ The two implementations are tested against the same fixture set.
 
 ### What's *not* yet implemented
 
-- **Evaluator string-shorthand** normalisation (see above).
 - **Auto-wiring** of `modules.memory`, `modules.evaluators`,
   `modules.observability` etc. into `Agent.__init__`. The schema +
   resolver are ready; `Agent.__init__` still expects constructed
