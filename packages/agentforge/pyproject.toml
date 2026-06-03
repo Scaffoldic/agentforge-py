@@ -55,27 +55,28 @@ dependencies = [
 # resolves to `agentforge-py + agentforge-anthropic`, etc.
 # Add a new entry here every time a new sister package ships.
 
-# LLM providers — for providers with a vendor-SDK extra
-# (anthropic / openai / bedrock), the extra is included so a single
-# `pip install "agentforge-py[<provider>]"` lands both the framework
-# wrapper AND the underlying SDK. ollama / litellm bundle their SDK
-# as a hard dep, so no `[<sdk>]` extra is needed.
+# LLM providers. Where a sister package keeps its vendor SDK behind
+# an optional `[<sdk>]` extra (the lazy-import pattern), the meta extra
+# MUST chain that extra — otherwise `pip install "agentforge-py[x]"`
+# installs the wrapper but not the SDK and the first call raises a
+# ModuleError (bug-015). bedrock hard-deps its SDK (aioboto3/botocore),
+# so it requests no extra — and must NOT request a phantom `[bedrock]`.
 anthropic = ["agentforge-anthropic[anthropic] ~= 0.2.4"]
 openai = ["agentforge-openai[openai] ~= 0.2.4"]
-bedrock = ["agentforge-bedrock[bedrock] ~= 0.2.4"]
-ollama = ["agentforge-ollama ~= 0.2.4"]
-litellm = ["agentforge-litellm ~= 0.2.4"]
+bedrock = ["agentforge-bedrock ~= 0.2.4"]
+ollama = ["agentforge-ollama[ollama] ~= 0.2.4"]
+litellm = ["agentforge-litellm[litellm] ~= 0.2.4"]
 
 # Embeddings
-voyage = ["agentforge-voyage ~= 0.2.4"]
+voyage = ["agentforge-voyage[voyage] ~= 0.2.4"]
 
-# Memory backends
+# Memory backends (each hard-deps its driver SDK — no extra to chain)
 memory-sqlite = ["agentforge-memory-sqlite ~= 0.2.4"]
 memory-postgres = ["agentforge-memory-postgres ~= 0.2.4"]
 memory-neo4j = ["agentforge-memory-neo4j ~= 0.2.4"]
 memory-surrealdb = ["agentforge-memory-surrealdb ~= 0.2.4"]
 
-# Chat surface
+# Chat surface (chat hard-deps aiosqlite; history backends hard-dep their SDK)
 chat = ["agentforge-chat ~= 0.2.4"]
 chat-http = ["agentforge-chat-http ~= 0.2.4"]
 chat-slack = ["agentforge-chat-slack ~= 0.2.4"]
@@ -83,26 +84,26 @@ chat-history-postgres = ["agentforge-chat-history-postgres ~= 0.2.4"]
 chat-history-redis = ["agentforge-chat-history-redis ~= 0.2.4"]
 
 # Rerankers
-reranker-cohere = ["agentforge-reranker-cohere ~= 0.2.4"]
-reranker-voyage = ["agentforge-reranker-voyage ~= 0.2.4"]
-reranker-mixedbread = ["agentforge-reranker-mixedbread ~= 0.2.4"]
-reranker-sentence-transformers = ["agentforge-reranker-sentence-transformers ~= 0.2.4"]
+reranker-cohere = ["agentforge-reranker-cohere[cohere] ~= 0.2.4"]
+reranker-voyage = ["agentforge-reranker-voyage[voyage] ~= 0.2.4"]
+reranker-mixedbread = ["agentforge-reranker-mixedbread[mixedbread] ~= 0.2.4"]
+reranker-sentence-transformers = ["agentforge-reranker-sentence-transformers[sentence-transformers] ~= 0.2.4"]
 
-# Guardrails
+# Guardrails (each hard-deps its SDK — no extra to chain)
 guard-llmguard = ["agentforge-guard-llmguard ~= 0.2.4"]
 guard-presidio = ["agentforge-guard-presidio ~= 0.2.4"]
 guard-nemo = ["agentforge-guard-nemo ~= 0.2.4"]
 guard-llamaguard = ["agentforge-guard-llamaguard ~= 0.2.4"]
 
 # Observability
-langfuse = ["agentforge-langfuse ~= 0.2.4"]
-phoenix = ["agentforge-phoenix ~= 0.2.4"]
+langfuse = ["agentforge-langfuse[langfuse] ~= 0.2.4"]
+phoenix = ["agentforge-phoenix[phoenix] ~= 0.2.4"]
 otel = ["agentforge-otel ~= 0.2.4"]
-statsd = ["agentforge-statsd ~= 0.2.4"]
-evidently = ["agentforge-evidently ~= 0.2.4"]
+statsd = ["agentforge-statsd[statsd] ~= 0.2.4"]
+evidently = ["agentforge-evidently[evidently] ~= 0.2.4"]
 
 # Protocols
-mcp = ["agentforge-mcp ~= 0.2.4"]
+mcp = ["agentforge-mcp[mcp] ~= 0.2.4"]
 a2a = ["agentforge-a2a ~= 0.2.4"]
 
 # Eval
@@ -113,14 +114,15 @@ testing = ["agentforge-testing ~= 0.2.4"]
 
 # Everything (development / docs / smoke-test convenience — not
 # recommended for production deploys; pick the actual integrations
-# you use to keep the dependency tree small).
+# you use to keep the dependency tree small). Vendor-SDK extras are
+# chained here too so `[all]` actually installs every SDK.
 all = [
-    "agentforge-anthropic ~= 0.2.4",
-    "agentforge-openai ~= 0.2.4",
+    "agentforge-anthropic[anthropic] ~= 0.2.4",
+    "agentforge-openai[openai] ~= 0.2.4",
     "agentforge-bedrock ~= 0.2.4",
-    "agentforge-ollama ~= 0.2.4",
-    "agentforge-litellm ~= 0.2.4",
-    "agentforge-voyage ~= 0.2.4",
+    "agentforge-ollama[ollama] ~= 0.2.4",
+    "agentforge-litellm[litellm] ~= 0.2.4",
+    "agentforge-voyage[voyage] ~= 0.2.4",
     "agentforge-memory-sqlite ~= 0.2.4",
     "agentforge-memory-postgres ~= 0.2.4",
     "agentforge-memory-neo4j ~= 0.2.4",
@@ -130,20 +132,20 @@ all = [
     "agentforge-chat-slack ~= 0.2.4",
     "agentforge-chat-history-postgres ~= 0.2.4",
     "agentforge-chat-history-redis ~= 0.2.4",
-    "agentforge-reranker-cohere ~= 0.2.4",
-    "agentforge-reranker-voyage ~= 0.2.4",
-    "agentforge-reranker-mixedbread ~= 0.2.4",
-    "agentforge-reranker-sentence-transformers ~= 0.2.4",
+    "agentforge-reranker-cohere[cohere] ~= 0.2.4",
+    "agentforge-reranker-voyage[voyage] ~= 0.2.4",
+    "agentforge-reranker-mixedbread[mixedbread] ~= 0.2.4",
+    "agentforge-reranker-sentence-transformers[sentence-transformers] ~= 0.2.4",
     "agentforge-guard-llmguard ~= 0.2.4",
     "agentforge-guard-presidio ~= 0.2.4",
     "agentforge-guard-nemo ~= 0.2.4",
     "agentforge-guard-llamaguard ~= 0.2.4",
-    "agentforge-langfuse ~= 0.2.4",
-    "agentforge-phoenix ~= 0.2.4",
+    "agentforge-langfuse[langfuse] ~= 0.2.4",
+    "agentforge-phoenix[phoenix] ~= 0.2.4",
     "agentforge-otel ~= 0.2.4",
-    "agentforge-statsd ~= 0.2.4",
-    "agentforge-evidently ~= 0.2.4",
-    "agentforge-mcp ~= 0.2.4",
+    "agentforge-statsd[statsd] ~= 0.2.4",
+    "agentforge-evidently[evidently] ~= 0.2.4",
+    "agentforge-mcp[mcp] ~= 0.2.4",
     "agentforge-a2a ~= 0.2.4",
     "agentforge-eval-geval ~= 0.2.4",
     "agentforge-testing ~= 0.2.4",

@@ -106,7 +106,7 @@ async def test_from_stdio_errors_when_sdk_missing(
     from agentforge_core.production.exceptions import ModuleError  # noqa: PLC0415
 
     monkeypatch.setitem(sys.modules, "mcp", None)
-    with pytest.raises(ModuleError, match="pip install mcp"):
+    with pytest.raises(ModuleError, match="agentforge-mcp"):
         await MCPServerClient.from_stdio(name="x", command="echo")
 
 
@@ -119,7 +119,7 @@ async def test_from_http_errors_when_sdk_missing(
     from agentforge_core.production.exceptions import ModuleError  # noqa: PLC0415
 
     monkeypatch.setitem(sys.modules, "mcp", None)
-    with pytest.raises(ModuleError, match="pip install mcp"):
+    with pytest.raises(ModuleError, match="agentforge-mcp"):
         await MCPServerClient.from_http(name="x", url="http://localhost/mcp")
 
 
@@ -132,5 +132,5 @@ async def test_from_sse_errors_when_sdk_missing(
     from agentforge_core.production.exceptions import ModuleError  # noqa: PLC0415
 
     monkeypatch.setitem(sys.modules, "mcp", None)
-    with pytest.raises(ModuleError, match="pip install mcp"):
+    with pytest.raises(ModuleError, match="agentforge-mcp"):
         await MCPServerClient.from_sse(name="x", url="http://localhost/mcp")

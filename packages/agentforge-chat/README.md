@@ -12,9 +12,10 @@ for the design and runbook.
 
 ```bash
 pip install agentforge-chat
-# or, with the SQLite driver pre-pulled:
-pip install "agentforge-chat[sqlite]"
 ```
+
+The SQLite history driver (`SqliteChatHistory`) works out of the box —
+`aiosqlite` ships as a hard dependency.
 
 ## Three-line chat from a one-shot agent
 

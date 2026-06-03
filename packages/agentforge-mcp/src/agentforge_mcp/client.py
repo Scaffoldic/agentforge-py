@@ -137,7 +137,11 @@ async def _build_stdio_runner(
         from mcp import ClientSession  # noqa: PLC0415
         from mcp.client.stdio import StdioServerParameters, stdio_client  # noqa: PLC0415
     except ImportError as exc:
-        msg = "mcp SDK is not installed. Install via `pip install mcp` to consume MCP servers."
+        msg = (
+            "mcp SDK is not installed. Install via "
+            '`pip install "agentforge-mcp[mcp]"` (or `agentforge-py[mcp]`) '
+            "to consume MCP servers."
+        )
         raise ModuleError(msg) from exc
     parts = command.split()
     if not parts:
@@ -175,8 +179,8 @@ async def _build_http_runner(
             )
     except ImportError as exc:
         msg = (
-            f"mcp SDK is not installed. Install via `pip install mcp` to "
-            f"connect to MCP server {name!r} over {transport}."
+            'mcp SDK is not installed. Install via `pip install "agentforge-mcp[mcp]"` '
+            f"(or `agentforge-py[mcp]`) to connect to MCP server {name!r} over {transport}."
         )
         raise ModuleError(msg) from exc
     return _SDKClientRunner(
