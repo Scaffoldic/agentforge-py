@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P2
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)
@@ -126,3 +126,27 @@ models reject.
   the terse form appears in shipped example YAML across three configs.
   Implement the `mode="before"` normaliser once and mirror it to
   `evaluators`, `input`, `output`, `tool_gates`.
+
+## Resolution (v0.2.4)
+
+Implemented as a single shared helper `_normalise_named_entry` plus a
+`@model_validator(mode="before")` on **both** `EvaluatorEntry` and
+`GuardrailEntry` (`agentforge_core/config/schema.py`). Putting the
+normaliser on the entry models rather than on each parent list means one
+validator per type covers every usage — `modules.evaluators` and
+guardrails' `input` / `output` / `tool_gates` — with no per-field
+duplication, and it composes through Pydantic's list validation even
+under `strict=True`.
+
+Scope was wider than the reported string-form symptom: the **single-key
+mapping sugar** (`- geval: {rubric: ...}`, shipped in the schema's own
+example YAML) was equally broken under `extra="forbid"`. The fix
+normalises all three documented shapes — string, single-key mapping, and
+canonical `{name, config}` — so copy-pasting any of them validates.
+Docstrings for both entries were corrected (they claimed "the loader
+normalises"; the loader does not — it is now the entry's before-validator).
+`ObservabilityEntry` shares the shape but its docs/example only show the
+canonical form, so it is intentionally left unchanged (no doc-vs-code
+contradiction to fix). Tests cover all three forms across evaluators +
+all three guardrail gates, plus empty-name rejection and that canonical
+dicts still forbid extra keys.
