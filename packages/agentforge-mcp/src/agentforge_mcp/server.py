@@ -129,8 +129,8 @@ def _build_stdio_server_runner(  # pragma: no cover — exercised only with `mcp
         from mcp.server.stdio import stdio_server  # noqa: PLC0415, F401
     except ImportError as exc:
         msg = (
-            "mcp SDK is not installed. Install via `pip install mcp` to "
-            "expose tools as an MCP stdio server."
+            'mcp SDK is not installed. Install via `pip install "agentforge-mcp[mcp]"` '
+            "(or `agentforge-py[mcp]`) to expose tools as an MCP stdio server."
         )
         raise ModuleError(msg) from exc
     return _SDKServerRunner(server=Server(server_name), transport="stdio")
@@ -146,8 +146,8 @@ def _build_http_server_runner(  # pragma: no cover — exercised only with `mcp`
         from mcp.server import Server  # noqa: PLC0415
     except ImportError as exc:
         msg = (
-            "mcp SDK is not installed. Install via `pip install mcp` to "
-            "expose tools as an MCP HTTP server."
+            'mcp SDK is not installed. Install via `pip install "agentforge-mcp[mcp]"` '
+            "(or `agentforge-py[mcp]`) to expose tools as an MCP HTTP server."
         )
         raise ModuleError(msg) from exc
     return _SDKServerRunner(server=Server(server_name), transport="http", host=host, port=port)
