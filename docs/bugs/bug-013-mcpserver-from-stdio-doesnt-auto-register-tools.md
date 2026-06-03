@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P2
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)
@@ -92,3 +92,22 @@ MCP through `MCPBridge` (the supported path) is unaffected because
   `from_stdio`/`from_http` deletes a silent zero-tool-server failure mode
   for every consumer who builds a standalone MCP server from the factory,
   and aligns the raw-factory path with the bridge path's behaviour.
+
+## Resolution (v0.2.4)
+
+`from_stdio` and `from_http` now call `register_tools()` before returning,
+so a server built from the factory advertises its tools without a manual
+step. Two correctness guards make the auto-call safe:
+
+- **Idempotency** — `register_tools()` is guarded by a `_registered`
+  flag; a second call (e.g. an existing caller that still invokes it
+  explicitly) registers nothing and returns 0, so no double-registration.
+- **`set_tools()` re-arms** the flag, so the bridge expose path (build an
+  empty placeholder → `attach_local_tools` → `start()` registers the real
+  tools) still works; the empty placeholder's auto-registration is a
+  harmless no-op.
+
+Both factories also gained an optional `runner=` injection (matching the
+client factories) so the behaviour is unit-tested with a fake runner
+rather than only in the live path. The `register_tools()` return value is
+now "tools registered by this call" (0 on a no-op repeat).
