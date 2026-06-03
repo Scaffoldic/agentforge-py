@@ -47,6 +47,7 @@ from agentforge_core.contracts import (
     Reranker,
     Tool,
     VectorStore,
+    validate_tool_name,
 )
 from agentforge_core.migrations import discover_migrations
 from agentforge_core.observability import SCOPE_NAME as OBSERVABILITY_SCOPE_NAME
@@ -67,6 +68,7 @@ from agentforge_core.production import (
     RunIdFilter,
     ServiceError,
     TimeoutError,
+    ToolNameInvalidError,
     bind_run,
     current_run,
     install_json_formatter,
@@ -202,6 +204,7 @@ __all__ = [
     "TokenUsage",
     "Tool",
     "ToolCall",
+    "ToolNameInvalidError",
     "ToolSpec",
     "VectorItem",
     "VectorMatch",
@@ -225,4 +228,5 @@ __all__ = [
     "reset_run",
     "uninstall_json_formatter",
     "uninstall_run_id_filter",
+    "validate_tool_name",
 ]

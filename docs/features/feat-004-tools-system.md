@@ -224,6 +224,26 @@ agent:
     on_error: "observe"   # "observe" (default) | "raise"
 ```
 
+### 4.6 Tool-name charset (portability constraint)
+
+A tool's `name` is what the LLM sees and what every provider validates.
+Bedrock Converse, OpenAI function calling, and Anthropic tool use all
+enforce the same pattern — `^[a-zA-Z0-9_-]{1,64}$`. A name outside that
+charset (dots, colons, spaces, non-ASCII, or >64 chars) is rejected by
+the provider on the first LLM call.
+
+To keep the vendor-agnostic promise honest — "a name valid on one
+provider is valid on all" — the framework validates names at each
+provider's request-build boundary via
+`agentforge_core.contracts.tool.validate_tool_name`, raising
+`ToolNameInvalidError` *locally* (with a suggested legal rewrite, e.g.
+`kb.search` → `kb_search`) before the request leaves the process. This
+turns a cryptic remote validation error into a pre-flight, actionable
+one (bug-017). MCP-imported tools are prefixed `{server}__{tool}` for
+the same reason (bug-012). Core does not auto-enforce the charset on
+`ToolSpec` — it stays a neutral representation; the check lives at the
+provider boundary where the wire constraint actually applies.
+
 ## 5. Plug-and-play & upgrade story
 
 A new tool package: `pip install agentforge-tools-aws`, then add `aws_s3_get`,

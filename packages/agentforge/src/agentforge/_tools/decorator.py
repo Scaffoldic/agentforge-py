@@ -20,7 +20,15 @@ Wraps a typed function as a concrete `Tool` subclass:
 The decorator inspects the wrapped function and constructs:
 
   - `name`              from the function's `__name__` (or the
-                        `name=` override argument).
+                        `name=` override argument). Keep it within
+                        `[a-zA-Z0-9_-]` (1-64 chars): that's the
+                        tool-name charset Bedrock, OpenAI, and
+                        Anthropic all enforce, so a name outside it
+                        is rejected at request-build time with
+                        `ToolNameInvalidError` (bug-017). A plain
+                        function name like `lookup_user` is already
+                        legal; avoid dots / colons / spaces in
+                        `name=` overrides.
   - `description`       from the docstring's summary line + Args
                         section, parsed Google-style. The first
                         non-blank non-arg line is the summary;

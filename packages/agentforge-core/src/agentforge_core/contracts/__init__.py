@@ -25,7 +25,7 @@ from agentforge_core.contracts.renderer import FindingRenderer
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.strategy import ReasoningStrategy
 from agentforge_core.contracts.task import Task
-from agentforge_core.contracts.tool import Tool
+from agentforge_core.contracts.tool import Tool, validate_tool_name
 from agentforge_core.contracts.vector_store import VectorStore
 
 __all__ = [
@@ -49,4 +49,5 @@ __all__ = [
     "Task",
     "Tool",
     "VectorStore",
+    "validate_tool_name",
 ]
