@@ -14,7 +14,6 @@ from agentforge_core.config import (
     parse_overrides,
 )
 from agentforge_core.production.exceptions import ModuleError
-from pydantic import ValidationError
 
 # --- widened schema ----------------------------------------------
 
@@ -269,16 +268,14 @@ def test_explicit_env_arg_beats_env_var(tmp_path: Path, monkeypatch: pytest.Monk
     assert cfg.agent.budget.usd == pytest.approx(50.0)
 
 
-# --- evaluator string-shorthand (NYI in this chunk) ------------
+# --- evaluator string-shorthand (normalised since bug-019) -----
 
 
-def test_evaluator_string_shorthand_not_yet_supported(tmp_path: Path) -> None:
-    """The spec §4.1 mentions `evaluators: - faithfulness` (bare
-    string). This loader doesn't yet normalise that — the YAML must
-    spell out `- name: faithfulness`. Tracked under feat-012's
-    Implementation status.
-    """
+def test_evaluator_string_shorthand_loads(tmp_path: Path) -> None:
+    """Spec §4.1's `evaluators: - faithfulness` (bare string) now loads
+    end-to-end: the entry's `mode="before"` validator normalises the
+    string to `{name: faithfulness, config: {}}` (bug-019)."""
     yaml_path = tmp_path / "agentforge.yaml"
     yaml_path.write_text("modules:\n  evaluators:\n    - faithfulness\n")
-    with pytest.raises(ValidationError):
-        load_config(yaml_path)
+    cfg = load_config(yaml_path)
+    assert [(e.name, e.config) for e in cfg.modules.evaluators] == [("faithfulness", {})]
