@@ -61,6 +61,14 @@ activity and the next chat turn's prompt lost prior tool context.
   locked ABC) method to register a session before its first turn. The
   default upserts via `update_session_metadata`; drivers may override
   (bug-018).
+- **MCP server-side HTTP transport (enh-001).** `MCPServer.from_http(...)`
+  + `serve()` now actually serve the MCP protocol over streamable-HTTP
+  (the SDK's `StreamableHTTPSessionManager` under uvicorn) instead of
+  raising `not yet implemented`, enabling multi-instance hosted MCP
+  servers. `starlette` / `uvicorn` arrive transitively via
+  `agentforge-mcp[mcp]`. Unsupported transports now fail at construction;
+  the client HTTP transport was migrated off the SDK's deprecated
+  `streamablehttp_client`. SSE server transport remains deferred.
 
 ### Fixed
 

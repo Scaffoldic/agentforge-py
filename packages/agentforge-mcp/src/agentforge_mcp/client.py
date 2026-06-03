@@ -170,21 +170,34 @@ async def _build_http_runner(
     """Production HTTP / SSE runner — lazy-imports `mcp`."""
     try:
         from mcp import ClientSession  # noqa: PLC0415
-
-        if transport == "sse":
-            from mcp.client.sse import sse_client as connect  # noqa: PLC0415
-        else:
-            from mcp.client.streamable_http import (  # noqa: PLC0415
-                streamablehttp_client as connect,
-            )
     except ImportError as exc:
         msg = (
             'mcp SDK is not installed. Install via `pip install "agentforge-mcp[mcp]"` '
             f"(or `agentforge-py[mcp]`) to connect to MCP server {name!r} over {transport}."
         )
         raise ModuleError(msg) from exc
+
+    if transport == "sse":  # pragma: no cover — live wiring (real SDK only)
+        from mcp.client.sse import sse_client  # noqa: PLC0415
+
+        def _connect() -> Any:
+            return sse_client(url, headers=dict(headers or {}))
+    else:  # pragma: no cover — live wiring (real SDK only)
+        # `streamable_http_client` (the non-deprecated entry point) takes an
+        # `http_client`, not `headers`; `create_mcp_http_client` builds one
+        # carrying the requested headers.
+        from mcp.client.streamable_http import (  # noqa: PLC0415
+            create_mcp_http_client,
+            streamable_http_client,
+        )
+
+        def _connect() -> Any:
+            return streamable_http_client(
+                url, http_client=create_mcp_http_client(headers=dict(headers or {}))
+            )
+
     return _SDKClientRunner(
-        session_factory=lambda: connect(url, headers=dict(headers or {})),
+        session_factory=_connect,
         session_cls=ClientSession,
         timeout_s=timeout_s,
     )
