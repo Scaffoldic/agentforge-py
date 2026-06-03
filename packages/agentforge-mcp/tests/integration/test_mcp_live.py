@@ -32,8 +32,9 @@ async def test_stdio_roundtrip_against_real_mcp_server() -> None:
         tools = await client.discover_tools()
         assert len(tools) == 1
         tool = tools[0]
-        # Tools come back with server-name-prefixed names.
-        assert type(tool).name == "echo.echo"
+        # Tools come back with server-name-prefixed names (double-underscore
+        # separator — legal under every provider's tool-name charset).
+        assert type(tool).name == "echo__echo"
         # Invoke through the adapter — the runner routes to the
         # subprocess and the echo server returns the input unchanged.
         result = await tool.run(text="hello mcp")

@@ -44,8 +44,20 @@ def _descriptor(name: str = "read_file") -> MCPToolDescriptor:
 def test_adapter_qualifies_name_with_server_prefix() -> None:
     runner = MCPFakeClientRunner()
     adapter = build_adapter(runner, _descriptor(), server_name="fs")
-    assert type(adapter).name == "fs.read_file"
+    assert type(adapter).name == "fs__read_file"
     assert "Reads a file" in type(adapter).description
+
+
+def test_adapter_name_satisfies_provider_tool_name_charset() -> None:
+    """Bedrock/OpenAI/Anthropic all enforce ``^[a-zA-Z0-9_-]{1,64}$``
+    on tool names. The server-prefix separator must stay inside that
+    charset — a dotted name (bug-012) failed provider validation on
+    the first LLM call."""
+    import re  # noqa: PLC0415
+
+    runner = MCPFakeClientRunner()
+    adapter = build_adapter(runner, _descriptor(), server_name="myserver")
+    assert re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", type(adapter).name)
 
 
 def test_adapter_has_pydantic_input_schema() -> None:
@@ -67,7 +79,7 @@ async def test_adapter_run_round_trips_through_runner() -> None:
 @pytest.mark.asyncio
 async def test_adapter_strips_server_prefix_when_calling_mcp() -> None:
     """The runner should receive the bare MCP-side name
-    (`read_file`), not the qualified `fs.read_file`."""
+    (`read_file`), not the qualified `fs__read_file`."""
     runner = MCPFakeClientRunner(responses={"read_file": "ok"})
     adapter = build_adapter(runner, _descriptor(), server_name="fs")
     await adapter.run(path="/tmp")

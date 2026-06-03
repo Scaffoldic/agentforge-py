@@ -53,6 +53,15 @@ activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-012 — MCP tool names used a `.` separator, which every
+  provider rejected.** `build_adapter` qualified each MCP tool as
+  `{server}.{tool}` (e.g. `myserver.my_tool`), but Bedrock Converse,
+  OpenAI, and Anthropic all validate tool names against
+  `^[a-zA-Z0-9_-]{1,64}$` — so every MCP tool failed on the first LLM
+  call. The separator is now a double underscore (`{server}__{tool}`),
+  which stays legal on all three providers while keeping the
+  server/tool boundary unambiguous. A regression test locks the
+  qualified name to the provider charset.
 - **bug-020 — runtime never wired `modules.protocols.mcp`.**
   Declaring an MCP server in `agentforge.yaml` was a no-op: no
   subprocess spawned, no MCP tools in `agent.tools`. The config was

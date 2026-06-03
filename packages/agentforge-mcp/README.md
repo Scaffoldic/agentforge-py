@@ -33,7 +33,9 @@ agentforge add module mcp
 ```
 
 Each consumed MCP server's tools land in `agent.tools` with a
-server-name prefix (`filesystem.read_file`,
-`github.create_issue`). When `expose.enabled` is set, the agent
+server-name prefix (`filesystem__read_file`,
+`github__create_issue`). The separator is a double underscore so
+the name stays legal under every provider's tool-name charset
+(`^[a-zA-Z0-9_-]{1,64}$`). When `expose.enabled` is set, the agent
 runs an MCP server alongside; other agents (Claude Desktop,
 Cursor, LangChain) can call into it.

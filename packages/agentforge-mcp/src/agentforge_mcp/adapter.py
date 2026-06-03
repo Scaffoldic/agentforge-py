@@ -29,9 +29,16 @@ def build_adapter(
 
     Tool names are prefixed with the server name so two MCP
     servers exposing `read_file` don't collide:
-    `filesystem.read_file` vs `s3.read_file`.
+    `filesystem__read_file` vs `s3__read_file`.
+
+    The separator is a double underscore, not a dot: provider
+    tool-name charsets (Bedrock Converse, OpenAI, Anthropic all
+    enforce ``^[a-zA-Z0-9_-]{1,64}$``) reject ``.``. A dotted name
+    made every MCP tool fail provider validation on the first LLM
+    call (bug-012). ``__`` stays legal everywhere and keeps the
+    server/tool boundary unambiguous.
     """
-    qualified_name = f"{server_name}.{descriptor.name}"
+    qualified_name = f"{server_name}__{descriptor.name}"
     schema_cls = _build_input_schema(qualified_name, descriptor.input_schema)
 
     class _Adapter(MCPToolAdapter):
