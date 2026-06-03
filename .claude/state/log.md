@@ -2921,3 +2921,14 @@ bug-018 → bug-013 → enh-001, plus bug-008 (~5 lines). Tag v0.2.4 only
 after the cluster lands (CHANGELOG header is `[0.2.4] — unreleased`).
 PyPI post-drip chores: revoke ~/.pypirc token, Trusted Publishing,
 delete PYPI_PUBLISH_TRACKER.md.
+
+## 2026-06-03T00:00 — v0.2.4 cluster: PR #59 merged, bug-012 opened (#60)
+PR #59 (bug-020 + bug-014, MCP runtime wiring) merged to main (c2f1132) —
+the cluster unblocker. Synced main, deleted the merged branch.
+Started bug-012 on `fix/bug-012-mcp-adapter-separator`: MCP tool-name
+separator `.`→`__` so Bedrock/OpenAI/Anthropic tool-name charset
+(`^[a-zA-Z0-9_-]{1,64}$`) accepts MCP tools. adapter.py + tests (incl.
+charset regression test) + feat-013 spec + agentforge-mcp README +
+CHANGELOG; bug-012 doc → fixed in 0.2.4. Full gate green (87df76a).
+PR #60 open. Next: bug-017 → bug-015 → bug-019 → bug-018 → bug-013 →
+enh-001; bug-008 before tag; then tag v0.2.4.
