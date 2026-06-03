@@ -101,6 +101,20 @@ class TimeoutError(ProviderError):
     """
 
 
+class ToolNameInvalidError(ProviderError):
+    """A tool name violates the portable tool-name charset.
+
+    Every major provider (Bedrock Converse, OpenAI, Anthropic) validates
+    tool names against ``^[a-zA-Z0-9_-]{1,64}$``. Provider drivers call
+    `agentforge_core.contracts.tool.validate_tool_name` at request-build
+    time and raise this *before* the request leaves the process, turning a
+    cryptic remote validation failure on the first LLM call into a local,
+    actionable error. Subclasses `ProviderError` so the same handler that
+    catches other provider failures catches this too. Not retryable — the
+    fix is to rename the tool.
+    """
+
+
 class CapabilityNotSupported(AgentForgeError):
     """Raised when an optional capability is invoked on a driver that
     does not declare it.

@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P2
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)
@@ -103,3 +103,28 @@ name-legality at its own boundary.
 - Discovered when a downstream consumer renamed 13 tools from dotted
   (`kb.search`) to underscored (`kb_search`) form — mechanical but
   unexpected mid-implementation.
+
+## Resolution (v0.2.4)
+
+Both layers shipped, and the validator was applied **more broadly than
+the original Bedrock-only layer-2 proposal**:
+
+- **Validator (layer 2)** — `validate_tool_name(name)` +
+  `ToolNameInvalidError(ProviderError)` added to `agentforge-core`
+  (`contracts/tool.py`, `production/exceptions.py`). It is invoked at
+  the request-build boundary of **all three** built-in providers
+  (Bedrock, OpenAI, Anthropic), not just Bedrock — they share the
+  `^[a-zA-Z0-9_-]{1,64}$` charset, and validating everywhere is what
+  makes the vendor-agnostic promise ("valid on one → valid on all")
+  actually hold. The error message suggests a legal rewrite
+  (`kb.search` → `kb_search`).
+- **Deliberately NOT enforced in core `ToolSpec`.** Core stays a
+  neutral representation; the charset is a per-provider wire constraint
+  (they merely coincide today), so each provider opts in by calling the
+  shared helper. A future lax/local provider simply doesn't call it.
+- **Docs (layer 1)** — constraint documented in feat-003 (custom-provider
+  runbook), feat-004 (§4.6), feat-013 (MCP prefix note), the `@tool`
+  decorator docstring, and the scaffold's `02-add-a-tool` runbook.
+- **Tests** — core: accept/reject parametrised cases + `ProviderError`
+  subclassing + suggestion-in-message; each provider: a dotted name
+  raises locally and nothing leaves the process.

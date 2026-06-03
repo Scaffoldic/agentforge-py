@@ -32,6 +32,7 @@ from typing import Any, cast
 
 import aioboto3
 from agentforge_core.contracts.llm import LLMClient
+from agentforge_core.contracts.tool import validate_tool_name
 from agentforge_core.resolver import register_provider
 from agentforge_core.values.messages import (
     LLMResponse,
@@ -333,6 +334,8 @@ class BedrockClient(LLMClient):
         if system:
             request["system"] = [{"text": system}]
         if tools:
+            for t in tools:
+                validate_tool_name(t.name)
             request["toolConfig"] = {
                 "tools": [
                     {
