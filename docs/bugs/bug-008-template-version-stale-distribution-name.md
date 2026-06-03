@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P3
 found-in: v0.2.3
 found-via: post-bug-007 validation via published CLI, 2026-05-21

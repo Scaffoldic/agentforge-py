@@ -3025,3 +3025,26 @@ tracker milestone to commit+push (not batched to session end), esp. in a
 multi-PR cluster. Full gate green (b13a096). PR #65 open. After merge the
 bug cluster is DONE; remaining: enh-001 (may slip to 0.2.5), bug-008 (~5
 lines) before tagging, then cut v0.2.4.
+
+## 2026-06-03T06:30 — v0.2.4 cluster: bug-013 merged (#65); enh-001 + bug-008 opened (#66)
+PR #65 (bug-013) merged to main (503ffdb) — all 8 cluster bugs now in.
+Per user, bundled enh-001 + bug-008 into ONE PR with TWO commits on
+`enh/001-mcp-http-server-transport`:
+- enh-001 (e3497bd): MCP server-side HTTP transport. _SDKServerRunner.serve()
+  branches stdio/http; http = StreamableHTTPSessionManager mounted at /mcp
+  under uvicorn (stop() graceful); unsupported transport rejected at
+  construction. Migrated the CLIENT http transport off the SDK's deprecated
+  streamablehttp_client → streamable_http_client + create_mcp_http_client
+  (the deprecation errored under filterwarnings=error and blocked the
+  round-trip). starlette/uvicorn transitive via agentforge-mcp[mcp] — no new
+  dep. Live HTTP round-trip test added + verified locally (RUN_LIVE_MCP=1).
+  SSE server transport still deferred (phase 2).
+- bug-008 (eaa2d3c): _template_version/_framework_version look up
+  distribution name agentforge-py (not import name agentforge), so scaffolds
+  record the real version not 0.0.0+unknown; regression test added.
+PROCESS NOTE: both commits were briefly made on local main by mistake (forgot
+to branch after #65 merge), then moved to the feature branch and main was
+reset to origin/main BEFORE any push — zero remote impact. Reinforces the
+"branch first" discipline. Full gate green. PR #66 open. AFTER it merges the
+v0.2.4 cluster is DONE → cut v0.2.4 (CHANGELOG date, release notes,
+pre-release checklist, tag, release.yml).

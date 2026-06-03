@@ -1,16 +1,17 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-013 (MCPServer auto-register tools)
+feature: v0.2.4 MCP/chat/config cluster — enh-001 (MCP HTTP server) + bug-008 (version lookup)
 state: pr-raised
-branch: fix/bug-013-auto-register-tools
+branch: enh/001-mcp-http-server-transport
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #65 OPEN (fix/bug-013-auto-register-tools): bug-013 P2 — MCPServer.from_stdio/from_http now auto-call register_tools (was empty ListTools from the raw factory). register_tools idempotent (guard); set_tools re-arms it; both factories gained runner= injection for tests. Also reinforced state-tracking discipline (state README + pipeline Rule 4: each PR open/merge is a tracker milestone to push). 1 commit (b13a096) + state sync, full gate green. https://github.com/Scaffoldic/agentforge-py/pull/65 — awaiting merge."
-  - "MERGED to main: #57, #58, #59, #60, #61, #62, #63, #64 (bug-018 chat session-create, 4c735d1). main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (after #65): enh-001 (HTTP MCP server transport — may slip to 0.2.5). Then bug-008 (~5 lines: version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py) before tagging. Then CUT v0.2.4: set CHANGELOG date from 'unreleased', tag, run release.yml (34 pkgs already at 0.2.4 on main)."
+  - "PR #66 OPEN (enh/001-mcp-http-server-transport): TWO commits in one PR (user-directed). (1) enh-001 — MCP server-side HTTP transport (StreamableHTTPSessionManager under uvicorn; from_http().serve() works; client migrated off deprecated streamablehttp_client; live round-trip test; SSE still deferred). (2) bug-008 — version lookup uses distribution name agentforge-py (scaffolds recorded 0.0.0+unknown). Commits e3497bd + eaa2d3c + state sync, full gate + local live test green. https://github.com/Scaffoldic/agentforge-py/pull/66 — awaiting merge."
+  - "MERGED to main: #57, #58, #59, #60, #61, #62, #63, #64, #65 (bug-013 auto-register, 503ffdb). ALL 8 cluster bugs (012/013/014/015/017/018/019/020) are IN. main at version 0.2.4."
+  - "AFTER #66 merges → CUT v0.2.4: set CHANGELOG `[0.2.4]` date (from 'unreleased'), write docs/releases/v0.2.4.md from the template, run the pre-release checklist, tag v0.2.4 at the merge commit, `gh release create`, run release.yml (34 pkgs already at 0.2.4 on main; skip-existing makes it idempotent)."
+  - "PyPI post-drip chores still pending: revoke ~/.pypirc [pypi] token; convert to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,32 +41,43 @@ rejected as stdio-hijack guard). The cluster unblocker is in main.
 failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
 local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
 
-**Merged — PR #64** (`fix/bug-018-chat-session-create`, 4c735d1):
-chat session-create contract — drivers upsert in update_session_metadata,
-in-memory lists metadata-only sessions, concrete create_session() ABC
-method, ChatServer calls it; asserted in shared conformance harness.
+**Merged — PR #65** (`fix/bug-013-auto-register-tools`, 503ffdb):
+MCPServer factories auto-register tools (idempotent guard + set_tools
+re-arm + runner= injection). Cluster bugs all landed.
 
-**In flight — PR #65** (`fix/bug-013-auto-register-tools`, off main):
-bug-013 P2 — `MCPServer.from_stdio`/`from_http` now call `register_tools()`
-before returning (raw factory previously served an empty ListTools).
-`register_tools()` idempotent via a `_registered` guard; `set_tools()`
-re-arms it (bridge expose path stays correct); both factories gained an
-optional `runner=` injection so the fix is unit-tested, not live-only.
-Also reinforced the state-tracking cadence (project state README +
-workspace pipeline Rule 4: each PR open/merge is a tracker milestone to
-commit+push). 1 commit (`b13a096`) + state sync, full gate green.
-Awaiting merge.
+**In flight — PR #66** (`enh/001-mcp-http-server-transport`, off main) —
+TWO commits, user-directed bundle:
+- **enh-001** (`e3497bd`) — MCP server-side HTTP transport.
+  `_SDKServerRunner.serve()` branches on transport; `http` runs the SDK's
+  `StreamableHTTPSessionManager` mounted at `/mcp` under uvicorn,
+  `stop()` graceful. Unsupported transport rejected at construction.
+  Client HTTP transport migrated off deprecated `streamablehttp_client` →
+  `streamable_http_client` + `create_mcp_http_client`. Live HTTP
+  round-trip test (verified locally). starlette/uvicorn are transitive
+  via `agentforge-mcp[mcp]`. SSE server transport deferred.
+- **bug-008** (`eaa2d3c`) — `_template_version`/`_framework_version` look
+  up `agentforge-py` (distribution name) not `agentforge` (import name),
+  so scaffolds record the real version instead of `0.0.0+unknown`.
+  Regression test added.
+
+Full gate green; local `RUN_LIVE_MCP=1` live run green. (Note: these were
+briefly committed on local main by mistake, then moved to this branch and
+main was reset to origin/main before any push — no remote impact.)
 
 ## Pickup on resume
 
-1. **Merge PR #65** (bug-013) once reviewed/CI-green. **The bug cluster
-   is then DONE** (all of bug-012/013/014/015/017/018/019/020 landed).
-2. **enh-001** — HTTP MCP server transport. Decide: include in v0.2.4 or
-   slip to 0.2.5. If slipping, it's the only remaining cluster item.
-3. **bug-008** (~5 lines) — `version("agentforge")` → `version("agentforge-py")`
-   in `cli/new_cmd.py` + `cli/_shared_scaffold.py`. Fold in before tagging.
-4. **Cut v0.2.4** — set the CHANGELOG `[0.2.4]` date (from "unreleased"),
-   tag, push, run `release.yml` (34 pkgs already at 0.2.4 on main).
+1. **Merge PR #66** (enh-001 + bug-008). **The entire v0.2.4 cluster is
+   then DONE.**
+2. **Cut v0.2.4** (locked release procedure, memory feedback_workflow #9):
+   - Pull main. Set CHANGELOG `## [0.2.4]` date (replace "unreleased").
+   - Write `docs/releases/v0.2.4.md` from `.claude/templates/release-notes.md`.
+   - Run `.claude/checklists/pre-release.md` end-to-end.
+   - Tag `v0.2.4` at the merge commit; `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`.
+   - `release.yml` fires on the tag (34 pkgs already at 0.2.4 on main;
+     `skip-existing` keeps it idempotent). Re-run via
+     `gh workflow run release.yml --ref v0.2.4` if the quota wall is hit.
+3. **PyPI post-drip chores**: revoke `~/.pypirc [pypi]` token, convert to
+   Trusted Publishing, delete `PYPI_PUBLISH_TRACKER.md`.
 3. **bug-008** (~5 lines) — fold in somewhere before tagging.
 4. **Tag v0.2.4** only after the cluster lands: set CHANGELOG date,
    push tag, run `release.yml` (34 packages already at 0.2.4 on main).
