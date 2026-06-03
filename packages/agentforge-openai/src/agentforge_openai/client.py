@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING, Any
 
 from agentforge_core.contracts.llm import LLMClient
+from agentforge_core.contracts.tool import validate_tool_name
 from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.resolver import register_provider
 from agentforge_core.values.messages import (
@@ -323,6 +324,8 @@ def _message_to_openai(message: Message) -> dict[str, Any]:
 def _tools_to_openai(tools: list[ToolSpec] | None) -> list[dict[str, Any]] | None:
     if not tools:
         return None
+    for t in tools:
+        validate_tool_name(t.name)
     return [
         {
             "type": "function",

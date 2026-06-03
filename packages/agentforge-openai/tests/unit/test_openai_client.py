@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from agentforge_core.production.exceptions import ToolNameInvalidError
 from agentforge_core.values.messages import Message, ToolCall, ToolSpec
 from agentforge_openai import OpenAIClient
 from agentforge_openai._inmem_runner import FakeOpenAIRunner
@@ -365,6 +366,21 @@ async def test_call_passes_tool_specs(
     assert tools_arg[0]["type"] == "function"
     assert tools_arg[0]["function"]["name"] == "t"
     assert tools_arg[0]["function"]["parameters"] == schema
+
+
+@pytest.mark.asyncio
+async def test_call_rejects_illegal_tool_name_locally(
+    client: OpenAIClient,
+    fake_runner: FakeOpenAIRunner,
+) -> None:
+    """bug-017: an illegal tool name fails locally before any request."""
+    with pytest.raises(ToolNameInvalidError, match="kb_search"):
+        await client.call(
+            system="",
+            messages=[_user("hi")],
+            tools=[ToolSpec(name="kb.search", description="d", schema={"type": "object"})],
+        )
+    assert fake_runner.chat_calls == []
 
 
 # ----------------------------------------------------------------------

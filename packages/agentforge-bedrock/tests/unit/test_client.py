@@ -13,6 +13,7 @@ from agentforge_core.production.exceptions import (
     ProviderError,
     RateLimitError,
     ServiceError,
+    ToolNameInvalidError,
 )
 from agentforge_core.resolver import Resolver
 from agentforge_core.values.messages import Message, ToolCall, ToolSpec
@@ -239,6 +240,19 @@ async def test_call_translates_tools_to_toolconfig(
     tools_sent = sent["toolConfig"]["tools"]
     assert tools_sent[0]["toolSpec"]["name"] == "search"
     assert tools_sent[0]["toolSpec"]["inputSchema"]["json"]["type"] == "object"
+
+
+@pytest.mark.asyncio
+async def test_call_rejects_illegal_tool_name_locally(
+    fake_bedrock: _FakeBedrockClient, fake_session: _FakeSession
+) -> None:
+    """bug-017: a dotted tool name fails locally with a clear error before
+    the request reaches Bedrock (which would otherwise reject it remotely)."""
+    client = BedrockClient(model_id="anthropic.claude-3-haiku-20240307-v1:0", session=fake_session)
+    spec = ToolSpec(name="kb.search", description="d", schema={"type": "object"})
+    with pytest.raises(ToolNameInvalidError, match="kb_search"):
+        await client.call("sys", [Message(role="user", content="hi")], tools=[spec])
+    assert fake_bedrock.calls == []  # nothing left the process
 
 
 # ---- Error mapping ----

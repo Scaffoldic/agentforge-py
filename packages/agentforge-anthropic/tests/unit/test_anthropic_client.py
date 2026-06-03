@@ -6,7 +6,7 @@ import pytest
 from agentforge_anthropic import AnthropicClient
 from agentforge_anthropic._inmem_runner import FakeAnthropicRunner
 from agentforge_anthropic._pricing import compute_cost_usd
-from agentforge_core.production.exceptions import CapabilityNotSupported
+from agentforge_core.production.exceptions import CapabilityNotSupported, ToolNameInvalidError
 from agentforge_core.values.messages import Message, ToolCall, ToolSpec
 
 
@@ -158,6 +158,21 @@ async def test_call_passes_through_tool_specs(
     tools_arg = fake_runner.create_calls[0].tools
     assert tools_arg is not None
     assert tools_arg[0] == {"name": "t", "description": "d", "input_schema": schema}
+
+
+@pytest.mark.asyncio
+async def test_call_rejects_illegal_tool_name_locally(
+    client: AnthropicClient,
+    fake_runner: FakeAnthropicRunner,
+) -> None:
+    """bug-017: an illegal tool name fails locally before any request."""
+    with pytest.raises(ToolNameInvalidError, match="kb_search"):
+        await client.call(
+            system="",
+            messages=[_user("hi")],
+            tools=[ToolSpec(name="kb.search", description="d", schema={"type": "object"})],
+        )
+    assert fake_runner.create_calls == []
 
 
 @pytest.mark.asyncio

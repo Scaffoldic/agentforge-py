@@ -28,6 +28,10 @@ agent = Agent(model="...", tools=[fetch_weather])
 3. **Add a docstring** — the first line is what the LLM reads to
    decide when to call your tool. Keep it short and behaviour-
    focused: "Returns X given Y", not "This tool will...".
+   **Name it with `[a-zA-Z0-9_-]` only** (1-64 chars) — that's the
+   tool-name charset Bedrock, OpenAI, and Anthropic all enforce.
+   A plain function name (`fetch_weather`) is already fine; avoid
+   dots / colons / spaces in `@tool(name="...")` overrides.
 4. **Pass the tool to `Agent(tools=[...])`** or list it under
    `agent.tools:` in `agentforge.yaml` so it's auto-resolved on
    `agentforge run`.
@@ -54,6 +58,7 @@ agent = Agent(model="...", tools=[fetch_weather])
 | `ValidationError` on tool call | type hints don't match LLM args | check the JSON schema with `tool.to_spec()` |
 | Tool runs but observation lost | tool returns `None` | return a string (or a dict; the framework JSON-serialises) |
 | Tool ran twice unexpectedly | LLM retried | check the previous observation surfaced clearly; vague observations cause retries |
+| `ToolNameInvalidError` at first LLM call | tool name has a dot / colon / space, or is >64 chars | rename to `[a-zA-Z0-9_-]` only (the error suggests a legal form, e.g. `kb.search` → `kb_search`) |
 
 ## Related
 
