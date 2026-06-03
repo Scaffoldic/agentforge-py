@@ -6,7 +6,8 @@ from abc import abstractmethod
 from typing import Any
 
 import pytest
-from agentforge_core.contracts.tool import Tool
+from agentforge_core.contracts.tool import Tool, validate_tool_name
+from agentforge_core.production.exceptions import ProviderError, ToolNameInvalidError
 from pydantic import BaseModel
 
 
@@ -92,3 +93,50 @@ def test_inherited_attributes_satisfy_the_check() -> None:
             return "child"
 
     assert _Child.name == "base"
+
+
+# ---- validate_tool_name (bug-017) ----
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "search",
+        "kb_search",
+        "fs__read_file",
+        "tool-1",
+        "A",
+        "a" * 64,
+        "Mixed_Case-123",
+    ],
+)
+def test_validate_tool_name_accepts_portable_names(name: str) -> None:
+    validate_tool_name(name)  # does not raise
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "kb.search",  # dot — the bug-012 / bug-017 case
+        "ns:tool",  # colon
+        "a b",  # space
+        "tool/name",  # slash
+        "café",  # non-ascii
+        "",  # empty
+        "a" * 65,  # too long
+    ],
+)
+def test_validate_tool_name_rejects_illegal_names(name: str) -> None:
+    with pytest.raises(ToolNameInvalidError):
+        validate_tool_name(name)
+
+
+def test_validate_tool_name_error_is_a_provider_error() -> None:
+    """Subclasses ProviderError so existing provider-failure handlers catch it."""
+    with pytest.raises(ProviderError):
+        validate_tool_name("kb.search")
+
+
+def test_validate_tool_name_message_includes_actionable_suggestion() -> None:
+    with pytest.raises(ToolNameInvalidError, match="kb_search"):
+        validate_tool_name("kb.search")

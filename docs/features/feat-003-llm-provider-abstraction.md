@@ -586,6 +586,13 @@ class MyCorpClient(LLMClient):
         return {"tools"}
 ```
 
+If your provider validates tool names, call
+`agentforge_core.contracts.tool.validate_tool_name(t.name)` for each
+tool while building the request — it raises `ToolNameInvalidError`
+(a `ProviderError`) for any name outside `^[a-zA-Z0-9_-]{1,64}$`, the
+charset the built-in providers share. This keeps the vendor-agnostic
+promise: a tool that works on one provider works on yours.
+
 Now `Agent(model="mycorp:foo-bar")` resolves to your class. For
 distribution, expose the import via a `agentforge.providers.mycorp`
 entry-point in `pyproject.toml`; feat-010's resolver auto-loads

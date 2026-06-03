@@ -371,10 +371,16 @@ modules:
 
 After the next `agentforge run`, the agent's tool catalogue
 will include MCP-server tools prefixed by their server name
-(`filesystem__read_file`, `github__create_issue`). When
-`expose.enabled` is set, the agent also runs an MCP server so
-Claude Desktop / Cursor / another AgentForge agent can call
-into `lookup_user` and `create_ticket` over MCP.
+(`filesystem__read_file`, `github__create_issue`). The `__`
+separator (not `.`) keeps the qualified name inside the
+`^[a-zA-Z0-9_-]{1,64}$` charset every provider enforces (bug-012);
+provider drivers also validate it at request-build time via
+`validate_tool_name`, so an illegal server or tool name fails
+locally with `ToolNameInvalidError` rather than as a remote error
+on the first LLM call (bug-017). When `expose.enabled` is set, the
+agent also runs an MCP server so Claude Desktop / Cursor / another
+AgentForge agent can call into `lookup_user` and `create_ticket`
+over MCP.
 
 ### Filter what's imported from a server
 

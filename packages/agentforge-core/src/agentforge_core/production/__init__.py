@@ -31,6 +31,7 @@ from agentforge_core.production.exceptions import (
     RateLimitError,
     ServiceError,
     TimeoutError,
+    ToolNameInvalidError,
 )
 from agentforge_core.production.log_filter import (
     RunIdFilter,
@@ -66,6 +67,7 @@ __all__ = [
     "RunIdFilter",
     "ServiceError",
     "TimeoutError",
+    "ToolNameInvalidError",
     "bind_run",
     "current_run",
     "install_json_formatter",

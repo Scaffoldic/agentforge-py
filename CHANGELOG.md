@@ -50,9 +50,26 @@ activity and the next chat turn's prompt lost prior tool context.
 - **`MCPBridge.attach_local_tools(tools)` + `MCPServer.set_tools(tools)`**
   — inject the agent's own tools into an exposed server after
   construction (closes a previously-undefined-method loose end).
+- **`agentforge_core.contracts.tool.validate_tool_name` +
+  `ToolNameInvalidError`** — a portable tool-name validator
+  (`^[a-zA-Z0-9_-]{1,64}$`) and its error type. The Bedrock, OpenAI,
+  and Anthropic drivers call it at request-build time so an illegal
+  name fails locally with an actionable message instead of as a
+  remote provider error (bug-017).
 
 ### Fixed
 
+- **bug-017 — provider tool-name charset was undocumented and
+  unchecked.** Every major provider enforces `^[a-zA-Z0-9_-]{1,64}$`
+  on tool names, but nothing in the framework documented or validated
+  it: a name like `kb.search` worked in mocked CI and on one provider
+  yet failed remotely the moment you swapped `model:` to Bedrock. The
+  three built-in providers now validate each tool name at
+  request-build time (raising `ToolNameInvalidError` with a suggested
+  rewrite), and the constraint is documented in feat-003/004/013, the
+  `@tool` docstring, and the scaffold's add-a-tool runbook. The
+  validator lives in core but is invoked per-provider — `ToolSpec`
+  stays a neutral representation rather than policing a wire charset.
 - **bug-012 — MCP tool names used a `.` separator, which every
   provider rejected.** `build_adapter` qualified each MCP tool as
   `{server}.{tool}` (e.g. `myserver.my_tool`), but Bedrock Converse,
