@@ -1,16 +1,16 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-018 (chat session-create contract)
+feature: v0.2.4 MCP/chat/config cluster — bug-013 (MCPServer auto-register tools)
 state: pr-raised
-branch: fix/bug-018-chat-session-create
+branch: fix/bug-013-auto-register-tools
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #64 OPEN (fix/bug-018-chat-session-create): bug-018 P0 — POST /sessions 500'd on fresh SQLite/Postgres/Redis. update_session_metadata now upserts in all 3 SQL/KV drivers; in-memory lists metadata-only sessions; ChatHistoryStore.create_session() added as CONCRETE ABC method (locked-ABC safe); ChatServer calls it. Contract asserted in shared conformance harness (all drivers) + sqlite e2e. 1 commit (58881e0), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/64 — awaiting merge."
-  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014), #60 (bug-012), #61 (bug-017), #62 (bug-015), #63 (bug-019 config sugar, b153199). main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (after #64): bug-013 (MCPServerClient.from_stdio/from_http/from_sse should auto-call register_tools so discover_tools/bridge work without a manual register step) → enh-001 (HTTP MCP server transport, may slip to 0.2.5). Then bug-008 (~5 lines: version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py) before tagging, then cut v0.2.4."
+  - "PR #65 OPEN (fix/bug-013-auto-register-tools): bug-013 P2 — MCPServer.from_stdio/from_http now auto-call register_tools (was empty ListTools from the raw factory). register_tools idempotent (guard); set_tools re-arms it; both factories gained runner= injection for tests. Also reinforced state-tracking discipline (state README + pipeline Rule 4: each PR open/merge is a tracker milestone to push). 1 commit (b13a096) + state sync, full gate green. https://github.com/Scaffoldic/agentforge-py/pull/65 — awaiting merge."
+  - "MERGED to main: #57, #58, #59, #60, #61, #62, #63, #64 (bug-018 chat session-create, 4c735d1). main at version 0.2.4."
+  - "REMAINING v0.2.4 cluster (after #65): enh-001 (HTTP MCP server transport — may slip to 0.2.5). Then bug-008 (~5 lines: version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py) before tagging. Then CUT v0.2.4: set CHANGELOG date from 'unreleased', tag, run release.yml (34 pkgs already at 0.2.4 on main)."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,29 +40,32 @@ rejected as stdio-hijack guard). The cluster unblocker is in main.
 failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
 local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
 
-**Merged — PR #63** (`fix/bug-019-entry-string-normalise`, b153199):
-terse evaluator/guardrail config sugar normalised (string + single-key
-mapping + canonical) via model_validator(mode=before) on both entries.
+**Merged — PR #64** (`fix/bug-018-chat-session-create`, 4c735d1):
+chat session-create contract — drivers upsert in update_session_metadata,
+in-memory lists metadata-only sessions, concrete create_session() ABC
+method, ChatServer calls it; asserted in shared conformance harness.
 
-**In flight — PR #64** (`fix/bug-018-chat-session-create`, off main):
-bug-018 P0 — POST /sessions 500'd on fresh SQLite/Postgres/Redis (drivers
-inserted the session row only lazily on first append; ChatServer set
-metadata before that). Fix: update_session_metadata upserts in all 3
-SQL/KV drivers (create-if-missing, leaving existing last_active_at
-untouched); in-memory now lists metadata-only sessions;
-`ChatHistoryStore.create_session()` added as CONCRETE ABC method
-(additive to locked ABC per ADR-0007); ChatServer calls it. Contract
-asserted once in the shared conformance harness (all 4 drivers) + a real
-sqlite `POST /sessions` e2e. 1 commit (`58881e0`), full gate + Live CI
-green. Awaiting merge.
+**In flight — PR #65** (`fix/bug-013-auto-register-tools`, off main):
+bug-013 P2 — `MCPServer.from_stdio`/`from_http` now call `register_tools()`
+before returning (raw factory previously served an empty ListTools).
+`register_tools()` idempotent via a `_registered` guard; `set_tools()`
+re-arms it (bridge expose path stays correct); both factories gained an
+optional `runner=` injection so the fix is unit-tested, not live-only.
+Also reinforced the state-tracking cadence (project state README +
+workspace pipeline Rule 4: each PR open/merge is a tracker milestone to
+commit+push). 1 commit (`b13a096`) + state sync, full gate green.
+Awaiting merge.
 
 ## Pickup on resume
 
-1. **Merge PR #64** (bug-018) once reviewed/CI-green.
-2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
-   branch off main, folding into v0.2.4):
-   - **bug-013** — `from_stdio`/`from_http` auto-call `register_tools()`.
-   - **enh-001** — HTTP MCP server transport (may slip to 0.2.5).
+1. **Merge PR #65** (bug-013) once reviewed/CI-green. **The bug cluster
+   is then DONE** (all of bug-012/013/014/015/017/018/019/020 landed).
+2. **enh-001** — HTTP MCP server transport. Decide: include in v0.2.4 or
+   slip to 0.2.5. If slipping, it's the only remaining cluster item.
+3. **bug-008** (~5 lines) — `version("agentforge")` → `version("agentforge-py")`
+   in `cli/new_cmd.py` + `cli/_shared_scaffold.py`. Fold in before tagging.
+4. **Cut v0.2.4** — set the CHANGELOG `[0.2.4]` date (from "unreleased"),
+   tag, push, run `release.yml` (34 pkgs already at 0.2.4 on main).
 3. **bug-008** (~5 lines) — fold in somewhere before tagging.
 4. **Tag v0.2.4** only after the cluster lands: set CHANGELOG date,
    push tag, run `release.yml` (34 packages already at 0.2.4 on main).
