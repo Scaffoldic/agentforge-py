@@ -201,10 +201,10 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
     decorator-based registration pattern over the accumulated
     registry: one `@server.list_tools()` handler returns every
     registered descriptor; one `@server.call_tool()` handler
-    dispatches by name into the per-tool handler. Then we open
-    the configured transport (stdio for v0.2; HTTP / SSE is a
-    follow-up — see spec §10) and await `server.run(...)`.
-    `stop()` cancels the serve task.
+    dispatches by name into the per-tool handler. Then we open the
+    configured transport — `stdio` via `stdio_server()`, or `http`
+    via the SDK's streamable-HTTP manager under uvicorn (enh-001).
+    `stop()` cancels the serve task / signals uvicorn to exit.
     """
 
     def __init__(
@@ -215,12 +215,17 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
         host: str | None = None,
         port: int | None = None,
     ) -> None:
+        if transport not in ("stdio", "http"):
+            # Fail fast at construction, not at serve() (enh-001 §5).
+            msg = f"MCP server transport {transport!r} is not supported; use 'stdio' or 'http'."
+            raise ModuleError(msg)
         self._server = server
         self._transport = transport
         self._host = host
         self._port = port
         self._tools: dict[str, _RegisteredTool] = {}
         self._serve_task: asyncio.Task[None] | None = None
+        self._uv_server: Any = None
 
     def register_tool(
         self,
@@ -237,16 +242,6 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
         )
 
     async def serve(self) -> None:
-        if self._transport != "stdio":
-            # HTTP / SSE server transport ships in a v0.2.1 follow-up
-            # — needs the streamable-http manager + uvicorn wiring.
-            # Stdio is the v0.2 deliverable.
-            msg = (
-                f"MCP server transport {self._transport!r} is not yet "
-                "implemented. Use transport='stdio' for v0.2."
-            )
-            raise ModuleError(msg)
-        from mcp.server.stdio import stdio_server  # noqa: PLC0415
         from mcp.types import TextContent  # noqa: PLC0415
         from mcp.types import Tool as MCPTool  # noqa: PLC0415
 
@@ -274,11 +269,57 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
             result_text = await tool.handler(arguments)
             return [TextContent(type="text", text=result_text)]
 
+        if self._transport == "http":
+            await self._serve_http()
+        else:
+            await self._serve_stdio()
+
+    async def _serve_stdio(self) -> None:
+        from mcp.server.stdio import stdio_server  # noqa: PLC0415
+
         options = self._server.create_initialization_options()
         async with stdio_server() as (read_stream, write_stream):
             await self._server.run(read_stream, write_stream, options)
 
+    async def _serve_http(self) -> None:
+        """Serve the MCP protocol over streamable-HTTP (enh-001).
+
+        Wires the SDK's `StreamableHTTPSessionManager` into a minimal
+        Starlette app mounted at `/mcp` and runs it under uvicorn. The
+        manager's session lifespan is driven by the app lifespan; tools
+        were registered on `self._server` in `serve()` above.
+        """
+        import uvicorn  # noqa: PLC0415
+        from mcp.server.streamable_http_manager import (  # noqa: PLC0415
+            StreamableHTTPSessionManager,
+        )
+        from starlette.applications import Starlette  # noqa: PLC0415
+        from starlette.routing import Mount  # noqa: PLC0415
+
+        manager = StreamableHTTPSessionManager(app=self._server, json_response=True, stateless=True)
+
+        async def _asgi(scope: Any, receive: Any, send: Any) -> None:
+            await manager.handle_request(scope, receive, send)
+
+        @contextlib.asynccontextmanager
+        async def _lifespan(_app: Any) -> Any:
+            async with manager.run():
+                yield
+
+        app = Starlette(routes=[Mount("/mcp", app=_asgi)], lifespan=_lifespan)
+        config = uvicorn.Config(
+            app,
+            host=self._host or "127.0.0.1",
+            port=self._port or 8765,
+            log_level="warning",
+        )
+        self._uv_server = uvicorn.Server(config)
+        await self._uv_server.serve()
+
     async def stop(self) -> None:
+        if self._uv_server is not None:
+            # Graceful uvicorn shutdown (HTTP transport).
+            self._uv_server.should_exit = True
         if self._serve_task is not None and not self._serve_task.done():
             self._serve_task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):

@@ -166,12 +166,17 @@ def _write_answers_file(
 
 
 def _template_version() -> str:
-    """Resolve the installed `agentforge` version — used as the
+    """Resolve the installed framework version — used as the
     template's `source_version` in the lock file."""
     from importlib.metadata import PackageNotFoundError, version  # noqa: PLC0415
 
     try:
-        return version("agentforge")
+        # The PyPI *distribution* name is `agentforge-py` (the import name
+        # `agentforge` is a squatted PyPI project). `version()` keys off the
+        # distribution name, so `version("agentforge")` raised on every
+        # install and fell through to the sentinel (bug-008). Do NOT change
+        # this back to "agentforge".
+        return version("agentforge-py")
     except PackageNotFoundError:  # pragma: no cover
         return "0.0.0+unknown"
 

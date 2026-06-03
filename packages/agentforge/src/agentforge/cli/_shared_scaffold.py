@@ -150,7 +150,9 @@ def _framework_version() -> str:
     from importlib.metadata import PackageNotFoundError, version  # noqa: PLC0415
 
     try:
-        return version("agentforge")
+        # Distribution name is `agentforge-py`, not the import name
+        # `agentforge` (bug-008). Do NOT change this back to "agentforge".
+        return version("agentforge-py")
     except PackageNotFoundError:  # pragma: no cover
         return "0.0.0+unknown"
 
