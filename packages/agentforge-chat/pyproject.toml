@@ -32,10 +32,13 @@ classifiers = [
 dependencies = [
     "agentforge-core ~= 0.2.4",
     "agentforge-py ~= 0.2.4",
+    # aiosqlite is a hard dependency, not an optional extra: the package
+    # eagerly imports SqliteChatHistory (agentforge_chat/__init__.py ->
+    # sqlite.py -> `import aiosqlite`), so `import agentforge_chat` fails
+    # without it. Mirrors the sibling agentforge-memory-sqlite, which also
+    # hard-deps aiosqlite. (bug-015 audit.)
+    "aiosqlite>=0.20",
 ]
-
-[project.optional-dependencies]
-sqlite = ["aiosqlite>=0.20"]
 
 [project.urls]
 Homepage = "https://github.com/Scaffoldic/agentforge-py"
