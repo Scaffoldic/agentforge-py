@@ -124,3 +124,32 @@ def test_register_tools_emits_pydantic_schema_dict() -> None:
     schema = runner.registered[0]["schema"]
     assert schema["type"] == "object"
     assert "text" in schema["properties"]
+
+
+def test_from_stdio_auto_registers_tools() -> None:
+    """bug-013: from_stdio publishes tools up front, so calling serve()
+    straight after no longer yields an empty ListTools."""
+    runner = MCPFakeServerRunner()
+    server = MCPServer.from_stdio(tools=[_Echo()], runner=runner)
+    assert [r["name"] for r in runner.registered] == ["lookup_user"]
+    # Idempotent: an explicit second call registers nothing more.
+    assert server.register_tools() == 0
+    assert len(runner.registered) == 1
+
+
+def test_from_http_auto_registers_tools() -> None:
+    runner = MCPFakeServerRunner()
+    server = MCPServer.from_http(tools=[_Echo()], runner=runner)
+    assert [r["name"] for r in runner.registered] == ["lookup_user"]
+    assert server.register_tools() == 0
+
+
+def test_set_tools_re_arms_registration() -> None:
+    """attach_local_tools → set_tools must let the next register_tools
+    publish the injected set (the MCPBridge expose path)."""
+    runner = MCPFakeServerRunner()
+    server = MCPServer.from_stdio(tools=[], runner=runner)
+    assert runner.registered == []  # empty placeholder registers nothing
+    server.set_tools([_Echo()])
+    assert server.register_tools() == 1
+    assert [r["name"] for r in runner.registered] == ["lookup_user"]
