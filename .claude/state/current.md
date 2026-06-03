@@ -1,16 +1,16 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — enh-001 (MCP HTTP server) + bug-008 (version lookup)
+feature: v0.2.4 release — cut the train (cluster complete)
 state: pr-raised
-branch: enh/001-mcp-http-server-transport
+branch: chore/release-v0.2.4
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
-last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
+last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages live on PyPI at v0.2.3. v0.2.4 cluster fully merged to main (all 8 bugs + enh-001 + bug-008); release in flight (NOT yet tagged).
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #66 OPEN (enh/001-mcp-http-server-transport): TWO commits in one PR (user-directed). (1) enh-001 — MCP server-side HTTP transport (StreamableHTTPSessionManager under uvicorn; from_http().serve() works; client migrated off deprecated streamablehttp_client; live round-trip test; SSE still deferred). (2) bug-008 — version lookup uses distribution name agentforge-py (scaffolds recorded 0.0.0+unknown). Commits e3497bd + eaa2d3c + state sync, full gate + local live test green. https://github.com/Scaffoldic/agentforge-py/pull/66 — awaiting merge."
-  - "MERGED to main: #57, #58, #59, #60, #61, #62, #63, #64, #65 (bug-013 auto-register, 503ffdb). ALL 8 cluster bugs (012/013/014/015/017/018/019/020) are IN. main at version 0.2.4."
-  - "AFTER #66 merges → CUT v0.2.4: set CHANGELOG `[0.2.4]` date (from 'unreleased'), write docs/releases/v0.2.4.md from the template, run the pre-release checklist, tag v0.2.4 at the merge commit, `gh release create`, run release.yml (34 pkgs already at 0.2.4 on main; skip-existing makes it idempotent)."
+  - "PR #67 OPEN (chore/release-v0.2.4): release prep — CHANGELOG `[0.2.4]` dated 2026-06-03; docs/releases/v0.2.4.md written; state synced. Reversible in-repo prep only. https://github.com/Scaffoldic/agentforge-py/pull/67 — awaiting merge."
+  - "v0.2.4 CLUSTER COMPLETE on main: #59 (bug-020+014), #60 (bug-012), #61 (bug-017), #62 (bug-015), #63 (bug-019), #64 (bug-018), #65 (bug-013), #66 (enh-001 + bug-008, merge 325e98f). 34 pkgs at 0.2.4."
+  - "IRREVERSIBLE STEPS NEED USER (paused here): (1) pre-release checklist §8 MANDATORY TestPyPI dry run (`python scripts/testpypi_dry_run.py`) — needs TestPyPI creds. (2) After #67 merges + dry-run green: tag `v0.2.4` at the merge commit, `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`; the tag triggers release.yml which publishes 34 packages to PyPI (immutable). v0.2.4 is a NEW VERSION of existing projects, so the new-project quota does NOT apply — all 34 can publish."
   - "PyPI post-drip chores still pending: revoke ~/.pypirc [pypi] token; convert to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
@@ -19,70 +19,42 @@ flags_for_user:
 
 ## Active feature
 
-**v0.2.4 MCP/chat/config cluster.** Eight framework defects + one
-enhancement filed against v0.2.3 from the first live Bedrock-backed
-MCP integration. Triaged, verified against source, and tracked in
-`docs/bugs/bug-012…020` + `docs/enhancements/enh-001` (PR #57, merged).
-Each bug doc carries a "Framework-level vs derived-agent-level"
-section; all eight are framework-level. The whole cluster folds into
-**v0.2.4** (no release until it all lands).
+**v0.2.4 — Live-fire MCP.** Eight framework defects + one enhancement
+from the first live Bedrock-backed MCP integration. **All merged to
+main** (34 pkgs at 0.2.4):
 
-**Landed — PR #59 MERGED** (`fix/bug-020-mcp-runtime-wiring`, merge
-commit `c2f1132`): bug-014 (`MCPBridge.from_config` pure-data + async
-`start()` materialises clients; `attach_local_tools` + `set_tools`;
-list-form `command:`) and bug-020 (`ProtocolBridge` runtime_checkable
-contract; `Agent(protocol_bridges=)` + close on exit;
-`build_protocols_from_config` wired into `build_agent_from_config`,
-which also fixed the zero-caller native-`agent.tools` gap; `expose`
-rejected as stdio-hijack guard). The cluster unblocker is in main.
+| PR | What |
+|---|---|
+| #59 | bug-020 + bug-014 — MCP runtime wiring (the unblocker) |
+| #60 | bug-012 — MCP tool-name `.`→`__` separator |
+| #61 | bug-017 — provider tool-name charset validator |
+| #62 | bug-015 — meta-package vendor-SDK extra chains |
+| #63 | bug-019 — terse evaluator/guardrail config sugar |
+| #64 | bug-018 — chat session-create contract |
+| #65 | bug-013 — MCPServer factories auto-register tools |
+| #66 | enh-001 (MCP HTTP server transport) + bug-008 (version lookup) |
 
-**Merged — PR #60** (`fix/bug-012-mcp-adapter-separator`, merge commit
-`3cf2bdc`): MCP tool-name separator `.`→`__`. CI Live job initially
-failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
-local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
+Release prep is **PR #67** (`chore/release-v0.2.4`): CHANGELOG `[0.2.4]`
+dated 2026-06-03, `docs/releases/v0.2.4.md` written, state synced.
+Reversible in-repo prep only.
 
-**Merged — PR #65** (`fix/bug-013-auto-register-tools`, 503ffdb):
-MCPServer factories auto-register tools (idempotent guard + set_tools
-re-arm + runner= injection). Cluster bugs all landed.
+## Pickup on resume — finish cutting v0.2.4
 
-**In flight — PR #66** (`enh/001-mcp-http-server-transport`, off main) —
-TWO commits, user-directed bundle:
-- **enh-001** (`e3497bd`) — MCP server-side HTTP transport.
-  `_SDKServerRunner.serve()` branches on transport; `http` runs the SDK's
-  `StreamableHTTPSessionManager` mounted at `/mcp` under uvicorn,
-  `stop()` graceful. Unsupported transport rejected at construction.
-  Client HTTP transport migrated off deprecated `streamablehttp_client` →
-  `streamable_http_client` + `create_mcp_http_client`. Live HTTP
-  round-trip test (verified locally). starlette/uvicorn are transitive
-  via `agentforge-mcp[mcp]`. SSE server transport deferred.
-- **bug-008** (`eaa2d3c`) — `_template_version`/`_framework_version` look
-  up `agentforge-py` (distribution name) not `agentforge` (import name),
-  so scaffolds record the real version instead of `0.0.0+unknown`.
-  Regression test added.
-
-Full gate green; local `RUN_LIVE_MCP=1` live run green. (Note: these were
-briefly committed on local main by mistake, then moved to this branch and
-main was reset to origin/main before any push — no remote impact.)
-
-## Pickup on resume
-
-1. **Merge PR #66** (enh-001 + bug-008). **The entire v0.2.4 cluster is
-   then DONE.**
-2. **Cut v0.2.4** (locked release procedure, memory feedback_workflow #9):
-   - Pull main. Set CHANGELOG `## [0.2.4]` date (replace "unreleased").
-   - Write `docs/releases/v0.2.4.md` from `.claude/templates/release-notes.md`.
-   - Run `.claude/checklists/pre-release.md` end-to-end.
-   - Tag `v0.2.4` at the merge commit; `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`.
-   - `release.yml` fires on the tag (34 pkgs already at 0.2.4 on main;
-     `skip-existing` keeps it idempotent). Re-run via
-     `gh workflow run release.yml --ref v0.2.4` if the quota wall is hit.
-3. **PyPI post-drip chores**: revoke `~/.pypirc [pypi]` token, convert to
-   Trusted Publishing, delete `PYPI_PUBLISH_TRACKER.md`.
-3. **bug-008** (~5 lines) — fold in somewhere before tagging.
-4. **Tag v0.2.4** only after the cluster lands: set CHANGELOG date,
-   push tag, run `release.yml` (34 packages already at 0.2.4 on main).
-5. **PyPI post-drip chores** (drip is 34/34 done): revoke `~/.pypirc`
-   token, Trusted Publishing conversion, delete `PYPI_PUBLISH_TRACKER.md`.
+1. **Merge PR #67** (release prep).
+2. **§8 TestPyPI dry run (MANDATORY, needs user creds):**
+   `python scripts/testpypi_dry_run.py` — builds 34 pkgs, uploads to
+   TestPyPI, smoke-installs `agentforge-py==0.2.4`. Block on red.
+3. **Tag + publish** (irreversible — confirm before running):
+   - Pull main. `git tag -a v0.2.4 -m "AgentForge v0.2.4 — Live-fire MCP"`
+     at the #67 merge commit; `git push origin v0.2.4`.
+   - `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`.
+   - The tag triggers `release.yml` → publishes 34 pkgs to PyPI.
+     v0.2.4 is a NEW VERSION of existing projects → the new-project
+     quota does NOT apply; all 34 publish. `skip-existing` keeps it
+     idempotent (re-run `gh workflow run release.yml --ref v0.2.4`).
+4. **After release:** set `last_shipped` to v0.2.4 + log `released`
+   entry; PyPI post-drip chores (revoke `~/.pypirc [pypi]` token,
+   Trusted Publishing, delete `PYPI_PUBLISH_TRACKER.md`).
 
 ## Last shipped
 
