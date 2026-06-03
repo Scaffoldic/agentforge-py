@@ -2932,3 +2932,19 @@ charset regression test) + feat-013 spec + agentforge-mcp README +
 CHANGELOG; bug-012 doc → fixed in 0.2.4. Full gate green (87df76a).
 PR #60 open. Next: bug-017 → bug-015 → bug-019 → bug-018 → bug-013 →
 enh-001; bug-008 before tag; then tag v0.2.4.
+
+## 2026-06-03T01:30 — v0.2.4 cluster: bug-012 merged (#60), bug-017 opened (#61)
+PR #60 (bug-012, MCP `.`→`__` separator) merged to main (3cf2bdc). Its CI
+Live job first failed — env-gated `test_mcp_live.py` still asserted
+`echo.echo`; local pre-commit skips live tests, so the rename slipped past.
+Fixed in 0bc8386. LESSON: any MCP adapter/client/bridge naming change must
+be checked against packages/agentforge-mcp/tests/integration (live job only).
+Started bug-017 on `fix/bug-017-tool-name-validator`: validate tool-name
+charset `^[a-zA-Z0-9_-]{1,64}$` at all 3 provider request-build boundaries.
+Design decision (user asked "best approach at framework level"): shared
+`validate_tool_name` + `ToolNameInvalidError(ProviderError)` in core, invoked
+per-provider; core `ToolSpec` deliberately NOT auto-validated (neutral
+representation, charset is a per-provider wire constraint that merely
+coincides today). Docs: feat-003/004/013, @tool docstring, scaffold
+02-add-a-tool runbook. Full gate + Live CI green (3131f92). PR #61 open.
+Next: bug-015 → bug-019 → bug-018 → bug-013 → enh-001; bug-008 before tag.
