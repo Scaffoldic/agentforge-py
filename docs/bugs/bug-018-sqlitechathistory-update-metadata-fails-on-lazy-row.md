@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P0
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)
@@ -116,3 +116,29 @@ lazy (only called from `append()`, `sqlite.py:112`);
 store raises `ModuleError` on first `update_session_metadata`. The
 recommended landing is **option 1 now** (upsert; minimal, unblocks) plus
 **option 2 as the contract fix** in the same PR.
+
+## Resolution (v0.2.4)
+
+Both options shipped together, and the audit found the lazy-row bug was
+**broader than the SQLite driver**: Postgres and Redis raise identically,
+and the in-memory driver — while it never raised — hid metadata-only
+sessions from `list_sessions` (it iterated only sessions with turns). So
+all four shipped drivers needed work.
+
+- **Option 1 (upsert)** — `update_session_metadata` now creates the row
+  if missing in `agentforge-chat` (SQLite), `agentforge-chat-history-postgres`,
+  and `agentforge-chat-history-redis` (`INSERT ... ON CONFLICT DO NOTHING`
+  / `hset`-if-absent, leaving an existing row's `last_active_at`
+  untouched). The in-memory driver now registers metadata-only sessions
+  and includes them in `list_sessions`.
+- **Option 2 (contract)** — `ChatHistoryStore.create_session()` added to
+  the ABC as a **concrete** method (not `@abstractmethod`), so it is
+  additive to the locked contract (ADR-0007) — existing and third-party
+  drivers inherit it unchanged. The default delegates to the now-upserting
+  `update_session_metadata`. `ChatServer._create_session` calls it
+  (`create_session(session_id, owner=...)`) instead of a bare metadata
+  write.
+- **Coverage** — the create-before-first-turn contract is asserted once
+  in the shared `run_chat_history_conformance` harness, so it runs against
+  every driver; plus an end-to-end `POST /sessions` test on a real
+  SQLite-backed `ChatServer` (the exact reported scenario).

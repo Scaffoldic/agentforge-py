@@ -70,7 +70,9 @@ class _DictHistory(ChatHistoryStore):
         limit: int = 100,
         before: datetime | None = None,
     ) -> list[SessionInfo]:
-        ids = {t.session_id for t in self._turns}
+        # Include metadata-only sessions (created before their first
+        # turn — bug-018), not just sessions that have turns.
+        ids = {t.session_id for t in self._turns} | set(self._meta)
         out: list[SessionInfo] = []
         for sid in ids:
             o = self._owners.get(sid)

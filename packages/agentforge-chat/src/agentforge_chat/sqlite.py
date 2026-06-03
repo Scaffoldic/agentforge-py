@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from types import TracebackType
 from typing import Any
@@ -200,12 +200,24 @@ class SqliteChatHistory(ChatHistoryStore):
         return [await self._row_to_info(row) for row in rows]
 
     async def update_session_metadata(self, session_id: str, metadata: Mapping[str, Any]) -> None:
+        # Create the session row if it doesn't exist yet (bug-018):
+        # ChatServer records owner/metadata before the first turn is
+        # appended. DO NOTHING leaves an existing row (and its
+        # last_active_at) untouched.
+        now_iso = datetime.now(UTC).isoformat()
+        await self._db.execute(
+            """INSERT INTO chat_sessions
+               (id, owner, created_at, last_active_at, metadata)
+               VALUES (?, NULL, ?, ?, ?)
+               ON CONFLICT(id) DO NOTHING""",
+            (session_id, now_iso, now_iso, "{}"),
+        )
         async with self._db.execute(
             "SELECT metadata, owner FROM chat_sessions WHERE id = ?",
             (session_id,),
         ) as cur:
             row = await cur.fetchone()
-        if row is None:
+        if row is None:  # pragma: no cover — the INSERT above guarantees a row
             raise ModuleError(f"Cannot update metadata for unknown session {session_id!r}")
         existing = json.loads(row["metadata"])
         existing.update(dict(metadata))

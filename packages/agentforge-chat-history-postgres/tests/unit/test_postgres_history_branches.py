@@ -9,7 +9,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from agentforge_chat_history_postgres import PostgresChatHistory
 from agentforge_chat_history_postgres._inmem_runner import PostgresFakeRunner
-from agentforge_core.production.exceptions import ModuleError
 from agentforge_core.values.chat import ChatTurn
 from agentforge_core.values.messages import ToolCall
 
@@ -63,11 +62,14 @@ async def test_list_sessions_with_before_filter() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_metadata_unknown_session_raises() -> None:
+async def test_update_metadata_creates_unknown_session() -> None:
+    """bug-018: metadata on a not-yet-existing session upserts the row
+    rather than raising, so ChatServer can record owner before turn 1."""
     runner = PostgresFakeRunner()
     store = await PostgresChatHistory.from_dsn("p", runner=runner)
-    with pytest.raises(ModuleError, match="unknown session"):
-        await store.update_session_metadata("nope", {"k": "v"})
+    await store.update_session_metadata("nope", {"k": "v", "owner": "u1"})
+    sessions = await store.list_sessions(owner="u1")
+    assert [s.id for s in sessions] == ["nope"]
 
 
 @pytest.mark.asyncio

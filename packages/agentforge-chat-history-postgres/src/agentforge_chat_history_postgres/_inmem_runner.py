@@ -79,7 +79,22 @@ class PostgresFakeRunner:
             self._insert_turn(params)
             return
         if sql_n.startswith("insert into chat_sessions"):
-            self._upsert_session(params[0], params[1])
+            # DO NOTHING (bug-018 create-if-missing) must not bump
+            # last_active_at on an existing row; DO UPDATE (append path)
+            # does. Mirror the real ON CONFLICT clause.
+            if "do nothing" in sql_n:
+                self._sessions.setdefault(
+                    params[0],
+                    {
+                        "id": params[0],
+                        "owner": None,
+                        "created_at": params[1],
+                        "last_active_at": params[1],
+                        "metadata": {},
+                    },
+                )
+            else:
+                self._upsert_session(params[0], params[1])
             return
         if sql_n.startswith("update chat_sessions set metadata"):
             metadata_json, owner, session_id = params
