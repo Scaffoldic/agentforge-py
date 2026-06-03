@@ -2986,3 +2986,23 @@ old feat-012 "string shorthand NYI" test to a positive load_config test;
 updated feat-012 Implementation status. Full gate + Live CI green
 (f12a2d4). PR #63 open. Next: bug-018 → bug-013 → enh-001; bug-008 before
 tag, then cut v0.2.4.
+
+## 2026-06-03T04:30 — v0.2.4 cluster: bug-019 merged (#63), bug-018 opened (#64)
+PR #63 (bug-019 config sugar) merged to main (b153199). Started bug-018 on
+`fix/bug-018-chat-session-create` — P0: POST /sessions 500'd on fresh
+SQLite (ChatServer sets metadata before turn 1; driver inserted the row
+only lazily on append). Audit widened scope: Postgres AND Redis raise
+identically; in-memory never raised but hid metadata-only sessions from
+list_sessions. Fix landed both bug-doc options: (1) update_session_metadata
+upserts in sqlite/postgres/redis (INSERT...ON CONFLICT DO NOTHING /
+hset-if-absent; existing last_active_at untouched), in-memory lists
+metadata-only sessions; (2) ChatHistoryStore.create_session() added as a
+CONCRETE (non-abstract) ABC method — additive to the locked ABC per
+ADR-0007, so third-party drivers inherit it — default delegates to the
+upserting update_session_metadata; ChatServer calls it. Postgres fake
+runner now distinguishes DO NOTHING vs DO UPDATE. Contract asserted once in
+the shared run_chat_history_conformance harness (covers all 4 drivers) +
+real sqlite POST /sessions e2e via httpx ASGITransport. Fixed reference
+_DictHistory + harness to list metadata-only sessions; flipped obsolete
+postgres raise test. Full gate + Live CI green (58881e0). PR #64 open.
+Next: bug-013 → enh-001; bug-008 before tag, then cut v0.2.4.
