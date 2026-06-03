@@ -92,7 +92,7 @@ async def test_bridge_aggregates_tools_from_every_client() -> None:
     )
     await bridge.start()
     names = sorted(type(t).name for t in bridge.tools)
-    assert names == ["fs.read_file", "fs.write_file", "github.create_issue"]
+    assert names == ["fs__read_file", "fs__write_file", "github__create_issue"]
 
 
 @pytest.mark.asyncio
@@ -168,7 +168,7 @@ async def test_start_materialises_deferred_client_specs(
     )
     assert bridge.tools == []
     await bridge.start()
-    assert sorted(type(t).name for t in bridge.tools) == ["fs.read_file"]
+    assert sorted(type(t).name for t in bridge.tools) == ["fs__read_file"]
 
 
 @pytest.mark.asyncio

@@ -1,16 +1,17 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-020 + bug-014 (MCP runtime wiring)
-state: pr-pending
-branch: fix/bug-020-mcp-runtime-wiring
+feature: v0.2.4 MCP/chat/config cluster — bug-012 (MCP tool-name separator)
+state: pr-raised
+branch: fix/bug-012-mcp-adapter-separator
 started_at: 2026-06-02
-last_milestone_at: 2026-06-02
+last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
-resume: evening IST 2026-06-02
+resume: null
 flags_for_user:
-  - "PR #59 OPEN (fix/bug-020-mcp-runtime-wiring): bug-020 P0 + bug-014 P1. 2 commits (9282000, 25a43bb), full gate green, pushed. https://github.com/Scaffoldic/agentforge-py/pull/59 — awaiting merge."
+  - "PR #60 OPEN (fix/bug-012-mcp-adapter-separator): bug-012 P0 — MCP tool-name separator `.`→`__` so Bedrock/OpenAI/Anthropic charset accepts MCP tools. 1 commit (87df76a), full gate green, pushed. https://github.com/Scaffoldic/agentforge-py/pull/60 — awaiting merge."
+  - "PR #59 (bug-020 + bug-014, MCP runtime wiring) MERGED to main (merge commit c2f1132). The cluster unblocker is in."
   - "PRs #57 (docs triage) + #58 (bug-009/010 fix) MERGED to main. main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (not started), suggested order: bug-012 (adapter .→_ separator) → bug-017 (Bedrock tool-name validator + docs) → bug-015 (meta extra chain agentforge-py[mcp]→agentforge-mcp[mcp] + audit other vendor modules) → bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
+  - "REMAINING v0.2.4 cluster (after #60), suggested order: bug-017 (Bedrock tool-name validator + docs) → bug-015 (meta extra chain agentforge-py[mcp]→agentforge-mcp[mcp] + audit other vendor modules) → bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -26,22 +27,27 @@ Each bug doc carries a "Framework-level vs derived-agent-level"
 section; all eight are framework-level. The whole cluster folds into
 **v0.2.4** (no release until it all lands).
 
-**In flight — PR #59** (`fix/bug-020-mcp-runtime-wiring`, off main):
+**Landed — PR #59 MERGED** (`fix/bug-020-mcp-runtime-wiring`, merge
+commit `c2f1132`): bug-014 (`MCPBridge.from_config` pure-data + async
+`start()` materialises clients; `attach_local_tools` + `set_tools`;
+list-form `command:`) and bug-020 (`ProtocolBridge` runtime_checkable
+contract; `Agent(protocol_bridges=)` + close on exit;
+`build_protocols_from_config` wired into `build_agent_from_config`,
+which also fixed the zero-caller native-`agent.tools` gap; `expose`
+rejected as stdio-hijack guard). The cluster unblocker is in main.
 
-| # | Commit | Bug | Scope |
-|---|---|---|---|
-| 1 | `9282000` | 014 | `MCPBridge.from_config` pure-data; async `start()` materialises deferred client specs; `_await_sync` deleted; `attach_local_tools` + `MCPServer.set_tools`; list-form `command:`. Tests. |
-| 2 | `25a43bb` | 020 | `agentforge_core.contracts.protocol_bridge.ProtocolBridge` (runtime_checkable); `Agent(protocol_bridges=)` + close on exit; `build_protocols_from_config` wired into `build_agent_from_config` (also wires native `agent.tools` — previously zero-caller gap); expose rejected (stdio-hijack guard). Tests. feat-013 §10 + CHANGELOG. |
+**In flight — PR #60** (`fix/bug-012-mcp-adapter-separator`, off main):
+bug-012 P0 — MCP tool-name separator `.`→`__` (`adapter.py:34`) so
+provider charset `^[a-zA-Z0-9_-]{1,64}$` (Bedrock/OpenAI/Anthropic)
+accepts MCP tools. Regression test locks the qualified name to that
+charset. feat-013 spec + README + CHANGELOG updated. 1 commit
+(`87df76a`), full gate green, pushed. Awaiting merge.
 
-Full pre-commit gate green on both commits. Scope: **consume path
-only**; server-side `expose` runtime-wiring deferred (with enh-001).
+## Pickup on resume
 
-## Pickup on resume (evening IST 2026-06-02)
-
-1. **Merge PR #59** (bug-020 + bug-014) once reviewed/CI-green.
+1. **Merge PR #60** (bug-012) once reviewed/CI-green.
 2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
    branch off main, folding into v0.2.4), suggested order:
-   - **bug-012** — adapter `.`→`_` separator (`adapter.py:34`).
    - **bug-017** — defensive Bedrock tool-name validator
      (`[a-zA-Z0-9_-]+`) + document the constraint (feat-004/003/013
      specs + `@tool` docstring + templates). Backs up bug-012.
