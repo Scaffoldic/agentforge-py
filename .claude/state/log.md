@@ -3082,3 +3082,11 @@ Shipped: 8-bug cluster (012/013/014/015/017/018/019/020) + enh-001 (MCP
 HTTP server transport) + bug-008. State → idle.
 Outstanding housekeeping (non-blocking): revoke ~/.pypirc [pypi] token,
 confirm/convert Trusted Publishing, delete PYPI_PUBLISH_TRACKER.md.
+
+## 2026-06-03T08:00 — paused (resume evening IST)
+v0.2.4 shipped + live (see prior entry). Nothing mid-feature. Added a
+resume marker to current.md. PR #68 (post-release state sync) is OPEN and
+holds the accurate snapshot — merge it first on resume so main stops
+saying "release in flight". Then: optional PyPI housekeeping (revoke
+~/.pypirc token / Trusted Publishing / delete PYPI_PUBLISH_TRACKER.md) or
+start v0.3 backlog. No bugs open.
