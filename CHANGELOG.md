@@ -56,9 +56,25 @@ activity and the next chat turn's prompt lost prior tool context.
   and Anthropic drivers call it at request-build time so an illegal
   name fails locally with an actionable message instead of as a
   remote provider error (bug-017).
+- **`ChatHistoryStore.create_session(session_id, *, owner=None,
+  metadata=None)`** — a concrete (non-abstract, so additive to the
+  locked ABC) method to register a session before its first turn. The
+  default upserts via `update_session_metadata`; drivers may override
+  (bug-018).
 
 ### Fixed
 
+- **bug-018 — `POST /sessions` 500'd on a fresh SQLite/Postgres/Redis
+  store.** `ChatServer._create_session` records the session owner before
+  any turn is appended, but the SQL/Redis history drivers only inserted
+  the session row lazily on first `append`, so
+  `update_session_metadata` raised `Cannot update metadata for unknown
+  session`. All three drivers now upsert the row in
+  `update_session_metadata` (create-if-missing, leaving an existing
+  row's `last_active_at` untouched), the in-memory driver lists
+  metadata-only sessions, and `ChatServer` calls the new
+  `create_session`. The fix is verified for every driver through the
+  shared chat-history conformance harness.
 - **bug-019 — documented terse config syntax for evaluators/guardrails
   was rejected.** `EvaluatorEntry` and `GuardrailEntry` are
   `strict=True, extra="forbid"`, and their docstrings + the shipped

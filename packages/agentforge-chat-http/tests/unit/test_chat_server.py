@@ -89,6 +89,35 @@ def test_create_session_returns_id(client: TestClient) -> None:
     assert "id" in r.json()
 
 
+async def test_create_session_works_with_sqlite_store(monkeypatch: pytest.MonkeyPatch) -> None:
+    """bug-018: POST /sessions must not 500 on a fresh SQLite-backed server.
+    `_create_session` records the owner before the first turn; the SQLite
+    driver used to raise because the row didn't exist yet."""
+    import httpx  # noqa: PLC0415
+    from agentforge_chat import SqliteChatHistory  # noqa: PLC0415
+
+    monkeypatch.setenv("API_TOKENS", "good-token")
+    store = await SqliteChatHistory.from_path(":memory:")
+    try:
+        server = ChatServer(
+            agent_factory=_agent_factory,
+            history_store=store,
+            auth=EnvBearerAuth("API_TOKENS"),
+            host="127.0.0.1",
+            port=8080,
+        )
+        transport = httpx.ASGITransport(app=server.app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            r = await ac.post("/sessions", json={}, headers=_auth())
+        assert r.status_code == 200
+        sid = r.json()["id"]
+        # The session is persisted and listable before any turn.
+        listed = await store.list_sessions()
+        assert sid in {s.id for s in listed}
+    finally:
+        await store.close()
+
+
 def test_missing_bearer_returns_401(client: TestClient) -> None:
     r = client.post("/sessions", json={})
     assert r.status_code == 401

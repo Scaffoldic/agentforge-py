@@ -227,6 +227,10 @@ class ChatHistoryStore(ABC):
     ) -> list[SessionInfo]: ...
     @abstractmethod
     async def update_session_metadata(self, session_id: str, metadata: dict) -> None: ...
+    # Concrete default (bug-018): register a session before its first turn.
+    async def create_session(
+        self, session_id: str, *, owner: str | None = None, metadata: dict | None = None
+    ) -> None: ...
     @abstractmethod
     async def expire_before(self, cutoff: datetime) -> int: ...    # TTL sweep
     @abstractmethod
@@ -698,6 +702,24 @@ items from v0.1.
   models (one-line additions in v0.3 when first user lands).
 - Migration framework for the Postgres schema.
 - Multi-cluster Redlock for RedisSessionLock.
+
+### v0.2.4 fix — session-creation contract (bug-018)
+
+`POST /sessions` 500'd on a fresh process with the SQLite (and
+Postgres / Redis) history drivers: `ChatServer._create_session`
+records the session owner before the first turn, but those drivers
+only inserted the session row lazily on first `append`, so
+`update_session_metadata` raised `Cannot update metadata for unknown
+session`. Fixed two ways, both shipped together:
+
+- `update_session_metadata` now **upserts** the session row in every
+  SQL/KV driver (create-if-missing, leaving an existing row's
+  `last_active_at` untouched); the in-memory driver now lists
+  metadata-only sessions.
+- `ChatHistoryStore.create_session()` was added as a **concrete**
+  (non-abstract) ABC method — additive to the locked contract per
+  ADR-0007 — and `ChatServer` now calls it. The contract is asserted
+  for every driver via the shared chat-history conformance harness.
 
 ### v0.3 polish — sentence-window streaming output guardrails
 

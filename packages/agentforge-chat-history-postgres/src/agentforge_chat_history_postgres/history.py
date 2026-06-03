@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from agentforge_core.contracts.chat import ChatHistoryStore
@@ -199,11 +199,22 @@ class PostgresChatHistory(ChatHistoryStore):
         return [await self._row_to_info(row) for row in rows]
 
     async def update_session_metadata(self, session_id: str, metadata: Mapping[str, Any]) -> None:
+        # Create the session row if it doesn't exist yet (bug-018):
+        # ChatServer records owner/metadata before the first turn. DO
+        # NOTHING leaves an existing row (and last_active_at) untouched.
+        await self._r.execute(
+            """INSERT INTO chat_sessions
+                 (id, owner, created_at, last_active_at, metadata)
+               VALUES ($1, NULL, $2, $2, '{}'::jsonb)
+               ON CONFLICT (id) DO NOTHING""",
+            session_id,
+            datetime.now(UTC),
+        )
         row = await self._r.fetchrow(
             "SELECT owner, metadata FROM chat_sessions WHERE id = $1",
             session_id,
         )
-        if row is None:
+        if row is None:  # pragma: no cover — the INSERT above guarantees a row
             raise ModuleError(f"Cannot update metadata for unknown session {session_id!r}")
         existing: dict[str, Any] = dict(_coerce_jsonb(row["metadata"]))
         existing.update(dict(metadata))

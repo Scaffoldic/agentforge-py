@@ -1,16 +1,16 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-019 (config sugar normaliser)
+feature: v0.2.4 MCP/chat/config cluster — bug-018 (chat session-create contract)
 state: pr-raised
-branch: fix/bug-019-entry-string-normalise
+branch: fix/bug-018-chat-session-create
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #63 OPEN (fix/bug-019-entry-string-normalise): bug-019 P2 — terse evaluator/guardrail config sugar rejected. model_validator(mode=before) on EvaluatorEntry + GuardrailEntry normalises string + single-key-mapping + canonical forms (mapping sugar was ALSO broken). 1 commit (f12a2d4), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/63 — awaiting merge."
-  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014), #60 (bug-012), #61 (bug-017), #62 (bug-015 meta extra-chain, c166ecd). main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (after #63), suggested order: bug-018 (SqliteChatHistory.update_session_metadata upsert + ChatHistoryStore.create_session() ABC — both in one PR) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport, may slip to 0.2.5)."
+  - "PR #64 OPEN (fix/bug-018-chat-session-create): bug-018 P0 — POST /sessions 500'd on fresh SQLite/Postgres/Redis. update_session_metadata now upserts in all 3 SQL/KV drivers; in-memory lists metadata-only sessions; ChatHistoryStore.create_session() added as CONCRETE ABC method (locked-ABC safe); ChatServer calls it. Contract asserted in shared conformance harness (all drivers) + sqlite e2e. 1 commit (58881e0), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/64 — awaiting merge."
+  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014), #60 (bug-012), #61 (bug-017), #62 (bug-015), #63 (bug-019 config sugar, b153199). main at version 0.2.4."
+  - "REMAINING v0.2.4 cluster (after #64): bug-013 (MCPServerClient.from_stdio/from_http/from_sse should auto-call register_tools so discover_tools/bridge work without a manual register step) → enh-001 (HTTP MCP server transport, may slip to 0.2.5). Then bug-008 (~5 lines: version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py) before tagging, then cut v0.2.4."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,28 +40,27 @@ rejected as stdio-hijack guard). The cluster unblocker is in main.
 failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
 local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
 
-**Merged — PR #62** (`fix/bug-015-meta-extra-chain`, c166ecd):
-meta-package extras now chain sister vendor-SDK extras (12 fixes + [all]
-+ bedrock phantom + agentforge-chat aiosqlite hard-dep);
-`test_extras_chain.py` locks the invariant.
+**Merged — PR #63** (`fix/bug-019-entry-string-normalise`, b153199):
+terse evaluator/guardrail config sugar normalised (string + single-key
+mapping + canonical) via model_validator(mode=before) on both entries.
 
-**In flight — PR #63** (`fix/bug-019-entry-string-normalise`, off main):
-bug-019 P2 — terse evaluator/guardrail config sugar was rejected
-(`EvaluatorEntry`/`GuardrailEntry` are strict+forbid; nothing normalised
-the string or single-key-mapping forms). Shared `_normalise_named_entry`
-+ `model_validator(mode="before")` on both entries handles all three
-shapes; covers `modules.evaluators` + guardrails `input`/`output`/
-`tool_gates`. The mapping sugar was broken too, not just the string
-form. 1 commit (`f12a2d4`), full gate + Live CI green. Awaiting merge.
+**In flight — PR #64** (`fix/bug-018-chat-session-create`, off main):
+bug-018 P0 — POST /sessions 500'd on fresh SQLite/Postgres/Redis (drivers
+inserted the session row only lazily on first append; ChatServer set
+metadata before that). Fix: update_session_metadata upserts in all 3
+SQL/KV drivers (create-if-missing, leaving existing last_active_at
+untouched); in-memory now lists metadata-only sessions;
+`ChatHistoryStore.create_session()` added as CONCRETE ABC method
+(additive to locked ABC per ADR-0007); ChatServer calls it. Contract
+asserted once in the shared conformance harness (all 4 drivers) + a real
+sqlite `POST /sessions` e2e. 1 commit (`58881e0`), full gate + Live CI
+green. Awaiting merge.
 
 ## Pickup on resume
 
-1. **Merge PR #63** (bug-019) once reviewed/CI-green.
+1. **Merge PR #64** (bug-018) once reviewed/CI-green.
 2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
-   branch off main, folding into v0.2.4), suggested order:
-   - **bug-018** — `SqliteChatHistory.update_session_metadata` upsert
-     (option 1, minimal) + `ChatHistoryStore.create_session()` ABC
-     (option 2, contract fix) — both in one PR.
+   branch off main, folding into v0.2.4):
    - **bug-013** — `from_stdio`/`from_http` auto-call `register_tools()`.
    - **enh-001** — HTTP MCP server transport (may slip to 0.2.5).
 3. **bug-008** (~5 lines) — fold in somewhere before tagging.
