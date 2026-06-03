@@ -253,17 +253,19 @@ member.
   integration test against a live MCP server lands. Every unit
   test injects a mock runner; the SDK wiring + transport
   context-manager dance is well-defined but unimplemented.
-- **`MCPBridge.from_config` runs `asyncio.run_until_complete`
-  to drive the async client factories from a synchronous code
-  path.** This is the pragmatic shape so the resolver-instantiated
-  bridge fits the `build_agent_from_config` flow; a fully-async
-  resolver hook is a v0.3 cleanup.
-- **`Agent.tools` integration is opt-in via the bridge.** A
-  follow-up commit can teach `build_agent_from_config` to call
-  `MCPBridge.from_config(...)`, `await bridge.start()`, and
-  merge `bridge.tools` into the agent's tool list. Today the
-  package ships the primitive; wiring into the Agent
-  construction path waits for a real live-test scenario.
+- **~~`MCPBridge.from_config` runs `asyncio.run_until_complete`~~**
+  — **RESOLVED in v0.2.4 (bug-014).** This raised
+  `RuntimeError: this event loop is already running` whenever
+  called from an async runtime. `from_config` is now pure data
+  (stashes server specs) and the async `start()` materialises the
+  clients, so it is safe inside a running loop. See the v0.2.4
+  table below.
+- **~~`Agent.tools` integration is opt-in via the bridge~~** —
+  **RESOLVED in v0.2.4 (bug-020).** `build_agent_from_config` now
+  resolves `modules.protocols`, builds each handler, awaits
+  `start()`, merges `bridge.tools` into the agent's tool list, and
+  closes the bridges on `Agent.close()`. The documented
+  `modules.protocols.mcp` config is no longer a no-op.
 - **TypeScript port deferred.** The protocol contract is
   language-neutral; TS port lands when the framework's TS
   scaffolding does.
@@ -295,8 +297,27 @@ implementations and gated by the framework's first
 | 3 | `339753e` | `agentforge-mcp` declares `[project.optional-dependencies] mcp = ["mcp>=1.0,<2"]`. `pip install agentforge-mcp[mcp]` (or transitively via `agentforge add module mcp`) brings the SDK. |
 | 4 | `175fdfa` | Live integration test: `tests/integration/_echo_server.py` exposes one tool; `tests/integration/test_mcp_live.py` (`@pytest.mark.live`, `@pytest.mark.asyncio`) spawns the echo server as a subprocess, calls `discover_tools()` (asserts `echo.echo`), invokes the adapter's `run(text="hello mcp")`, asserts the response, closes the client. The default pre-commit / CI gate skips this via `-m "not live"`; run explicitly with `uv run pytest -m live packages/agentforge-mcp/tests/integration/`. |
 
+### v0.2.4 — runtime wiring (bug-020 + bug-014)
+
+The cluster of defects from the first live Bedrock-backed MCP
+integration. `modules.protocols.mcp` was previously
+validated-but-never-instantiated, so the documented config did
+nothing.
+
+| Chunk | What landed |
+|---|---|
+| 1 | **bug-014** — `MCPBridge.from_config` is now pure data (no event loop driven); the async `start()` materialises deferred client specs and discovers tools. `_await_sync` deleted. `_client_from_entry_async` awaits the transport factory directly and accepts a list-form `command:`. `MCPBridge.attach_local_tools` + `MCPServer.set_tools` implemented (closes the undefined-method loose end). |
+| 2 | `agentforge_core.contracts.protocol_bridge.ProtocolBridge` — a `@runtime_checkable` Protocol (`tools` / `start` / `close`) so the runtime wires protocol handlers without `agentforge` importing `agentforge-mcp`. `Agent` gains a `protocol_bridges` kwarg and closes each on `close()`. |
+| 3 | **bug-020** — `build_protocols_from_config` resolves each `modules.protocols` entry under the `protocols` category, builds it via `from_config`, awaits `start()`, and collects its tools. `build_agent_from_config` merges native `agent.tools` (previously never wired through this path) + protocol tools into `Agent(tools=...)` and passes the started bridges. Server-side `expose` is rejected with a clear error (would hijack the agent process's stdio); expose runtime-wiring is a follow-up. |
+
 ### Out-of-scope (deferred to a later v0.x follow-up)
 
+- **Server-side `expose` runtime-wiring.** Consuming MCP servers is
+  wired (v0.2.4); auto-serving the agent's own tools as an MCP
+  server from inside the agent runtime is not — it would hijack the
+  process's stdio. `build_protocols_from_config` fails loud on
+  `expose.enabled`. Tracked alongside the HTTP server transport
+  (enh-001).
 - **HTTP/SSE server transport for `_SDKServerRunner`.** The stdio
   path is wired; HTTP / SSE expose still raises
   `ModuleError("transport='http' not yet implemented")`. Needs

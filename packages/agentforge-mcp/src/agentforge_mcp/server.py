@@ -72,6 +72,15 @@ class MCPServer:
         )
         return cls(tools=tools, runner=runner, allowed=allowed)
 
+    def set_tools(self, tools: Iterable[Tool]) -> None:
+        """Replace the tool set to expose.
+
+        Used by `MCPBridge.attach_local_tools` to inject the agent's
+        own tools after construction (the agent's tool list isn't known
+        at config-load time). Call before `register_tools()` / `serve()`.
+        """
+        self._tools = list(tools)
+
     def register_tools(self) -> int:
         """Register each whitelisted tool with the underlying runner.
 
