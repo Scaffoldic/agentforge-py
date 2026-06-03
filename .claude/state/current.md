@@ -1,16 +1,16 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-015 (meta extra-chain packaging)
+feature: v0.2.4 MCP/chat/config cluster — bug-019 (config sugar normaliser)
 state: pr-raised
-branch: fix/bug-015-meta-extra-chain
+branch: fix/bug-019-entry-string-normalise
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #62 OPEN (fix/bug-015-meta-extra-chain): bug-015 P2 — meta-package extras didn't chain sister vendor-SDK extras. Audited all 34 pkgs; fixed 12 missing chains + `[all]`, 1 phantom extra (bedrock), 1 eager-import-as-optional (agentforge-chat aiosqlite → hard dep). mcp ModuleError text updated. New generic test_extras_chain.py locks the invariant. 1 commit (9622d7e), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/62 — awaiting merge."
-  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014 MCP runtime wiring), #60 (bug-012 MCP `.`→`__`), #61 (bug-017 tool-name charset validator, 077795a). main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (after #62), suggested order: bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates — both EvaluatorEntry AND GuardrailEntry broken) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
+  - "PR #63 OPEN (fix/bug-019-entry-string-normalise): bug-019 P2 — terse evaluator/guardrail config sugar rejected. model_validator(mode=before) on EvaluatorEntry + GuardrailEntry normalises string + single-key-mapping + canonical forms (mapping sugar was ALSO broken). 1 commit (f12a2d4), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/63 — awaiting merge."
+  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014), #60 (bug-012), #61 (bug-017), #62 (bug-015 meta extra-chain, c166ecd). main at version 0.2.4."
+  - "REMAINING v0.2.4 cluster (after #63), suggested order: bug-018 (SqliteChatHistory.update_session_metadata upsert + ChatHistoryStore.create_session() ABC — both in one PR) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport, may slip to 0.2.5)."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,27 +40,25 @@ rejected as stdio-hijack guard). The cluster unblocker is in main.
 failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
 local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
 
-**Merged — PR #61** (`fix/bug-017-tool-name-validator`, 077795a):
-tool-name charset validator at all 3 provider boundaries.
+**Merged — PR #62** (`fix/bug-015-meta-extra-chain`, c166ecd):
+meta-package extras now chain sister vendor-SDK extras (12 fixes + [all]
++ bedrock phantom + agentforge-chat aiosqlite hard-dep);
+`test_extras_chain.py` locks the invariant.
 
-**In flight — PR #62** (`fix/bug-015-meta-extra-chain`, off main):
-bug-015 P2 — meta-package extras didn't chain sister vendor-SDK extras
-(`pip install agentforge-py[mcp]` installed the wrapper but not the SDK).
-Audited all 34 pkgs: fixed 12 missing chains + `[all]`, 1 phantom extra
-(`bedrock` → bare), 1 eager-import-as-optional (`agentforge-chat`
-aiosqlite → hard dep, matching memory-sqlite). mcp `ModuleError` text →
-`agentforge-mcp[mcp]`. New `test_extras_chain.py` locks the invariant
-generically. 1 commit (`9622d7e`), full gate + Live CI green. Awaiting
-merge.
+**In flight — PR #63** (`fix/bug-019-entry-string-normalise`, off main):
+bug-019 P2 — terse evaluator/guardrail config sugar was rejected
+(`EvaluatorEntry`/`GuardrailEntry` are strict+forbid; nothing normalised
+the string or single-key-mapping forms). Shared `_normalise_named_entry`
++ `model_validator(mode="before")` on both entries handles all three
+shapes; covers `modules.evaluators` + guardrails `input`/`output`/
+`tool_gates`. The mapping sugar was broken too, not just the string
+form. 1 commit (`f12a2d4`), full gate + Live CI green. Awaiting merge.
 
 ## Pickup on resume
 
-1. **Merge PR #62** (bug-015) once reviewed/CI-green.
+1. **Merge PR #63** (bug-019) once reviewed/CI-green.
 2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
    branch off main, folding into v0.2.4), suggested order:
-   - **bug-019** — `mode="before"` string→{name} normaliser for
-     `modules.evaluators` + guardrail `input`/`output`/`tool_gates`
-     (both EvaluatorEntry AND GuardrailEntry are broken).
    - **bug-018** — `SqliteChatHistory.update_session_metadata` upsert
      (option 1, minimal) + `ChatHistoryStore.create_session()` ABC
      (option 2, contract fix) — both in one PR.

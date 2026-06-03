@@ -2967,3 +2967,22 @@ pyproject and asserts each meta extra chains exactly the leaf's extras
 (catches missing + phantom for future packages too). Full gate + Live CI
 green (9622d7e). PR #62 open. Next: bug-019 → bug-018 → bug-013 → enh-001;
 bug-008 before tag.
+
+## 2026-06-03T03:30 — v0.2.4 cluster: bug-015 merged (#62), bug-019 opened (#63)
+PR #62 (bug-015 meta extra-chain) merged to main (c166ecd). Note: its
+first Live CI run failed on a transient `docker pull postgres:16` Docker
+Hub timeout (infra, not code) — `gh run rerun --failed` cleared it. The CI
+Live job depends on pulling postgres:16 at runtime; flaky on registry
+hiccups (harden later via digest pin / retry if it recurs).
+Started bug-019 on `fix/bug-019-entry-string-normalise`. Scope wider than
+the reported string-form symptom: the single-key-mapping sugar
+(`- geval: {rubric}`, in the schema's own example YAML) was equally broken
+under strict+forbid. Fix: shared `_normalise_named_entry` + a
+`model_validator(mode="before")` on BOTH EvaluatorEntry and GuardrailEntry
+(one validator per type covers evaluators + guardrails input/output/
+tool_gates; composes through Pydantic list validation under strict). All
+three shapes (string / single-key mapping / canonical) load. Flipped the
+old feat-012 "string shorthand NYI" test to a positive load_config test;
+updated feat-012 Implementation status. Full gate + Live CI green
+(f12a2d4). PR #63 open. Next: bug-018 → bug-013 → enh-001; bug-008 before
+tag, then cut v0.2.4.
