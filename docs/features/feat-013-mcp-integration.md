@@ -100,7 +100,7 @@ modules:
 
 ```python
 # Code is unchanged from feat-004 — tools coming from MCP look the same.
-agent = Agent(model="...", tools=["filesystem.read_file", "github.create_issue"])
+agent = Agent(model="...", tools=["filesystem__read_file", "github__create_issue"])
 result = await agent.run("Find the auth bug in src/")
 ```
 
@@ -144,10 +144,10 @@ Agent construction with modules.protocols.mcp:
      whitelisted tools via the configured transport.
 
 Tool dispatch (transparent):
-  LLM emits tool_call(name="filesystem.read_file", arguments=...)
+  LLM emits tool_call(name="filesystem__read_file", arguments=...)
        │
        ▼
-  Agent's tool catalogue: filesystem.read_file → MCPToolAdapter
+  Agent's tool catalogue: filesystem__read_file → MCPToolAdapter
        │
        ▼
   Adapter.run(**args) → MCP request to server → response → return value
@@ -220,7 +220,7 @@ Configuration identical.
 |---|---|
 | Subprocess management on Windows (signals, pipes) | Use `asyncio.subprocess` portable APIs; CI matrix covers Windows |
 | Server crashes mid-run | Adapter raises; counted toward `error_streak_limit`; agent may continue without that server's tools |
-| Tool name collision across servers | Prefix with server name (`filesystem.read_file`); collision detection at startup |
+| Tool name collision across servers | Prefix with server name (`filesystem__read_file`); collision detection at startup |
 | Version-mismatch with newer MCP protocol | Pin a protocol range; surface mismatch with upgrade guidance |
 | Should we ship our own MCP server registry? | No — community / MCP ecosystem owns that; we just consume |
 
@@ -371,7 +371,7 @@ modules:
 
 After the next `agentforge run`, the agent's tool catalogue
 will include MCP-server tools prefixed by their server name
-(`filesystem.read_file`, `github.create_issue`). When
+(`filesystem__read_file`, `github__create_issue`). When
 `expose.enabled` is set, the agent also runs an MCP server so
 Claude Desktop / Cursor / another AgentForge agent can call
 into `lookup_user` and `create_ticket` over MCP.
@@ -411,7 +411,7 @@ tools = await client.discover_tools()
 |---|---|---|
 | `ModuleError: mcp SDK is not installed` | upstream missing | `pip install agentforge-mcp[mcp]` (or `agentforge add module mcp` to install both) |
 | `MCP server transport 'http' is not yet implemented` | v0.2.1 polish gap | use `transport: stdio` in `modules.protocols.mcp.expose` for now; HTTP server transport lands as a v0.2.1 chore |
-| Tool name collision | two servers expose the same name | both arrive prefixed with their server name (`fs.read_file` vs `s3.read_file`) — collision avoided |
+| Tool name collision | two servers expose the same name | both arrive prefixed with their server name (`fs__read_file` vs `s3__read_file`) — collision avoided |
 | Subprocess won't terminate on agent close | `bridge.close` not called | use `async with Agent(...)` so the framework's `__aexit__` invokes the bridge close path |
 | Non-text content blocks dropped from `call_tool` result | `_SDKClientRunner` concatenates `TextContent` blocks and ignores `ImageContent` / `EmbeddedResource` for v0.2 | follow-up when a real use case justifies the wire-format change; meanwhile route binary tools through a different adapter shape |
 

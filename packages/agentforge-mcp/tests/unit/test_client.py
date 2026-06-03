@@ -61,7 +61,7 @@ async def test_discover_tools_returns_all_when_no_filter() -> None:
     tools = await client.discover_tools()
     assert len(tools) == 3
     names = sorted(type(t).name for t in tools)
-    assert names == ["fs.list_directory", "fs.read_file", "fs.write_file"]
+    assert names == ["fs__list_directory", "fs__read_file", "fs__write_file"]
 
 
 @pytest.mark.asyncio
@@ -70,7 +70,7 @@ async def test_tool_filter_restricts_imported_tools() -> None:
     client = MCPServerClient(name="fs", runner=runner, tool_filter=("read_file", "list_directory"))
     tools = await client.discover_tools()
     names = sorted(type(t).name for t in tools)
-    assert names == ["fs.list_directory", "fs.read_file"]
+    assert names == ["fs__list_directory", "fs__read_file"]
 
 
 @pytest.mark.asyncio
@@ -80,7 +80,7 @@ async def test_discovered_tool_round_trips_through_runner() -> None:
         responses={"read_file": "<body>"},
     )
     client = MCPServerClient(name="fs", runner=runner)
-    [read_file] = (t for t in await client.discover_tools() if type(t).name == "fs.read_file")
+    [read_file] = (t for t in await client.discover_tools() if type(t).name == "fs__read_file")
     result = await read_file.run(path="/etc/hosts")
     assert result == "<body>"
     # The runner sees the bare name, not the prefixed one.
