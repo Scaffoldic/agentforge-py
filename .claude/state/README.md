@@ -28,6 +28,14 @@ ended.
   field. Append a one-line entry to `log.md`.
 - **At every committed milestone.** Append to `log.md`: a heading with
   date and event, then a few lines of detail.
+- **At every PR open and every merge** (especially in a multi-PR feature
+  cluster, e.g. a release's bug-fix train). Refresh `current.md`
+  (`feature:`, `branch:`, `state:`, the `flags_for_user:` PR list, the
+  pickup list) and append a `log.md` milestone, then **commit and push
+  both on the current branch** — don't wait for session end. The tracker
+  must always reflect which PRs are merged vs in-flight so any resume
+  (this clone or another) sees the true state. This cadence is mirrored
+  in the workspace pipeline (Rule 4 + "Pausing mid-feature").
 - **When a blocker appears.** Update `current.md > blocker:` with a
   description; the user will see it on next session resume.
 - **When you find a bug from a previous feature.** Append a
