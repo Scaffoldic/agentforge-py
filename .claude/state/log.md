@@ -3006,3 +3006,22 @@ real sqlite POST /sessions e2e via httpx ASGITransport. Fixed reference
 _DictHistory + harness to list metadata-only sessions; flipped obsolete
 postgres raise test. Full gate + Live CI green (58881e0). PR #64 open.
 Next: bug-013 → enh-001; bug-008 before tag, then cut v0.2.4.
+
+## 2026-06-03T05:30 — v0.2.4 cluster: bug-018 merged (#64), bug-013 opened (#65)
+PR #64 (bug-018 chat session-create) merged to main (4c735d1). Started
+bug-013 on `fix/bug-013-auto-register-tools` — P2 raw-factory foot-gun:
+MCPServer.from_stdio/from_http held the tool list but never registered it,
+so a factory-built server served an empty ListTools (the supported
+MCPBridge path was unaffected — start() registers). Fix: factories call
+register_tools() before returning; register_tools() idempotent via a
+_registered guard (explicit extra call = no-op, 0); set_tools() re-arms
+(bridge empty-placeholder → attach_local_tools → start() registers stays
+correct); both factories gained runner= injection so the fix is
+unit-tested (auto-register / idempotency / set_tools re-arm) not live-only.
+feat-013 §10 + CHANGELOG + bug-013 doc. ALSO (user request): reinforced the
+state-tracking cadence in-git — project .claude/state/README.md "When to
+write" + workspace pipeline Rule 4 now state each PR open/merge is a
+tracker milestone to commit+push (not batched to session end), esp. in a
+multi-PR cluster. Full gate green (b13a096). PR #65 open. After merge the
+bug cluster is DONE; remaining: enh-001 (may slip to 0.2.5), bug-008 (~5
+lines) before tagging, then cut v0.2.4.
