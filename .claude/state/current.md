@@ -6,7 +6,7 @@ started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.4 — Live-fire MCP (8-bug MCP/chat/config cluster + enh-001 HTTP server transport + bug-008). Tag v0.2.4 at merge commit 6f208e9 (PR #67); GitHub Release published; release.yml SUCCESS — all 34 packages live on PyPI at 0.2.4 in one clean run (no quota wall). Verified: TestPyPI dry run + real scaffold/upgrade end-to-end.
 blocker: null
-resume: null
+resume: "evening IST 2026-06-03 — v0.2.4 is shipped/live; nothing mid-feature. On resume: (1) MERGE PR #68 first (this state-sync PR; until then main's current.md is stale and still says 'release in flight'). (2) Then optional, non-blocking PyPI housekeeping (revoke ~/.pypirc token, Trusted Publishing, delete PYPI_PUBLISH_TRACKER.md). (3) Or start v0.3 backlog from docs/roadmap.md. No bugs open."
 flags_for_user:
   - "v0.2.4 RELEASED 2026-06-03. All 34 packages live on PyPI at 0.2.4 (single clean release.yml run — first non-drip release since the quota era). GitHub Release: https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.4"
   - "Pre-release verification done: TestPyPI dry run PASSED (34 pkgs build+upload+smoke install); real `agentforge new` + `agentforge upgrade --to 0.2.4` + fork verified end-to-end (managed refreshed, forked preserved); bug-008 confirmed in situ (answers.yml records 0.2.4)."
