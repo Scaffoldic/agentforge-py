@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.2.4
 severity: P2
 found-in: v0.2.3
 found-via: live integration of a Bedrock-backed MCP agent (Khemchand Joshi, 2026-05-27)
@@ -106,3 +106,41 @@ path actually deliver a working MCP runtime.
   that should be `["agentforge-X[vendor] ~= ..."]`. Candidates with
   optional SDK extras: `agentforge-langfuse`, `agentforge-phoenix`,
   `agentforge-a2a`, etc. Worth a one-pass sweep during the fix.
+
+## Resolution (v0.2.4)
+
+Audited all 34 packages (`pyproject.toml` deps + optional-dependencies).
+Every vendor SDK is an optional extra on its leaf package — **none** are
+hard-bundled — so the meta comment claiming "ollama / litellm bundle
+their SDK as a hard dep" was wrong. Three defect classes fixed in
+`packages/agentforge/pyproject.toml` (individual extras **and** `[all]`):
+
+1. **Missing chain (12 extras, the reported bug class)** — `ollama`,
+   `litellm`, `voyage`, `mcp`, `langfuse`, `phoenix`, `statsd`,
+   `evidently`, `reranker-cohere`, `reranker-voyage`,
+   `reranker-mixedbread`, `reranker-sentence-transformers`. Each now
+   chains `agentforge-<pkg>[<sdk>]`. (`anthropic` / `openai` were
+   already correct.) `[all]` previously installed *zero* vendor SDKs;
+   now chains them too.
+2. **Phantom extra** — `bedrock` requested `agentforge-bedrock[bedrock]`,
+   but bedrock has no such extra (its SDK `aioboto3`/`botocore` is a
+   hard dep). Now bare `agentforge-bedrock`.
+3. **Eager-import-as-optional** — `agentforge-chat` imports
+   `SqliteChatHistory` (→ `import aiosqlite`) at package import, yet
+   declared `aiosqlite` as an optional `[sqlite]` extra, so
+   `import agentforge_chat` failed on a bare install. `aiosqlite` is now
+   a hard dependency (matching sibling `agentforge-memory-sqlite`); the
+   `[sqlite]` extra, chat README, and manifest comment were updated.
+
+Also: the `mcp` `ModuleError` text (4 sites in `agentforge-mcp`) now
+recommends `agentforge-mcp[mcp]` instead of bare `pip install mcp`.
+
+A generic regression test (`packages/agentforge/tests/unit/test_extras_chain.py`)
+parses every sister `pyproject.toml` and asserts each meta extra chains
+exactly the leaf package's extras — catching both missing and phantom
+extras for current and future packages.
+
+**Out of scope (noted, not fixed here):** `agentforge-chat`'s
+token-budget truncation lazily imports `tiktoken` / `anthropic` for
+tokenisation; these are genuinely-optional advanced-feature deps with no
+advertised meta extra, so they are not part of this broken-chain fix.

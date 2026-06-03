@@ -59,6 +59,23 @@ activity and the next chat turn's prompt lost prior tool context.
 
 ### Fixed
 
+- **bug-015 — `agentforge-py` extras didn't pull their vendor SDKs.**
+  Sister packages keep their vendor SDK behind an optional `[<sdk>]`
+  extra (lazy-import pattern), but most meta extras requested the bare
+  package, so e.g. `pip install "agentforge-py[mcp]"` installed the
+  wrapper without the `mcp` SDK and the first call raised `ModuleError`.
+  An audit of all 34 packages found the chain broken for **12** extras
+  (`ollama`, `litellm`, `voyage`, `mcp`, `langfuse`, `phoenix`,
+  `statsd`, `evidently`, and the four `reranker-*`) plus `[all]`; they
+  now chain `[<sdk>]`. Two adjacent defects the audit surfaced are also
+  fixed: `bedrock` requested a **phantom** `[bedrock]` extra (its SDK is
+  a hard dep) — now bare; and `agentforge-chat` declared `aiosqlite` as
+  an optional `[sqlite]` extra despite importing it unconditionally
+  (`import agentforge_chat` failed without it) — now a hard dependency,
+  matching sibling `agentforge-memory-sqlite`. The `mcp` `ModuleError`
+  text now points at `agentforge-mcp[mcp]`. A new generic test
+  (`test_extras_chain.py`) locks the invariant for every current and
+  future package.
 - **bug-017 — provider tool-name charset was undocumented and
   unchecked.** Every major provider enforces `^[a-zA-Z0-9_-]{1,64}$`
   on tool names, but nothing in the framework documented or validated

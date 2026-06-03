@@ -1,16 +1,16 @@
 ---
-feature: v0.2.4 MCP/chat/config cluster — bug-017 (tool-name charset validator)
+feature: v0.2.4 MCP/chat/config cluster — bug-015 (meta extra-chain packaging)
 state: pr-raised
-branch: fix/bug-017-tool-name-validator
+branch: fix/bug-015-meta-extra-chain
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
 last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages now live on PyPI at v0.2.3 (drip completed 2026-05-28). v0.2.4 in progress on main (0.2.4 version bump merged via #58) but NOT yet tagged/released.
 blocker: null
 resume: null
 flags_for_user:
-  - "PR #61 OPEN (fix/bug-017-tool-name-validator): bug-017 P2 — validate tool-name charset `^[a-zA-Z0-9_-]{1,64}$` at all 3 provider boundaries (validate_tool_name + ToolNameInvalidError in core; NOT auto-enforced on ToolSpec) + docs (feat-003/004/013, @tool docstring, scaffold runbook). 1 commit (3131f92), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/61 — awaiting merge."
-  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014 MCP runtime wiring, c2f1132), #60 (bug-012 MCP `.`→`__` separator, 3cf2bdc). main at version 0.2.4."
-  - "REMAINING v0.2.4 cluster (after #61), suggested order: bug-015 (meta extra chain agentforge/pyproject.toml:105 `agentforge-mcp ~=0.2.4`→`agentforge-mcp[mcp] ~=0.2.4` + audit other vendor modules) → bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
+  - "PR #62 OPEN (fix/bug-015-meta-extra-chain): bug-015 P2 — meta-package extras didn't chain sister vendor-SDK extras. Audited all 34 pkgs; fixed 12 missing chains + `[all]`, 1 phantom extra (bedrock), 1 eager-import-as-optional (agentforge-chat aiosqlite → hard dep). mcp ModuleError text updated. New generic test_extras_chain.py locks the invariant. 1 commit (9622d7e), full gate + Live CI green. https://github.com/Scaffoldic/agentforge-py/pull/62 — awaiting merge."
+  - "MERGED to main: #57 (docs triage), #58 (bug-009/010), #59 (bug-020+bug-014 MCP runtime wiring), #60 (bug-012 MCP `.`→`__`), #61 (bug-017 tool-name charset validator, 077795a). main at version 0.2.4."
+  - "REMAINING v0.2.4 cluster (after #62), suggested order: bug-019 (config string→{name} normaliser: evaluators + guardrail input/output/tool_gates — both EvaluatorEntry AND GuardrailEntry broken) → bug-018 (SqliteChatHistory upsert + ChatHistoryStore.create_session ABC) → bug-013 (from_stdio/from_http auto register_tools) → enh-001 (HTTP server transport)."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,24 +40,24 @@ rejected as stdio-hijack guard). The cluster unblocker is in main.
 failed (env-gated `test_mcp_live.py` asserted the old `echo.echo`;
 local pre-commit doesn't run live tests) — fixed in commit `0bc8386`.
 
-**In flight — PR #61** (`fix/bug-017-tool-name-validator`, off main):
-bug-017 P2 — `validate_tool_name` + `ToolNameInvalidError(ProviderError)`
-in core, invoked at the request-build boundary of all three providers
-(Bedrock/OpenAI/Anthropic); core `ToolSpec` deliberately NOT
-auto-validated (neutral representation; charset is a per-provider wire
-constraint). Docs in feat-003/004/013 + `@tool` docstring + scaffold
-`02-add-a-tool` runbook. 1 commit (`3131f92`), full gate + Live CI
-green. Awaiting merge.
+**Merged — PR #61** (`fix/bug-017-tool-name-validator`, 077795a):
+tool-name charset validator at all 3 provider boundaries.
+
+**In flight — PR #62** (`fix/bug-015-meta-extra-chain`, off main):
+bug-015 P2 — meta-package extras didn't chain sister vendor-SDK extras
+(`pip install agentforge-py[mcp]` installed the wrapper but not the SDK).
+Audited all 34 pkgs: fixed 12 missing chains + `[all]`, 1 phantom extra
+(`bedrock` → bare), 1 eager-import-as-optional (`agentforge-chat`
+aiosqlite → hard dep, matching memory-sqlite). mcp `ModuleError` text →
+`agentforge-mcp[mcp]`. New `test_extras_chain.py` locks the invariant
+generically. 1 commit (`9622d7e`), full gate + Live CI green. Awaiting
+merge.
 
 ## Pickup on resume
 
-1. **Merge PR #61** (bug-017) once reviewed/CI-green.
+1. **Merge PR #62** (bug-015) once reviewed/CI-green.
 2. **Work the rest of the cluster** (each its own `fix/bug-NNN-*`
    branch off main, folding into v0.2.4), suggested order:
-   - **bug-015** — meta extra chain: `agentforge/pyproject.toml:105`
-     `mcp = ["agentforge-mcp ~= 0.2.4"]` → `["agentforge-mcp[mcp] ~= 0.2.4"]`;
-     fix the `ModuleError` text; audit other vendor modules for the
-     same broken chain.
    - **bug-019** — `mode="before"` string→{name} normaliser for
      `modules.evaluators` + guardrail `input`/`output`/`tool_gates`
      (both EvaluatorEntry AND GuardrailEntry are broken).

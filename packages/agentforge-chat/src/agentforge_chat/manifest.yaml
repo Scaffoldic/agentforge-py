@@ -11,7 +11,7 @@ distribution:
 config_block:
   modules.chat:
     history:
-      driver: memory   # memory | sqlite (sqlite needs `agentforge-chat[sqlite]`)
+      driver: memory   # memory | sqlite (both ship with agentforge-chat)
       config: {}
     truncation:
       strategy: sliding_window
