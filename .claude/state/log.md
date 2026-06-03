@@ -3048,3 +3048,18 @@ reset to origin/main BEFORE any push — zero remote impact. Reinforces the
 "branch first" discipline. Full gate green. PR #66 open. AFTER it merges the
 v0.2.4 cluster is DONE → cut v0.2.4 (CHANGELOG date, release notes,
 pre-release checklist, tag, release.yml).
+
+## 2026-06-03T07:30 — v0.2.4 release prep (PR #67); cluster complete
+PR #66 (enh-001 + bug-008) merged to main (325e98f). The v0.2.4 cluster is
+COMPLETE: all 8 bugs (012/013/014/015/017/018/019/020) + enh-001 merged;
+34 pkgs at 0.2.4 on main. Opened `chore/release-v0.2.4` (PR #67) with the
+reversible release prep: CHANGELOG `## [0.2.4]` dated 2026-06-03 (empty
+`## [Unreleased]` already above it); `docs/releases/v0.2.4.md` written
+(codename "Live-fire MCP", mirroring the v0.2.3 notes style); current.md +
+this log synced. PAUSED before the irreversible steps per release policy:
+(a) pre-release checklist §8 MANDATORY TestPyPI dry run
+(`python scripts/testpypi_dry_run.py`) needs the user's TestPyPI creds;
+(b) the v0.2.4 tag triggers release.yml → immutable PyPI publish of 34
+packages. v0.2.4 is a new VERSION of existing projects so the new-project
+quota does NOT apply (unlike the v0.2.1→0.2.3 drip). last_shipped will flip
+to v0.2.4 only after the tag is pushed.

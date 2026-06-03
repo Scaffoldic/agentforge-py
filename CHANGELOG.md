@@ -9,7 +9,7 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
-## [0.2.4] — unreleased
+## [0.2.4] — 2026-06-03
 
 Tool-call round-trip fix **plus the MCP runtime-wiring cluster** —
 both sets of defects surfaced from the first live Bedrock-backed MCP
