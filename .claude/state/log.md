@@ -2948,3 +2948,22 @@ representation, charset is a per-provider wire constraint that merely
 coincides today). Docs: feat-003/004/013, @tool docstring, scaffold
 02-add-a-tool runbook. Full gate + Live CI green (3131f92). PR #61 open.
 Next: bug-015 → bug-019 → bug-018 → bug-013 → enh-001; bug-008 before tag.
+
+## 2026-06-03T02:30 — v0.2.4 cluster: bug-017 merged (#61), bug-015 opened (#62)
+PR #61 (bug-017, tool-name charset validator) merged to main (077795a).
+Started bug-015 on `fix/bug-015-meta-extra-chain`. The reported bug
+(`agentforge-py[mcp]` doesn't pull the mcp SDK) was the tip — a full audit
+of all 34 packages' pyproject deps+extras found EVERY vendor SDK is an
+optional extra (the meta comment claiming ollama/litellm hard-bundle was
+wrong). Fixed 3 defect classes in agentforge/pyproject.toml (extras + [all]):
+12 missing chains (ollama/litellm/voyage/mcp/langfuse/phoenix/statsd/
+evidently/reranker-{cohere,voyage,mixedbread,sentence-transformers}); 1
+phantom extra (bedrock[bedrock] → bare, SDK is hard dep); 1
+eager-import-as-optional (agentforge-chat imports aiosqlite at package
+import but declared it optional → made hard dep like memory-sqlite, dropped
+[sqlite] extra, updated README+manifest). mcp ModuleError text (4 sites) →
+agentforge-mcp[mcp]. New generic test_extras_chain.py parses every sister
+pyproject and asserts each meta extra chains exactly the leaf's extras
+(catches missing + phantom for future packages too). Full gate + Live CI
+green (9622d7e). PR #62 open. Next: bug-019 → bug-018 → bug-013 → enh-001;
+bug-008 before tag.
