@@ -1,0 +1,52 @@
+name: Feature request
+description: Suggest a capability or improvement for AgentForge
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Larger features may need a `feat-NNN` spec under
+        `docs/features/` before implementation — a maintainer will guide you.
+        Check [docs/roadmap.md](../blob/main/docs/roadmap.md) to see if it's
+        already planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What production problem does this solve?
+      description: Describe the use case and the pain, not just the proposed API.
+      placeholder: When running agents in production, I need ... because ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should AgentForge do? Sketch the config / API if you have one.
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, or how you work around it today.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the framework does this touch?
+      options:
+        - Core contracts
+        - LLM provider
+        - Memory / persistence
+        - Retrieval / reranker
+        - Guardrails / safety
+        - Evaluation
+        - Observability
+        - MCP / protocols
+        - Chat / sessions
+        - CLI / scaffolding
+        - Other / not sure
+    validations:
+      required: false

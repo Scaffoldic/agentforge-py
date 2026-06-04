@@ -225,11 +225,24 @@ touching path / subprocess / filesystem code.
 
 ---
 
+## Status
+
+**Early but production-minded.** AgentForge is `v0.2.x` and
+solo-maintained — the API surface is stabilising, the contracts are
+locked (ADR-0007), and it's tested like infrastructure
+(`mypy --strict`, ≥90 % coverage, a conformance harness every backend
+must pass, live integration tests in CI). Issues, feedback, and
+contributors are very welcome.
+
+---
+
 ## Contributing
 
-Read [`AGENTS.md`](./AGENTS.md) before opening a PR — it has the
-workflow, branch naming, anti-patterns reviewers will reject,
-and the pre-commit gate.
+Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md) — setup, the hard
+rules, branch/PR conventions, and the pre-commit gate. The deeper
+conventions live in [`AGENTS.md`](./AGENTS.md). Be excellent to each
+other: [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md). Found a security
+issue? See [`SECURITY.md`](./SECURITY.md) (please report privately).
 
 - Branch from `main`: `feat/<NNN>-<slug>`, `fix/<slug>`,
   `docs/<slug>`, `chore/<slug>`
@@ -237,6 +250,10 @@ and the pre-commit gate.
 - One feature = one PR, squash-merged
 - 90 % coverage floor
 - Every feature PR updates its spec's `Implementation status`
+
+Looking for somewhere to start? Issues labelled `good-first-issue`
+and `help-wanted`, plus the [`docs/roadmap.md`](./docs/roadmap.md)
+backlog.
 
 ---
 
