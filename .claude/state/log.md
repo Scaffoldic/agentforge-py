@@ -3063,3 +3063,30 @@ this log synced. PAUSED before the irreversible steps per release policy:
 packages. v0.2.4 is a new VERSION of existing projects so the new-project
 quota does NOT apply (unlike the v0.2.1→0.2.3 drip). last_shipped will flip
 to v0.2.4 only after the tag is pushed.
+
+## 2026-06-03T07:30 — v0.2.4 RELEASED — Live-fire MCP
+PR #67 (release prep) merged to main (6f208e9). Main CI green, then:
+tagged `v0.2.4` at 6f208e9, pushed; `gh release create v0.2.4` published the
+GitHub Release from docs/releases/v0.2.4.md. The tag triggered release.yml
+(run 26869970428) → BOTH jobs (Build wheels+sdists, Publish to PyPI) SUCCESS
+→ all 34 packages live on PyPI at 0.2.4 in ONE clean run. Verified on PyPI:
+agentforge-py 0.2.4 (latest) + agentforge-mcp 0.2.4. First non-drip release
+since the new-project-quota era — v0.2.4 is a new VERSION of existing
+projects so the quota didn't apply.
+Pre-release gates (all green): TestPyPI dry run (34 build+upload+smoke
+install of agentforge-py[anthropic]==0.2.4 → import ok); real scaffold
+(`agentforge new`) + upgrade (`agentforge upgrade --to 0.2.4`) + fork
+end-to-end (managed files refreshed, forked preserved, bug-008 records
+0.2.4 in situ); 46 scaffold/upgrade unit tests.
+Shipped: 8-bug cluster (012/013/014/015/017/018/019/020) + enh-001 (MCP
+HTTP server transport) + bug-008. State → idle.
+Outstanding housekeeping (non-blocking): revoke ~/.pypirc [pypi] token,
+confirm/convert Trusted Publishing, delete PYPI_PUBLISH_TRACKER.md.
+
+## 2026-06-03T08:00 — paused (resume evening IST)
+v0.2.4 shipped + live (see prior entry). Nothing mid-feature. Added a
+resume marker to current.md. PR #68 (post-release state sync) is OPEN and
+holds the accurate snapshot — merge it first on resume so main stops
+saying "release in flight". Then: optional PyPI housekeeping (revoke
+~/.pypirc token / Trusted Publishing / delete PYPI_PUBLISH_TRACKER.md) or
+start v0.3 backlog. No bugs open.

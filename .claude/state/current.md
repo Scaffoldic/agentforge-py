@@ -1,17 +1,17 @@
 ---
-feature: v0.2.4 release — cut the train (cluster complete)
-state: pr-raised
-branch: chore/release-v0.2.4
+feature: idle — v0.2.4 SHIPPED
+state: idle
+branch: main
 started_at: 2026-06-02
 last_milestone_at: 2026-06-03
-last_shipped: v0.2.3 — Upgrade-flow fix (bug-007), PR #55 merged 2026-05-21; tag + GitHub Release published. ALL 34 packages live on PyPI at v0.2.3. v0.2.4 cluster fully merged to main (all 8 bugs + enh-001 + bug-008); release in flight (NOT yet tagged).
+last_shipped: v0.2.4 — Live-fire MCP (8-bug MCP/chat/config cluster + enh-001 HTTP server transport + bug-008). Tag v0.2.4 at merge commit 6f208e9 (PR #67); GitHub Release published; release.yml SUCCESS — all 34 packages live on PyPI at 0.2.4 in one clean run (no quota wall). Verified: TestPyPI dry run + real scaffold/upgrade end-to-end.
 blocker: null
-resume: null
+resume: "evening IST 2026-06-03 — v0.2.4 is shipped/live; nothing mid-feature. On resume: (1) MERGE PR #68 first (this state-sync PR; until then main's current.md is stale and still says 'release in flight'). (2) Then optional, non-blocking PyPI housekeeping (revoke ~/.pypirc token, Trusted Publishing, delete PYPI_PUBLISH_TRACKER.md). (3) Or start v0.3 backlog from docs/roadmap.md. No bugs open."
 flags_for_user:
-  - "PR #67 OPEN (chore/release-v0.2.4): release prep — CHANGELOG `[0.2.4]` dated 2026-06-03; docs/releases/v0.2.4.md written; state synced. Reversible in-repo prep only. https://github.com/Scaffoldic/agentforge-py/pull/67 — awaiting merge."
-  - "v0.2.4 CLUSTER COMPLETE on main: #59 (bug-020+014), #60 (bug-012), #61 (bug-017), #62 (bug-015), #63 (bug-019), #64 (bug-018), #65 (bug-013), #66 (enh-001 + bug-008, merge 325e98f). 34 pkgs at 0.2.4."
-  - "IRREVERSIBLE STEPS NEED USER (paused here): (1) pre-release checklist §8 MANDATORY TestPyPI dry run (`python scripts/testpypi_dry_run.py`) — needs TestPyPI creds. (2) After #67 merges + dry-run green: tag `v0.2.4` at the merge commit, `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`; the tag triggers release.yml which publishes 34 packages to PyPI (immutable). v0.2.4 is a NEW VERSION of existing projects, so the new-project quota does NOT apply — all 34 can publish."
-  - "PyPI post-drip chores still pending: revoke ~/.pypirc [pypi] token; convert to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md."
+  - "v0.2.4 RELEASED 2026-06-03. All 34 packages live on PyPI at 0.2.4 (single clean release.yml run — first non-drip release since the quota era). GitHub Release: https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.4"
+  - "Pre-release verification done: TestPyPI dry run PASSED (34 pkgs build+upload+smoke install); real `agentforge new` + `agentforge upgrade --to 0.2.4` + fork verified end-to-end (managed refreshed, forked preserved); bug-008 confirmed in situ (answers.yml records 0.2.4)."
+  - "PyPI post-drip chores STILL PENDING (housekeeping, not blocking): revoke ~/.pypirc [pypi] API token; convert the 34 projects to Trusted Publishing (release.yml already uses the gh-action publish — confirm OIDC vs token); delete PYPI_PUBLISH_TRACKER.md (drip is long complete)."
+  - "Next feature work: v0.3 backlog (docs/roadmap.md). No bugs open."
   - "bug-008 still queued for v0.2.4 (NOT done): version(\"agentforge\")→version(\"agentforge-py\") in cli/new_cmd.py + cli/_shared_scaffold.py. ~5 lines."
   - "v0.2.4 CHANGELOG header is `## [0.2.4] — unreleased`; set the date + tag only after the whole cluster lands."
   - "PyPI v0.2.3 drip COMPLETE (34/34). Post-completion chores: revoke ~/.pypirc [pypi] token; convert projects to Trusted Publishing; delete PYPI_PUBLISH_TRACKER.md (see that file + memory)."
@@ -40,41 +40,38 @@ Reversible in-repo prep only.
 
 ## Pickup on resume — finish cutting v0.2.4
 
-1. **Merge PR #67** (release prep).
-2. **§8 TestPyPI dry run (MANDATORY, needs user creds):**
-   `python scripts/testpypi_dry_run.py` — builds 34 pkgs, uploads to
-   TestPyPI, smoke-installs `agentforge-py==0.2.4`. Block on red.
-3. **Tag + publish** (irreversible — confirm before running):
-   - Pull main. `git tag -a v0.2.4 -m "AgentForge v0.2.4 — Live-fire MCP"`
-     at the #67 merge commit; `git push origin v0.2.4`.
-   - `gh release create v0.2.4 --notes-file docs/releases/v0.2.4.md`.
-   - The tag triggers `release.yml` → publishes 34 pkgs to PyPI.
-     v0.2.4 is a NEW VERSION of existing projects → the new-project
-     quota does NOT apply; all 34 publish. `skip-existing` keeps it
-     idempotent (re-run `gh workflow run release.yml --ref v0.2.4`).
-4. **After release:** set `last_shipped` to v0.2.4 + log `released`
-   entry; PyPI post-drip chores (revoke `~/.pypirc [pypi]` token,
-   Trusted Publishing, delete `PYPI_PUBLISH_TRACKER.md`).
+No active feature — v0.2.4 is shipped. Next pick comes from the v0.3
+backlog in `docs/roadmap.md`. Housekeeping that can be done anytime
+(non-blocking): the PyPI post-drip chores (see flags above).
 
 ## Last shipped
 
-**v0.2.3 — Upgrade-flow fix (bug-007)** (2026-05-21)
+**v0.2.4 — Live-fire MCP** (2026-06-03)
 
-- Merge commit: `f6f4fba` (PR #55).
-- Tag: `v0.2.3` annotated at the merge commit.
-- GitHub Release: <https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.3>.
-- Release notes file: `docs/releases/v0.2.3.md`.
-- 34 workspace packages at `0.2.3`; **ALL 34 now live on PyPI**
-  (drip-publish completed 2026-05-28 — phoenix + statsd were the
-  final two; see `PYPI_PUBLISH_TRACKER.md`).
-- Theme: `agentforge upgrade` is functional again. Bug-007
-  was a P0 in two parts — `agentforge new` didn't persist
-  `answers.yml`, and `agentforge upgrade` delegated to Copier's
-  `run_update` which requires VCS-versioned templates. v0.2.3
-  fixes both — `new` writes the file itself; `upgrade` uses
-  `run_copy` against a temp dir then copies non-forked managed
-  files in place. End-to-end validated against
-  `agents/code-reviewer/`.
+- Tag: `v0.2.4` annotated at merge commit `6f208e9` (PR #67, release prep).
+- GitHub Release: <https://github.com/Scaffoldic/agentforge-py/releases/tag/v0.2.4>.
+- Release notes file: `docs/releases/v0.2.4.md`.
+- 34 workspace packages at `0.2.4`; **all 34 live on PyPI** — published
+  in a single clean `release.yml` run (Build + Publish jobs green). First
+  non-drip release since the new-project-quota era (v0.2.4 is a new
+  *version* of existing projects, so the quota didn't apply).
+- Theme: the 8-bug MCP/chat/config cluster from the first live
+  Bedrock-backed MCP integration, plus enh-001 (MCP HTTP server transport)
+  and bug-008 (scaffold version lookup). Bugs: 012 (`__` tool-name
+  separator), 013 (factory auto-register), 014 + 020 (MCP runtime wiring),
+  015 (vendor-SDK extra chains), 017 (tool-name charset validator), 018
+  (chat session-create contract), 019 (terse config sugar).
+- Pre-release verification: TestPyPI dry run PASSED (34 pkgs build +
+  upload + smoke install); real `agentforge new` + `agentforge upgrade
+  --to 0.2.4` + `fork` validated end-to-end (managed refreshed, forked
+  preserved); bug-008 confirmed in situ.
+
+### Previously
+
+**v0.2.3 — Upgrade-flow fix (bug-007)** (2026-05-21) — PR #55, merge
+`f6f4fba`. `agentforge upgrade` functional again (`new` persists
+`answers.yml`; `upgrade` uses `run_copy` + in-place copy). 34 pkgs at
+0.2.3; drip-publish completed 2026-05-28.
 
 ### Previously this session (2026-05-21)
 
