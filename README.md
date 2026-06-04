@@ -251,8 +251,8 @@ issue? See [`SECURITY.md`](./SECURITY.md) (please report privately).
 - 90 % coverage floor
 - Every feature PR updates its spec's `Implementation status`
 
-Looking for somewhere to start? Issues labelled `good-first-issue`
-and `help-wanted`, plus the [`docs/roadmap.md`](./docs/roadmap.md)
+Looking for somewhere to start? Issues labelled `good first issue`
+and `help wanted`, plus the [`docs/roadmap.md`](./docs/roadmap.md)
 backlog.
 
 ---

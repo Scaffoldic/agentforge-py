@@ -138,8 +138,8 @@ fully offline.
 - **Features:** describe the use case and the production problem it solves.
   Larger features may need a `feat-NNN` spec under `docs/features/` first —
   maintainers will guide you.
-- Looking for somewhere to start? Check issues labeled `good-first-issue`
-  and `help-wanted`, and the backlog in `docs/roadmap.md`.
+- Looking for somewhere to start? Check issues labeled `good first issue`
+  and `help wanted`, and the backlog in `docs/roadmap.md`.
 
 ## Security
 
