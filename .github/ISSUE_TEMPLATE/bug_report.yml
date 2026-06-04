@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a defect in AgentForge
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug! Please search existing issues first, and do
+        **not** use this form for security vulnerabilities — see
+        [SECURITY.md](../blob/main/SECURITY.md) for private reporting.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+      placeholder: When I ... I expected ... but instead ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code / config / command sequence that reproduces it.
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback / logs
+      description: Paste the full error output if there is one.
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: AgentForge version
+      description: Output of `pip show agentforge-py` (and any module packages involved).
+      placeholder: "0.2.4"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.13.x"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 15 / Ubuntu 24.04 / Windows 11"
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Provider/backend in use, relevant config (redact secrets), anything else.
+    validations:
+      required: false
