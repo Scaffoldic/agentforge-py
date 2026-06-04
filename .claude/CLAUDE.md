@@ -12,27 +12,28 @@
 1. [`AGENTS.md`](../AGENTS.md) — project rules (workflow, branch
    naming, hard rules, anti-patterns, pre-commit, CI). This is the
    self-contained workflow document for the project.
-2. [`.claude/state/current.md`](./state/current.md) — what feature
-   is in progress, what branch we're on, what's done, what's
-   pending.
-3. [`.claude/state/README.md`](./state/README.md) — how the state
-   files are written and read.
-4. [`docs/features/README.md`](../docs/features/README.md) —
+2. `.claude/state/current.md` — what feature is in progress, what
+   branch we're on, what's done, what's pending. **Local-only,
+   git-ignored** (per-session working state, not published). May be
+   absent on a fresh clone — that's expected; create it when you
+   start tracking work. The write/read format is described in
+   `.claude/state/README.md` (also local-only).
+3. [`docs/features/README.md`](../docs/features/README.md) —
    catalogue of every canonical feat-NNN spec.
-5. [`docs/features/feat-NNN-*.md`](../docs/features/) — the active
+4. [`docs/features/feat-NNN-*.md`](../docs/features/) — the active
    feature's spec (linked from `state/current.md`).
-6. [`docs/design/`](../docs/design/) — architecture, design
+5. [`docs/design/`](../docs/design/) — architecture, design
    principles, module-system, persistence-and-orm, scaffolding —
    the framework's load-bearing decisions.
-7. [`docs/adr/`](../docs/adr/) — immutable architectural decision
+6. [`docs/adr/`](../docs/adr/) — immutable architectural decision
    records (MADR / Nygard format).
-8. [`.claude/standards/`](./standards/) — coding / testing / git /
+7. [`.claude/standards/`](./standards/) — coding / testing / git /
    docs / configuration standards.
-9. [`.claude/checklists/`](./checklists/) — pre-feature,
+8. [`.claude/checklists/`](./checklists/) — pre-feature,
    pre-commit, pre-pr, feature-complete checklists.
-10. [`docs/roadmap.md`](../docs/roadmap.md) — shipped + backlog
-    pointer (canonical numbering).
-11. [`CHANGELOG.md`](../CHANGELOG.md) — release notes.
+9. [`docs/roadmap.md`](../docs/roadmap.md) — shipped + backlog
+   pointer (canonical numbering).
+10. [`CHANGELOG.md`](../CHANGELOG.md) — release notes.
 
 ## Project-specific Claude Code notes
 

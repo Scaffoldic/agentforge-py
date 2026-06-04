@@ -53,3 +53,7 @@ Thumbs.db
 # checklists, CLAUDE.md) are intentionally kept tracked; only the
 # churny per-session state files are ignored.
 .claude/state/
+
+# Launch / go-to-market drafts — local-only marketing material,
+# never published to the repo.
+launch/
