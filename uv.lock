@@ -1190,7 +1190,7 @@ wheels = [
 
 [[package]]
 name = "arize-phoenix"
-version = "14.6.0"
+version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioitertools" },
@@ -1207,27 +1207,19 @@ dependencies = [
     { name = "grpcio" },
     { name = "httpx" },
     { name = "jinja2" },
-    { name = "jmespath" },
-    { name = "jsonpath-ng" },
-    { name = "jsonschema" },
-    { name = "ldap3" },
     { name = "numpy" },
     { name = "openinference-instrumentation" },
-    { name = "openinference-instrumentation-openai" },
     { name = "openinference-semantic-conventions" },
     { name = "opentelemetry-exporter-otlp" },
     { name = "opentelemetry-proto" },
     { name = "opentelemetry-sdk" },
-    { name = "orjson" },
+    { name = "opentelemetry-semantic-conventions" },
     { name = "pandas" },
-    { name = "prometheus-client" },
+    { name = "protobuf" },
     { name = "psutil" },
     { name = "pyarrow" },
     { name = "pydantic" },
-    { name = "pystache" },
-    { name = "python-dateutil" },
     { name = "python-multipart" },
-    { name = "pyyaml" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -1240,9 +1232,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/27/ed9f1e257e978a4e6c2599094501c3eee5eaa2e1c73ccf34c90dba714b84/arize_phoenix-14.6.0.tar.gz", hash = "sha256:0203f5d0a2a94be60f5ca964f8f0b6cb1509b3ea7f123edad9269bcff28d9a38", size = 4696859, upload-time = "2026-04-15T16:17:31.592Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/74/96/6b81845bce0773ba9325a41478c4e5112560c0ee12786022a3c4036f9fa3/arize_phoenix-9.0.0.tar.gz", hash = "sha256:fd5ec2d6da2038559104a1d07193ffccd16de03282a17709f202e70c48849025", size = 3772780, upload-time = "2025-05-09T21:20:04.594Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/17/68b2a8784353ba583c57e00629921313ada6f0065ca829caa74dd56060bd/arize_phoenix-14.6.0-py3-none-any.whl", hash = "sha256:9be8909a7c5c7807910becf6c1f1f7cdadf45eeaf59b9a7a22cef22e686ce47b", size = 5033664, upload-time = "2026-04-15T16:17:29.737Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/ff/e1e04de4a70f39a69670f78050a1de4d8861f6e8b3ff46e48daf38a0e80f/arize_phoenix-9.0.0-py3-none-any.whl", hash = "sha256:2ffce67c3629a8c12360df895ce131954ae79f0f5fe66979001af152ac1cf315", size = 3956133, upload-time = "2025-05-09T21:20:01.273Z" },
 ]
 
 [[package]]
@@ -2716,18 +2708,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ldap3"
-version = "2.9.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pyasn1" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/43/ac/96bd5464e3edbc61595d0d69989f5d9969ae411866427b2500a8e5b812c0/ldap3-2.9.1.tar.gz", hash = "sha256:f3e7fc4718e3f09dda568b57100095e0ce58633bcabbed8667ce3f8fbaa4229f", size = 398830, upload-time = "2021-07-18T06:34:21.786Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4e/f6/71d6ec9f18da0b2201287ce9db6afb1a1f637dedb3f0703409558981c723/ldap3-2.9.1-py2.py3-none-any.whl", hash = "sha256:5869596fc4948797020d3f03b7939da938778a0f9e2009f7a072ccf92b8e8d70", size = 432192, upload-time = "2021-07-18T06:34:12.905Z" },
-]
-
-[[package]]
 name = "librt"
 version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3423,24 +3403,6 @@ wheels = [
 ]
 
 [[package]]
-name = "openinference-instrumentation-openai"
-version = "0.1.47"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "openinference-instrumentation" },
-    { name = "openinference-semantic-conventions" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-instrumentation" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "typing-extensions" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/71/df116626657c26879584ee67330500ca90e82d658ec6d5f6f8c598ec7a4b/openinference_instrumentation_openai-0.1.47.tar.gz", hash = "sha256:90969de619367e4cc9fc41f0015d63d283d1344c15bec2593bc2a2c4ec28c992", size = 23528, upload-time = "2026-05-10T03:58:10.032Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/4a/2c58840f7a96003684296d6dd6416f5701d1eb59cdd142a36b676b013632/openinference_instrumentation_openai-0.1.47-py3-none-any.whl", hash = "sha256:d8c904cd13006df29a5987e40927f6e5271c91cecc6944777e003bcc18ecd36f", size = 30972, upload-time = "2026-05-10T03:58:08.539Z" },
-]
-
-[[package]]
 name = "openinference-semantic-conventions"
 version = "0.1.29"
 source = { registry = "https://pypi.org/simple" }
@@ -3521,21 +3483,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/33/5b/9d3c7f70cca10136ba82a81e738dee626c8e7fc61c6887ea9a58bf34c606/opentelemetry_exporter_otlp_proto_http-1.41.1.tar.gz", hash = "sha256:4747a9604c8550ab38c6fd6180e2fcb80de3267060bef2c306bad3cb443302bc", size = 24139, upload-time = "2026-04-24T13:15:42.977Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/4d/ef07ff2fc630849f2080ae0ae73a61f67257905b7ac79066640bfa0c5739/opentelemetry_exporter_otlp_proto_http-1.41.1-py3-none-any.whl", hash = "sha256:1a21e8f49c7a946d935551e90947d6c3eb39236723c6624401da0f33d68edcb4", size = 22673, upload-time = "2026-04-24T13:15:21.313Z" },
-]
-
-[[package]]
-name = "opentelemetry-instrumentation"
-version = "0.62b1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-semantic-conventions" },
-    { name = "packaging" },
-    { name = "wrapt" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/52/cb/0523b92c112a6cc70be43724343dc45225d3af134419844d7879a07755d4/opentelemetry_instrumentation-0.62b1.tar.gz", hash = "sha256:90e92a905ba4f84db06ac3aec96701df6c079b2d66e9379f8739f0a1bdcc7f45", size = 34043, upload-time = "2026-04-24T13:22:31.997Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4d/0f/45adbaea1f81b847cffdcee4f4b5f89297e42facf7fac78c7aaac4c38e75/opentelemetry_instrumentation-0.62b1-py3-none-any.whl", hash = "sha256:976fc6e640f2006599e97429c949e622c108d0c17c2059347d1e6c93c707f257", size = 34163, upload-time = "2026-04-24T13:21:31.722Z" },
 ]
 
 [[package]]
@@ -3837,15 +3784,6 @@ wheels = [
 ]
 
 [[package]]
-name = "prometheus-client"
-version = "0.25.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1b/fb/d9aa83ffe43ce1f19e557c0971d04b90561b0cfd50762aafb01968285553/prometheus_client-0.25.0.tar.gz", hash = "sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28", size = 86035, upload-time = "2026-04-09T19:53:42.359Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8d/9b/d4b1e644385499c8346fa9b622a3f030dce14cd6ef8a1871c221a17a67e7/prometheus_client-0.25.0-py3-none-any.whl", hash = "sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1", size = 64154, upload-time = "2026-04-09T19:53:41.324Z" },
-]
-
-[[package]]
 name = "prompt-toolkit"
 version = "3.0.52"
 source = { registry = "https://pypi.org/simple" }
@@ -4010,15 +3948,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b0/49/942c3b79878ba928324d1e17c274ed84581db8c0a749b24bcf4cbdf15bd3/pyarrow-24.0.0-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:d8ddd2768da81d3ee08cfea9b597f4abb4e8e1dc8ae7e204b608d23a0d3ab699", size = 49471890, upload-time = "2026-04-21T10:51:02.439Z" },
     { url = "https://files.pythonhosted.org/packages/76/97/ff71431000a75d84135a1ace5ca4ba11726a231a8007bbb320a4c54075d5/pyarrow-24.0.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:61a3d7eaa97a14768b542f3d284dc6400dd2470d9f080708b13cd46b6ae18136", size = 51932250, upload-time = "2026-04-21T10:51:10.576Z" },
     { url = "https://files.pythonhosted.org/packages/51/be/6f79d55816d5c22557cf27533543d5d70dfe692adfbee4b99f2760674f38/pyarrow-24.0.0-cp314-cp314t-win_amd64.whl", hash = "sha256:c91d00057f23b8d353039520dc3a6c09d8608164c692e9f59a175a42b2ae0c19", size = 28131282, upload-time = "2026-04-21T10:51:16.815Z" },
-]
-
-[[package]]
-name = "pyasn1"
-version = "0.6.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5c/5f/6583902b6f79b399c9c40674ac384fd9cd77805f9e6205075f828ef11fb2/pyasn1-0.6.3.tar.gz", hash = "sha256:697a8ecd6d98891189184ca1fa05d1bb00e2f84b5977c481452050549c8a72cf", size = 148685, upload-time = "2026-03-17T01:06:53.382Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5d/a0/7d793dce3fa811fe047d6ae2431c672364b462850c6235ae306c0efd025f/pyasn1-0.6.3-py3-none-any.whl", hash = "sha256:a80184d120f0864a52a073acc6fc642847d0be408e7c7252f31390c0f4eadcde", size = 83997, upload-time = "2026-03-17T01:06:52.036Z" },
 ]
 
 [[package]]
@@ -4923,7 +4852,7 @@ wheels = [
 
 [[package]]
 name = "strawberry-graphql"
-version = "0.314.3"
+version = "0.315.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cross-web" },
@@ -4932,9 +4861,9 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/4d/df1240ee4d8fe925d0b6f0eff15cf9947f0345ab44c39eb58355b6026425/strawberry_graphql-0.314.3.tar.gz", hash = "sha256:2a841c35af61e9d5df1e215ca991cfac364c00a05fc192d9f38d0733da163097", size = 222131, upload-time = "2026-04-08T18:04:42.727Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7b/30/3560e3f84434fd3dfbf24ce6ae009b48d96692d205077d29b633eda1331d/strawberry_graphql-0.315.4.tar.gz", hash = "sha256:0f8ebeda3ab635c9d59b344e6f98aaddd69ce855d6c1ff4bc0e3c1ccab557697", size = 222682, upload-time = "2026-05-12T18:35:34.714Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/be/25/13773a2944cc5975d44db58233b3610ddc88d4be49e6576adf7ed4b62250/strawberry_graphql-0.314.3-py3-none-any.whl", hash = "sha256:4ef4442cea79014487acd7a0d1a2ce55c9d2a42dcd34a307d4c01f2ab477ecfa", size = 324471, upload-time = "2026-04-08T18:04:44.088Z" },
+    { url = "https://files.pythonhosted.org/packages/62/07/045c3c8e75bf48e3eec78091bee6ad0f03fcad1faf79ee2bfac471ccefdf/strawberry_graphql-0.315.4-py3-none-any.whl", hash = "sha256:d667cdc13791a03f880d689b28fca0205bfd38928ae98a07c24bf58304d077a6", size = 325061, upload-time = "2026-05-12T18:35:37.304Z" },
 ]
 
 [[package]]
