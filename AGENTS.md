@@ -68,10 +68,11 @@ Don't reference anything outside this repo.
 ### Reading order on session resume
 
 1. This file (`AGENTS.md`)
-2. [`.claude/state/current.md`](./.claude/state/current.md) — the
-   live snapshot
-3. [`.claude/state/log.md`](./.claude/state/log.md) — append-only
-   milestone history
+2. `.claude/state/current.md` — the live snapshot. **Local-only,
+   git-ignored** (per-session working state, not published); may be
+   absent on a fresh clone — create it when you start tracking work.
+3. `.claude/state/log.md` — append-only milestone history. Also
+   local-only / git-ignored.
 4. [`docs/features/README.md`](./docs/features/README.md) — feature
    catalogue
 5. The active feature spec at

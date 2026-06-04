@@ -47,3 +47,13 @@ Thumbs.db
 # Project-local
 *.local
 .agentforge-state/.session-cache
+
+# AI-assistant working state — local session tracking, not part of
+# the published project. The process docs under .claude/ (standards,
+# checklists, CLAUDE.md) are intentionally kept tracked; only the
+# churny per-session state files are ignored.
+.claude/state/
+
+# Launch / go-to-market drafts — local-only marketing material,
+# never published to the repo.
+launch/
