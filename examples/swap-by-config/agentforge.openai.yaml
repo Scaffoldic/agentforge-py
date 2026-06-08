@@ -1,0 +1,14 @@
+# Backend = OpenAI. Compare this file with agentforge.anthropic.yaml:
+# the ONLY difference is the `model:` line below. agent.py is identical
+# for both. That is the "swap by config, not code" claim, made literal.
+agent:
+  name: "swap-demo"
+  model: "openai:gpt-4o"
+  strategy: "react"
+  budget:
+    usd: 1.0
+  max_iterations: 10
+
+logging:
+  level: "INFO"
+  format: "text"

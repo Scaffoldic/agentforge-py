@@ -1,22 +1,33 @@
 # AgentForge
 
-**Ship production AI agents in days, not months — with the boring,
-load-bearing parts already wired.**
+**An AI-agent framework that behaves like infrastructure — versioned
+contracts you can depend on, every backend a swap-by-config package, and
+scaffolds that keep your AI coding assistant on the rails.**
 
 [![PyPI](https://img.shields.io/pypi/v/agentforge-py.svg)](https://pypi.org/project/agentforge-py/)
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#install)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
-> **The production engineer's framework for AI agents in Python —
-> contracts-first, vendor-neutral, audit-ready.** Pick your LLM
-> provider, memory backend, observability stack, and safety
-> wrappers à la carte; swap any of them via config when
-> requirements change. Cost guardrails, distributed tracing,
-> vendor failover, and reproducible evals are wired before you
-> write a line of agent code. Every scaffolded agent ships with
-> framework-aware instructions for **Claude Code, Cursor, GitHub
-> Copilot, Aider, Codex, and Windsurf** — so the AI helping you
-> build stays inside the framework's idioms automatically.
+> **AgentForge treats an agent like a system you operate, not a demo
+> you ship once.** Three things at its core:
+>
+> 1. **Version-locked contracts.** ~30 ABCs in a small
+>    `agentforge-core` describe the agent surface, and breaking one
+>    is a *major* version bump (ADR-0007) — so you can build on them
+>    like a stable API.
+> 2. **Every backend is its own package, swapped by config.** LLM
+>    provider, memory store, observability stack, reranker, guardrail
+>    — each ships as a separate PyPI distribution you plug in and swap
+>    by editing one line of YAML, never your agent code.
+> 3. **Scaffolds keep your AI coding assistant on-idiom.** Every
+>    generated project ships framework-aware instructions for **Claude
+>    Code, Cursor, GitHub Copilot, Aider, Codex, and Windsurf** plus
+>    task runbooks — so the AI helping you build stays inside the
+>    framework's conventions automatically.
+>
+> Cost guardrails, OpenTelemetry tracing, vendor failover, PII
+> redaction, and reproducible evals are wired in too — behind those
+> same locked contracts, so you can depend on them in production.
 
 ```python
 from agentforge import Agent
@@ -27,7 +38,9 @@ async with Agent(model="anthropic:claude-sonnet-4-7") as agent:
 ```
 
 Swap `anthropic:` for `openai:`, `bedrock:`, `ollama:`, or
-`litellm:` — same code, different vendor. That's it.
+`litellm:` — same code, different vendor. The swap happens *behind a
+locked contract*, so it can't quietly change the shape of what your
+agent gets back.
 
 ---
 
@@ -52,10 +65,9 @@ SOC 2 / GDPR / ISO 27001 conversations get shorter.
 Every scaffolded agent ships with framework-aware instructions
 for **Claude Code, Cursor, GitHub Copilot, Aider, Codex CLI, and
 Windsurf** — plus 21 task-oriented runbooks. Your AI builds
-inside the framework's idioms automatically, instead of
-hallucinating LangChain patterns. `agentforge upgrade` keeps the
-instructions current as new capabilities ship, so the AI learns
-the new APIs without you teaching it.
+inside the framework's idioms automatically. `agentforge upgrade`
+keeps the instructions current as new capabilities ship, so the AI
+learns the new APIs without you teaching it.
 
 ---
 
@@ -74,6 +86,11 @@ agentforge run "Hi"
 
 Six starter templates ship in the wheel: `minimal`, `code-reviewer`,
 `patch-bot`, `docs-qa`, `triage`, `research`.
+
+> **Want proof before you install a provider?**
+> [`examples/swap-by-config/`](./examples/swap-by-config/) runs the full agent
+> loop **offline with no API key** (`python smoke.py`), and shows the same
+> `agent.py` driving Anthropic or OpenAI with a one-line config change.
 
 **Day N — add modules, swap backends, upgrade the framework:**
 
