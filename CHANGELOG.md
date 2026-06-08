@@ -1447,7 +1447,7 @@ status, full shipped-feature mapping, what's-next) at
     -FORKED markers + three-section format), architecture
     invariants (tools / strategy / LLM clients / memory /
     budget / run_id / guardrails), a runbook reference table,
-    anti-pattern list (LangChain idioms, hand-rolled JSON
+    anti-pattern list (other-framework idioms, hand-rolled JSON
     schemas, raw SQL, cost-bypass, defensive try/except), pre-
     commit checks.
   - `CLAUDE.md` — thin pointer with a managed message + custom

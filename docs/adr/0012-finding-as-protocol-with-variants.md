@@ -17,7 +17,7 @@
 
 Agents emit different shapes of output: code reviewers emit issues with
 severity; patch bots emit diffs; Q&A agents emit prose with citations;
-compliance sweeps emit multi-file findings. EVA's predecessor used a
+compliance sweeps emit multi-file findings. An earlier internal project used a
 single `Finding` dataclass with 8 fixed fields, forcing patch and
 narrative agents to misuse `metadata: dict[str, Any]` as an escape
 hatch — defeating type safety and breaking downstream rendering.
@@ -35,7 +35,7 @@ or breaking shared tooling (aggregators, dashboards)?
 
 ## 3. Considered options
 
-1. **Single dataclass, escape via `metadata`** — current EVA shape
+1. **Single dataclass, escape via `metadata`** — the earlier internal shape
 2. **Tagged union of fixed variants** — closed set of variant types
 3. **Protocol (structural typing) + shipped variants + custom registration**
    — open set; minimum required attributes; custom variants implement

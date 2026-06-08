@@ -28,7 +28,7 @@ emitting prose stuff their content into a "message" field that loses
 structure. Frameworks that ship no output shape force every agent to invent
 one, breaking cross-agent dashboards, scorecards, and tooling.
 
-The pain we have seen in EVA: a `Finding` dataclass with eight fixed fields,
+The pain we have seen in a predecessor project: a `Finding` dataclass with eight fixed fields,
 which forced patch-generating agents to misuse `metadata: dict[str, Any]` as
 an escape hatch — defeating type safety and breaking downstream report
 rendering.

@@ -36,9 +36,8 @@ GraphRAG is the standard production fix:
    nodes, deduplicate.
 3. Optionally rerank the expanded set.
 
-LangChain has `GraphRAGRetriever`; LlamaIndex has
-`KnowledgeGraphRAGRetriever`; Microsoft's GraphRAG project
-ships an entire pipeline around the same idea. Without it,
+GraphRAG retrievers ship across production RAG frameworks, and there
+are full open-source pipelines built around the same idea. Without it,
 derived agents lose recall on queries where the *answer*
 lives one hop away from the query's lexical / semantic
 match.
@@ -305,8 +304,6 @@ language-agnostic; the TS port mirrors this surface 1:1.
 - Edge, D. et al. "From Local to Global: A GraphRAG
   Approach to Query-Focused Summarization." Microsoft
   Research (2024).
-- LlamaIndex `KnowledgeGraphRAGRetriever` docs.
-- LangChain `GraphRAGRetriever` docs.
 - Cormack 2009 RRF paper (feat-022 reference) — same
   decision: fuse / merge ranked lists; here merging is
   by id rather than by rank.

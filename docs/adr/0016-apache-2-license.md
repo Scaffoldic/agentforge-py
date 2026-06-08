@@ -27,15 +27,15 @@ What license should AgentForge be released under?
   enterprise, internal-tooling)
 - Patent grant matters for enterprise-grade adoption
 - License must be compatible with the dependencies we expect to ship
-  with (Anthropic SDK, OpenAI SDK, Pydantic, FastAPI, etc.)
-- Aligns with AI-framework community norms (LangGraph, Strands, BeeAI,
-  Pydantic AI all permissive)
+  with (Anthropic SDK, OpenAI SDK, Pydantic, etc.)
+- Aligns with AI-framework community norms (peer frameworks are
+  predominantly permissive)
 
 ## 3. Considered options
 
-1. **Apache 2.0** — permissive + explicit patent grant; LangGraph,
-   Strands, BeeAI, Phidata
-2. **MIT** — permissive, simpler; Pydantic AI, smolagents
+1. **Apache 2.0** — permissive + explicit patent grant; common among
+   peer AI infrastructure projects
+2. **MIT** — permissive, simpler; common among smaller agent libraries
 3. **BSD-3-Clause** — permissive, slightly more attribution
 4. **MPL 2.0** — file-level copyleft
 5. **AGPL-3.0** — strong network copyleft (would lock out commercial
@@ -51,7 +51,7 @@ explicit patent grant matters for enterprise legal review:
 contributors agree not to assert patents against users of the licensed
 work. This is appreciably better for enterprise adoption than MIT,
 which is silent on patents. Apache 2.0 is also what the largest
-peer projects (LangGraph, AWS Strands, IBM BeeAI) ship under.
+peer projects in this space ship under.
 
 ### Positive consequences
 
@@ -97,7 +97,4 @@ peer projects (LangGraph, AWS Strands, IBM BeeAI) ship under.
 
 ## 6. References
 
-- LangGraph (Apache 2.0): https://github.com/langchain-ai/langgraph/blob/main/LICENSE
-- Strands Agents (Apache 2.0): https://github.com/strands-agents/sdk-python/blob/main/LICENSE
-- BeeAI (Apache 2.0): https://github.com/i-am-bee/beeai-framework/blob/main/LICENSE
 - [`docs/design/open-source-framework-plan.md`](../design/open-source-framework-plan.md) §8

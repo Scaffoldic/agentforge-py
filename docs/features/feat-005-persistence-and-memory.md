@@ -29,9 +29,9 @@ The hard part isn't picking a database — it's that databases are the part of
 the agent stack most likely to change. A team prototypes with SQLite, deploys
 to Postgres, hits graph-shaped queries, considers SurrealDB or Neo4j, then
 realises their agent code knows about its persistence layer in 30 places.
-Every framework gets this wrong: either no persistence at all (smolagents,
-basic Strands), persistence locked to one backend (early CrewAI), or
-persistence wrapped so opaquely you can't reason about it (Letta).
+Many frameworks get this wrong: either no persistence at all, persistence
+locked to one backend, or persistence wrapped so opaquely you can't reason
+about it.
 
 ## 2. Why it must ship as framework
 
@@ -222,7 +222,7 @@ at v0.3; neo4j Python first, TS at v0.4 (driver maturity differs).
 - General-purpose ORM. We store claims, not arbitrary user tables.
 - Cross-backend transactions or eventual-consistency replication.
 - Vector embeddings as a first-class primitive (defer until concrete need).
-- A "memory consolidation" / summarisation layer (Letta-style). Build on top
+- A "memory consolidation" / summarisation layer. Build on top
   of the claim store via a tool if needed.
 
 ## 10. References

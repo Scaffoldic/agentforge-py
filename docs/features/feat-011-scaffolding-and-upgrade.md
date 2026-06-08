@@ -29,7 +29,7 @@ But the bigger pain is on Day 180. The developer has shipped, customised, and
 operated their agent. The framework releases v0.5 with bug fixes and new
 features. Today, they either manually port the changes (slow, error-prone) or
 stay on v0.4 forever (technical debt accrues; security patches missed).
-EVA's `eva-template-sync` was an attempt; it's incomplete. Most other
+An earlier internal `template-sync` was an attempt; it's incomplete. Most other
 frameworks don't even try.
 
 ## 2. Why it must ship as framework

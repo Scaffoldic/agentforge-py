@@ -15,8 +15,8 @@
 
 ## 1. Context and problem statement
 
-Most agent frameworks ship in one language. LangChain, CrewAI, Pydantic AI,
-LlamaIndex are Python-only; Vercel AI SDK and Mastra are TS-only. Real
+Most agent frameworks ship in one language (typically Python-only; a
+smaller set are TypeScript-only). Real
 teams in 2026 are increasingly heterogeneous — backend engineers on Python,
 frontend / fullstack on TypeScript, both wanting to build agents.
 
@@ -30,14 +30,14 @@ between the two implementations?
   is real, not implementation-flavoured)
 - A team that ships a chatbot in TS and a code reviewer in Python should
   use the same framework
-- Drift between language implementations is a known failure mode (cf.
-  AutoGen v0.2 / v0.4 schism, BeeAI's smaller TS surface)
+- Drift between language implementations is a known failure mode (other
+  frameworks have suffered cross-version schisms and uneven TS surfaces)
 - Maintainer cost doubles — needs to be acknowledged and bounded
 
 ## 3. Considered options
 
-1. **Python only** — like LangChain, Pydantic AI; most popular path
-2. **TypeScript only** — like Vercel AI SDK, Mastra; smaller community but growing
+1. **Python only** — the most popular path
+2. **TypeScript only** — smaller community but growing
 3. **Python + TypeScript with contract parity** — both languages, identical contracts, idiomatic surfaces
 4. **Python primary + TS via WASM bridge** — single source of truth, generated TS bindings
 

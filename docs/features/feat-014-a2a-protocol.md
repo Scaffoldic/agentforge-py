@@ -22,12 +22,13 @@
 Real agent systems are not single agents. A "research assistant" agent calls
 a "fact-checker" agent calls a "search" agent. When all three are the same
 framework, you can call them as Python functions. When they aren't —
-because one team uses LangGraph, another uses CrewAI, your team uses
+because each team picked a different agent framework while your team uses
 AgentForge — you need a protocol.
 
 A2A (Agent-to-Agent) is the emerging standard for cross-framework agent
-invocation. Strands ships it. Google's ADK ships it. We need to support it
-to participate in the multi-agent ecosystem.
+invocation. It is shipping in major agent toolkits, and adoption is spreading
+across the ecosystem. We need to support it to participate in the multi-agent
+ecosystem.
 
 The pain without it: every cross-framework integration is a custom REST API,
 with custom auth, custom serialisation, custom error semantics. Multiply
@@ -52,7 +53,7 @@ that across N team-internal agents and the integration cost explodes.
 - **Call another agent like a tool.** `agent_call("fact-checker:check",
   {claim: "..."})` returns a structured response.
 - **Expose this agent as an A2A endpoint with one config block.** Other
-  frameworks (LangGraph, CrewAI, Claude Desktop) can call it.
+  frameworks and tools (Claude Desktop, and any A2A-speaking framework) can call it.
 - **Cross-agent traces.** A `run_id` chain is visible end-to-end across
   framework boundaries when both ends propagate the A2A header.
 - **Budget chain.** Caller's USD cap is honoured by the callee — the callee
@@ -552,4 +553,4 @@ runs it in a dedicated non-gating `live` job.
 
 - A2A spec: https://github.com/google/A2A
 - feat-001, feat-007 (run_id, budget)
-- Prior art: Strands Agents A2A support
+- Prior art: A2A protocol support in other agent frameworks

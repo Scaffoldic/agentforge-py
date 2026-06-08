@@ -368,7 +368,7 @@ impls translate per language.
 
 ## 9. Out of scope
 
-- **Custom-DAG workflow engines** (LangGraph-style explicit graphs).
+- **Custom-DAG workflow engines** (explicit-graph orchestration).
   The four loop shapes here are *reasoning* strategies; for arbitrary
   DAG orchestration use the pipeline (feat-015) underneath an `Agent`,
   or write a custom strategy.

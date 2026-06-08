@@ -38,4 +38,4 @@ server-name prefix (`filesystem__read_file`,
 the name stays legal under every provider's tool-name charset
 (`^[a-zA-Z0-9_-]{1,64}$`). When `expose.enabled` is set, the agent
 runs an MCP server alongside; other agents (Claude Desktop,
-Cursor, LangChain) can call into it.
+Cursor, other MCP clients) can call into it.

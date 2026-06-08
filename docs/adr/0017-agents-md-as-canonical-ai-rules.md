@@ -20,7 +20,7 @@ In 2026, most agent developers code with an AI assistant alongside them
 its own conventions for "instructions for the assistant in this repo":
 `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, and
 others. Without framework-aware context, AI tools suggest patterns from
-LangChain, generic Python idioms, or framework-incorrect approaches.
+other agent frameworks, generic Python idioms, or framework-incorrect approaches.
 
 How do we tell every AI assistant the same set of AgentForge
 conventions, without authoring N separate files that drift?

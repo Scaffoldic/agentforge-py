@@ -65,8 +65,8 @@ negotiation for everything except the primary.
 ## 3. How derived agents benefit
 
 - **Day 1 — model selection by string.** `model="anthropic:claude-sonnet-4.7"`
-  picks a provider and model; no imports beyond the extra. Compare to LangChain's
-  six lines of `ChatAnthropic(...)` boilerplate per agent.
+  picks a provider and model; no imports beyond the extra. Compare to the
+  several lines of per-provider client boilerplate other frameworks need per agent.
 - **Day 30 — provider swap.** `model="bedrock:anthropic.claude-sonnet-4.7"`,
   `pip install agentforge-bedrock`, redeploy. Tools and prompts unchanged.
 - **Day 60 — multi-LLM pipeline.** Declare `providers:` once in YAML; reference
@@ -409,7 +409,7 @@ Python uses `AsyncIterator`; TS uses `AsyncIterable`/`ReadableStream`.
 | Provider response format drifts (vendor adds new field) | Each provider package owns adaptation; framework-level shape stays stable; deprecation warning when an unknown field appears |
 | `cost_usd` becomes inaccurate as providers change pricing | Price tables shipped per-provider package; updated on minor bumps; alternatively allow override via `providers.<name>.price_overrides` |
 | Capability vocabulary grows uncontrollably | Capability strings are a closed enum at the contract level; new caps require feature doc + minor bump |
-| LiteLLM as a meta-provider hides errors (CrewAI footgun) | We ship `agentforge-litellm` for breadth, but recommend native providers for production; document the trade-off |
+| LiteLLM as a meta-provider hides errors (a known footgun in frameworks that route everything through it) | We ship `agentforge-litellm` for breadth, but recommend native providers for production; document the trade-off |
 | Vision / multi-modal input shape | Out of scope for v0.1; add as a capability `"vision"` with `MessageContent` extension in a follow-up feature |
 | Should embeddings be a separate ABC or a `LLMClient` capability? | Separate ABC (`EmbeddingClient`). Embedding has different inputs/outputs, different cost models, often different provider (e.g. Anthropic users use Voyage); coupling them confuses the surface |
 | Cost cap across multiple providers (judge + embedding + reasoning) | Single per-run `BudgetPolicy` (feat-007) aggregates spend across every provider used during the run; each provider returns `cost_usd`, the registry sums |

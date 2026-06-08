@@ -51,8 +51,8 @@ Tools may be sync or async — sync tools are wrapped in
 `asyncio.to_thread` automatically. Strategies, providers, memory,
 evaluators, validators are all async at the contract level.
 
-This matches Pydantic AI, smolagents-toolkit, AutoGen v0.4, and modern
-FastAPI / Hono — async-first is the 2026 default for I/O frameworks.
+This matches modern async-first Python and TypeScript frameworks —
+async-first is the 2026 default for I/O frameworks.
 
 ### Positive consequences
 
@@ -95,4 +95,4 @@ FastAPI / Hono — async-first is the 2026 default for I/O frameworks.
 
 - [`docs/design/architecture.md`](../design/architecture.md) §10
 - ADR-0007 (ABC + Protocol contracts — defined async)
-- Prior art: Pydantic AI, AutoGen v0.4, FastAPI, Hono
+- Prior art: modern async-first Python and TypeScript I/O frameworks

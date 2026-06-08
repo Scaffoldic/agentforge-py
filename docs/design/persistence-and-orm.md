@@ -276,9 +276,9 @@ v0.2 ships:
 - `agentforge-memory-surrealdb`
 - `agentforge-memory-neo4j`
 
-EVA agents (private, archived) using SQLite or SurrealDB ClaimStore have a direct
-migration path because the schema is intentionally compatible — `agentforge migrate
-from-eva-claims` runs and re-keys their data into the new layout.
+A predecessor project's agents using SQLite or SurrealDB ClaimStore have a direct
+migration path because the schema is intentionally compatible — a claims importer
+re-keys their data into the new layout.
 
 ## 7. Risks
 
@@ -320,4 +320,4 @@ from-eva-claims` runs and re-keys their data into the new layout.
 - [`architecture.md`](./architecture.md) — where MemoryStore fits
 - [`module-system.md`](./module-system.md) — how a memory driver registers and gets configured
 - [`design-principles.md`](./design-principles.md) — P1, P5, P8, P11, P12 cited above
-- Archived predecessor: `docs/archive/subsystem-memory-layer.md` — EVA's ClaimStore design that this generalises
+- Archived predecessor: `docs/archive/subsystem-memory-layer.md` — a predecessor project's ClaimStore design that this generalises

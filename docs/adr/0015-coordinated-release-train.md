@@ -16,7 +16,8 @@
 ## 1. Context and problem statement
 
 The three-tier package model (ADR-0003) splits the framework into many
-pip / npm packages. LlamaIndex's experience with ~300 independent
+pip / npm packages. The experience of fully-decomposed frameworks with
+~300 independent
 packages is cautionary: any minor `core` bump can break long-tail
 integrations, version-matrix maintenance becomes a full-time job, and
 users hit dependency-resolution hell.
@@ -33,9 +34,9 @@ benefits of separation without the drift cost?
 
 ## 3. Considered options
 
-1. **Independent versioning, free release cadence** — LlamaIndex shape
+1. **Independent versioning, free release cadence** — fully-decomposed shape
 2. **Single mono-version (every package gets the same number)** —
-   AutoGen v0.4 shape
+   mono-version shape
 3. **Coordinated train** — the framework cuts a release that bumps every
    in-scope package to the same minor; modules can patch independently
    between trains
@@ -52,8 +53,8 @@ pins `agentforge-core ~=0.5` (compatible with 0.5.x; not 0.6.x). The
 release train runs every 2 weeks during 0.x; monthly during 1.x.
 
 This shape mirrors monorepo workspaces (uv workspaces, pnpm workspaces)
-and matches how successful multi-package frameworks (FastAPI ecosystem,
-Hono ecosystem) actually behave in practice.
+and matches how successful multi-package framework ecosystems actually
+behave in practice.
 
 ### Positive consequences
 
@@ -74,7 +75,7 @@ Hono ecosystem) actually behave in practice.
 ### Option 1: Independent versioning
 
 - + Module authors fully autonomous
-- − LlamaIndex matrix-hell precedent
+- − Fully-decomposed matrix-hell precedent
 
 ### Option 2: Mono-version
 

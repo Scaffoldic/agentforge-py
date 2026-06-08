@@ -117,8 +117,8 @@ implementations that have to be re-done. Read first, code second.
 
 ### Forbidden patterns (anti-patterns)
 
-- **`from langchain... import`** anywhere in this codebase. Wrong
-  framework.
+- **Importing another agent framework's primitives** anywhere in this
+  codebase. Wrong framework.
 - **Hand-written JSON schemas** for tools. Use type hints + the
   `@tool` decorator.
 - **Dynamic imports of arbitrary paths** from config files.

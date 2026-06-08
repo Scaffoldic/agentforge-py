@@ -81,7 +81,7 @@ These are enforced in review and CI. Full list in `AGENTS.md`.
 8. **Async-first.** Public methods on locked contracts are `async def`.
 
 ### Anti-patterns reviewers will reject
-- `from langchain... import` anything (wrong framework).
+- Importing another agent framework's classes to use inside AgentForge (wrong framework).
 - Hand-written JSON tool schemas — use Pydantic models / the `@tool` decorator.
 - API keys as YAML literals — use `${ENV_VAR}`.
 - Catching exceptions just to "make robust" — let them surface; the framework

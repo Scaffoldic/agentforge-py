@@ -75,8 +75,9 @@ maintains the managed section).
 
 ## Anti-patterns (do not suggest these)
 
-- **LangChain idioms** (`LCEL`, `Runnable`, `RunnablePassthrough`)
-  — wrong framework. Use AgentForge's `Agent` + `@tool` + strategy
+- **Other-framework idioms** (chain/runnable/pipe abstractions from a
+  different agent framework) — wrong framework. Use AgentForge's
+  `Agent` + `@tool` + strategy
   composition instead.
 - **Hand-rolling JSON schemas for tools** — use type hints on a
   `@tool`-decorated function and the schema is derived.

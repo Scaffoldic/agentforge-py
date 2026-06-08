@@ -160,10 +160,10 @@ log below records every revision.
 
 | Date | Decision | Rationale |
 |---|---|---|
-| 2026-05-09 | Initial 12 principles drafted | Carried forward from EVA's 10 design principles plus P8/P9 made explicit for the multi-language, plug-and-play model |
+| 2026-05-09 | Initial 12 principles drafted | Carried forward from a predecessor project's 10 design principles plus P8/P9 made explicit for the multi-language, plug-and-play model |
 
 ## 10. References
 
 - [`architecture.md`](./architecture.md)
 - [`module-system.md`](./module-system.md)
-- Archived EVA principles at `docs/archive/` (predecessor; superseded by this doc)
+- Archived predecessor principles at `docs/archive/` (superseded by this doc)

@@ -30,7 +30,7 @@ There is also a 2026 reality the framework must engage with: most
 developers are not editing alone. They are editing with Claude Code,
 Cursor, GitHub Copilot, or another AI coding assistant. Without
 framework-aware context, those assistants suggest patterns from
-LangChain, generic Python idioms, or framework-incorrect approaches.
+another framework, generic Python idioms, or framework-incorrect approaches.
 The developer accepts the suggestion, the project drifts, the framework's
 guarantees erode.
 
@@ -40,7 +40,7 @@ The pain we are removing:
   30 minutes of reading source.
 - "How do I switch from SQLite to Postgres?" — runbook 08 + one CLI
   command, not a manual rewrite.
-- "Claude Code keeps suggesting LangChain patterns in my AgentForge
+- "Claude Code keeps suggesting another framework's patterns in my AgentForge
   project" — solved by `AGENTS.md` shipped with the scaffold telling
   the assistant the local conventions.
 - Framework upgrade in six months — runbooks update with the framework
@@ -227,7 +227,8 @@ when suggesting changes.
 
 ## Anti-patterns (do not suggest these)
 
-- LangChain idioms (`LCEL`, `Runnable`, `RunnablePassthrough`) — wrong framework.
+- Another framework's idioms (pipe/chain-composition operators, runnable
+  wrappers) — wrong framework.
 - Hand-rolling JSON schemas for tools — use type hints.
 - Storing API keys in `agentforge.yaml` literals — use `${ENV_VAR}`.
 - Catching exceptions inside tool code to "make the agent more robust" —
@@ -373,7 +374,7 @@ examples.
 | Should we ship video / interactive tutorials? | No — text + code is enough; videos rot faster than text |
 | Per-template runbook differences (code-reviewer vs research) | Shared base + per-template addendum; both ship in the scaffold |
 | Custom-section markers break developer's markdown linter | Markers are valid HTML comments; documented; common linters handled |
-| AI assistant ignores `AGENTS.md` and uses cached LangChain knowledge | Mitigation is honest: `AGENTS.md` reduces the failure rate but cannot prevent it. Recommend developers review AI suggestions; runbooks help the developer catch drift. |
+| AI assistant ignores `AGENTS.md` and uses cached knowledge of a different framework | Mitigation is honest: `AGENTS.md` reduces the failure rate but cannot prevent it. Recommend developers review AI suggestions; runbooks help the developer catch drift. |
 | Runbook number reuse when a runbook is removed | Numbers immutable; removed runbooks become a tombstone with a redirect; no renumbering |
 
 ## 9. Out of scope

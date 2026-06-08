@@ -38,7 +38,7 @@ new directory under `packages/`. The workspace glob in the root
 
 ## Anti-patterns reviewers will reject
 
-- **`from langchain... import`** anywhere. Wrong framework.
+- **Importing another agent framework's primitives** anywhere. Wrong framework.
 - **Hand-written JSON schemas** for tools — use Pydantic models on the
   `Tool` ABC's `input_schema` class attribute (or the `@tool`
   decorator once feat-004 ships).
