@@ -29,9 +29,9 @@ fix: pull a bigger candidate set from the vector store, then
 score each `(query, candidate)` pair with a dedicated model
 that's trained to predict relevance directly.
 
-Every production RAG stack ships reranking. LangChain has
-`Cohere Rerank`, LlamaIndex has `SentenceTransformerRerank`,
-Haystack has `TransformersSimilarityRanker`. Without
+Reranking ships across production RAG stacks (Cohere Rerank,
+SentenceTransformer rerankers, transformer-based similarity
+rankers, etc.). Without
 reranking, derived agents degrade as the corpus grows past a
 few thousand documents — vector-only retrieval becomes the
 quality ceiling.

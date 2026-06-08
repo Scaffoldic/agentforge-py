@@ -15,10 +15,10 @@
 
 ## 1. Context and problem statement
 
-A framework distributed as a single mega-package (LangChain's early shape)
+A framework distributed as a single mega-package
 pulls in every provider SDK at install time, balloons dependencies, and
 slows imports. Distributing as a thousand independently-versioned packages
-(LlamaIndex's shape today) creates version-matrix hell where any minor
+creates version-matrix hell where any minor
 core bump can break long-tail integrations.
 
 How do we structure the framework's pip / npm packages so that a developer
@@ -32,15 +32,15 @@ bounded?
   and a YAML edit — never a major rewrite
 - The set of stable contracts (ABCs) must live in one place so every module
   can pin to them with confidence
-- We must avoid LlamaIndex's version-matrix sprawl
-- We must avoid LangChain's "everything in one tin" install bloat
+- We must avoid the version-matrix sprawl of fully-decomposed packaging
+- We must avoid the "everything in one tin" install bloat of a single mega-package
 
 ## 3. Considered options
 
-1. **One mega-package** — `agentforge` includes everything (LangChain early model)
-2. **Single package + extras** — `agentforge[anthropic,postgres,...]` extras pull in providers (smolagents, Pydantic AI model)
+1. **One mega-package** — `agentforge` includes everything (single mega-package model)
+2. **Single package + extras** — `agentforge[anthropic,postgres,...]` extras pull in providers (single-package-plus-extras model)
 3. **Three-tier split** — `agentforge-core` (ABCs) + `agentforge` (defaults runtime) + `agentforge-<X>` (modules)
-4. **Fully decomposed** — every primitive in its own package (LlamaIndex model, ~300 packages)
+4. **Fully decomposed** — every primitive in its own package (fully-decomposed model, ~300 packages)
 
 ## 4. Decision outcome
 
@@ -51,9 +51,9 @@ on top of the split).
 no SDKs. `agentforge` ships defaults: ReAct loop, in-memory store, four
 default tools, simple findings, safety basics. `agentforge-<X>` packages
 ship every other module (providers, persistence drivers, MCP, observability,
-guardrails, evaluators, chat). This is the same shape adopted by AutoGen
-v0.4 (`autogen-core` / `agentchat` / `ext`) and LangGraph
-(`langgraph` / `prebuilt` / `checkpoint-*`) — both proved cleaner than
+guardrails, evaluators, chat). This is the same shape adopted by other
+production agent frameworks that split a core contract package from a
+defaults runtime and an extensions tier — a shape that proved cleaner than
 their single-package or fully-decomposed predecessors.
 
 We layer pip extras (`agentforge[anthropic]`) on top as a discoverability
@@ -96,11 +96,11 @@ sugar: the extra installs the underlying `agentforge-anthropic` package.
 ### Option 4: Fully decomposed
 
 - + Maximum granularity
-- − LlamaIndex demonstrated the matrix-hell pattern; minor core bumps break long-tail integrations regularly
+- − Fully-decomposed packaging demonstrated the matrix-hell pattern; minor core bumps break long-tail integrations regularly
 
 ## 6. References
 
 - ADR-0004 (module discovery via entry points)
 - ADR-0015 (coordinated release train)
 - [`docs/design/architecture.md`](../design/architecture.md) §5
-- Prior art: AutoGen v0.4, LangGraph
+- Prior art: comparable production agent frameworks with a tiered package model

@@ -25,11 +25,11 @@ A developer's experience with AgentForge has three milestones:
 3. **Day 180 — `agentforge upgrade`.** Pull in framework improvements without
    breaking anything they've built.
 
-Existing frameworks handle (1) well (cookiecutter, `crewai create`, `strands new`).
-A few handle (2) well (CrewAI's tools-extras, smolagents Hub). **Almost none handle
+Existing frameworks handle (1) well (existing scaffolding tools).
+A few handle (2) well (tool-extras and hub mechanisms). **Almost none handle
 (3) without a manual diff** — and that is exactly the moment a long-lived agent's
 maintainer reaches for the framework, gets burned, and stays on an old version
-forever. a predecessor project's `template-sync` was an attempt to solve this; it is incomplete.
+forever. An earlier internal `template-sync` attempt did not fully solve this.
 
 This doc is the design that makes (3) actually work, by picking the right tool
 (Copier) and laying down the file conventions (marker headers + ownership model)
@@ -103,7 +103,7 @@ agentforge-templates/                  # one git repo, multiple templates
 └── minimal/
 ```
 
-Six starter templates correspond to the five legacy archetypes plus a `minimal`
+Six starter templates correspond to five starter archetypes plus a `minimal`
 variant for developers who want no scaffolding noise.
 
 ### 4.3 The `.agentforge-state` directory
@@ -270,8 +270,8 @@ have signal on how many TS-only users we have.
 |---|---|
 | Cookiecutter only | Cannot update; defeats the whole goal |
 | `cruft` (Cookiecutter + update tracker) | Works but is essentially Copier-with-extra-steps; Copier is more mature |
-| Vendored framework code (Atomic Agents model) | Auditability is real but the upgrade burden is high; our users prefer pip-install for framework primitives |
-| Plain git-based template + manual rebase | Effectively what a predecessor project's `template-sync` was; works for power users, fails for the median |
+| Vendored framework code (the vendored-framework-code model) | Auditability is real but the upgrade burden is high; our users prefer pip-install for framework primitives |
+| Plain git-based template + manual rebase | Effectively what an earlier internal `template-sync` was; works for power users, fails for the median |
 | No upgrade story; force re-scaffold | Loses every customisation. Non-starter for production agents. |
 
 ## 6. Migration / rollout
@@ -280,7 +280,7 @@ have signal on how many TS-only users we have.
   docs-qa, triage, research, minimal.
 - **v0.2.** `agentforge add module`, `agentforge swap`, `agentforge fork`.
 - **v0.3.** `agentforge upgrade` with three-way merge.
-- **v0.4.** `agentforge migrate from-legacy` for a predecessor project agents that want to come over.
+- **v0.4.** A migration importer for agents coming from a predecessor project.
 
 ## 7. Risks
 
@@ -315,7 +315,7 @@ have signal on how many TS-only users we have.
 | 2026-05-09 | Use Copier as the scaffolding/upgrade engine | Purpose-built for the update-after-generate case; mature; the only tool that doesn't require us to bolt on the upgrade mechanism ourselves |
 | 2026-05-09 | Three file classes: managed / forked / owned | Maps cleanly onto "framework owns this", "developer claimed it", "developer authored it from scratch" |
 | 2026-05-09 | Inline marker headers + `.agentforge-state/managed-files.lock` | Header is human-readable and survives moves; lock file handles binary/JSON files where comments aren't possible |
-| 2026-05-09 | Six starter templates at v0.1 | Covers the legacy archetypes; `minimal` covers the "I want no boilerplate" case |
+| 2026-05-09 | Six starter templates at v0.1 | Covers the starter archetypes; `minimal` covers the "I want no boilerplate" case |
 | 2026-05-09 | Wrap Copier from the TS CLI initially (Option A) | Faster to ship; native TS port revisited after first user signal |
 
 ## 10. References
@@ -324,4 +324,4 @@ have signal on how many TS-only users we have.
 - [`module-system.md`](./module-system.md) — how `agentforge add module` ties into module manifests
 - [`design-principles.md`](./design-principles.md) — P2 (modules pip-installable, not scaffolded), P8 (upgrade-safe by construction)
 - [Copier docs](https://copier.readthedocs.io/) — the underlying engine
-- Archived predecessor: `docs/archive/template-sync.md` — a predecessor project's incomplete answer to this problem
+- Archived predecessor: `docs/archive/template-sync.md` — an earlier incomplete answer to this problem

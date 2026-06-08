@@ -15,8 +15,8 @@
 
 ## 1. Context and problem statement
 
-The framework needed a public, brandable name. The internal predecessor
-("a predecessor project / `legacy-agent-template`") is a private cookiecutter; an open-source
+The framework needed a public, brandable name. The maintainer's private
+predecessor template is a private cookiecutter; an open-source
 release demands a name that is short, memorable, claimable on PyPI and
 GitHub, and resonant with the framework's "compose-from-modules" identity.
 
@@ -30,7 +30,7 @@ and is operationally available across registries?
 - Evokes composition / modularity / craft, not just "agents"
 - Not colliding with another agent framework's name
 - Reads well as a prefix for sub-packages: `<name>-core`, `<name>-anthropic`
-- Distinct from internal predecessor (a predecessor project) so the public release is a clean break
+- Distinct from the internal predecessor so the public release is a clean break
 
 ## 3. Considered options
 
@@ -63,7 +63,7 @@ without needing a dictionary.
 ### Negative consequences (trade-offs)
 
 - "Forge" is in active use across dev tooling generally (Forge templates, etc.) — not in the agent space specifically, but trademark sweeps are required
-- Compound name is slightly longer than one-word options (Lattice, Letta)
+- Compound name is slightly longer than a one-word option
 
 ## 5. Pros and cons of the options
 

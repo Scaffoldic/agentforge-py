@@ -295,7 +295,7 @@ budget):
   `Agent`, owns conversation history, streams chunks, exposes via
   HTTP/WebSocket/SSE through `ChatServer`. Multi-tenant by session-id.
 - **Cross-agent (A2A)** — feat-014. Wraps an `Agent` as an HTTP
-  endpoint that other frameworks (LangChain, CrewAI, Claude Desktop)
+  endpoint that other frameworks and clients (e.g. Claude Desktop)
   can call.
 - **Future** — voice, IDE plugin, etc. Each is a wrapper module; none
   changes the `Agent` contract.

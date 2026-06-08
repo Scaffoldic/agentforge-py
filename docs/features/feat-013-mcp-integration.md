@@ -25,8 +25,8 @@ Tool ecosystems are publishing MCP servers (filesystem, GitHub, browser,
 Slack, etc.) — an agent that can't consume them is artificially limited.
 
 The other direction matters too: an agent built on AgentForge that exposes
-*its* tools as MCP servers can be consumed by other agents (LangChain,
-Claude Desktop, Cursor) without any glue code. The agent becomes a network
+*its* tools as MCP servers can be consumed by other agents (Claude Desktop,
+Cursor, and any MCP-speaking framework) without any glue code. The agent becomes a network
 citizen, not a black box.
 
 The pain we are removing: writing MCP integration by hand for every agent —

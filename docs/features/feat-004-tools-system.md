@@ -20,8 +20,8 @@
 ## 1. Why this feature
 
 Tools are how an agent does anything in the world. Every framework has them;
-every framework spells them differently. LangChain wants subclasses with verbose
-schemas; OpenAI's raw API wants JSON schemas you write by hand; some frameworks
+every framework spells them differently. Some frameworks want subclasses with
+verbose schemas; OpenAI's raw API wants JSON schemas you write by hand; some frameworks
 make you implement `args_schema` separately from the function. The boilerplate
 tax per tool ranges from 10 to 50 lines.
 
@@ -298,7 +298,7 @@ schema dict).
 - feat-001 (`Agent.tools=` consumes these)
 - feat-013 (MCP — bridges Tool ↔ MCP both directions)
 - feat-016 (testing — mocks tools)
-- Prior art: Pydantic AI's `@agent.tool`, smolagents' `@tool`, Strands' `@tool`
+- Prior art: the `@tool`-decorator pattern common to modern agent frameworks
 
 ---
 

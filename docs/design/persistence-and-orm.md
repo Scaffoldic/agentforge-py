@@ -276,9 +276,9 @@ v0.2 ships:
 - `agentforge-memory-surrealdb`
 - `agentforge-memory-neo4j`
 
-a predecessor project agents (private, archived) using SQLite or SurrealDB ClaimStore have a direct
-migration path because the schema is intentionally compatible — `agentforge migrate
-from-legacy-claims` runs and re-keys their data into the new layout.
+A predecessor project's agents using SQLite or SurrealDB ClaimStore have a direct
+migration path because the schema is intentionally compatible — a claims importer
+re-keys their data into the new layout.
 
 ## 7. Risks
 

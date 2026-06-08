@@ -21,7 +21,7 @@ framework has moved on. Cookiecutter is one-shot; it has no answer for
 "the template now has new content, can you bring it into my existing
 project without losing my customisations?"
 
-a predecessor project's `template-sync` was an attempt; it was incomplete. Most agent
+An earlier internal `template-sync` was an attempt; it was incomplete. Most agent
 frameworks today don't even try, leaving long-lived agents stuck on old
 versions.
 

@@ -585,9 +585,9 @@ landings:
 - feat-009 (session_id propagated as OTel attribute on every span)
 - feat-014 (`AuthPolicy` reused by ChatServer)
 - feat-018 (per-turn input/output validators + per-tool-call gates)
-- Prior art: Letta (server-resident chat agents); Pydantic AI
-  conversation (similar wrapper pattern); Vercel AI SDK chunk shape;
-  OpenAI Assistants threads; Slack Bolt SDK
+- Prior art: server-resident chat agents and conversation-wrapper patterns
+  common to modern agent frameworks; the streaming-chunk shapes used by
+  popular AI SDKs; OpenAI Assistants threads; Slack Bolt SDK
 
 ## 11. Implementation status (Python — v0.2 scope)
 

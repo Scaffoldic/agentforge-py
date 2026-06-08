@@ -37,8 +37,8 @@ Concrete scenarios this design must support:
   scaffolded files have new defaults. `agentforge upgrade` applies the diff using
   Copier-style three-way merge; developer's customisations survive.
 
-Every other agent framework today supports *some* of these (LangGraph: A and C via
-constructor swap; CrewAI: A via tools-extras; Pydantic AI: A via slim-extras).
+Every other agent framework today supports *some* of these (some support A and C via
+constructor swap; some support A via tool-extras; some support A via slim-extras).
 **None** support all four with a single coherent mechanism. That is what this
 design covers.
 
@@ -232,7 +232,7 @@ from agentforge_anthropic import AnthropicClient
 agent = Agent(llm=AnthropicClient(...))   # explicit, escape hatch
 ```
 
-This avoids the CrewAI/LiteLLM error-swallowing anti-pattern (research notes,
+This avoids the meta-provider error-swallowing anti-pattern (research notes,
 section 3) — when something goes wrong, the developer can drop to typed objects and
 get a clean stack trace.
 
@@ -256,24 +256,24 @@ New categories require a design doc (P1, P12).
 
 | Option | Why we didn't pick it |
 |---|---|
-| Vendoring module source into the agent (Atomic Agents model) | Fails P8; upgrades require manual diff every time. Atomic's audit benefit is real but the upgrade cost is higher than the audit benefit for our target users. |
+| Vendoring module source into the agent (the vendored-framework-code model) | Fails P8; upgrades require manual diff every time. The audit benefit is real but the upgrade cost is higher than the audit benefit for our target users. |
 | Single mega-package with all modules included (`agentforge[full]`) | Bloats install size; pulls in every SDK; defeats the point of opt-in modules. We *do* offer `agentforge[full]` as a convenience extra, but the underlying split is real. |
 | Plugin loading from arbitrary file paths | Fails P5; turns config into code; opens an attack surface. |
-| String-only identifiers (no escape hatch to typed clients) | The CrewAI footgun. Always allow passing a typed instance. |
+| String-only identifiers (no escape hatch to typed clients) | A known footgun. Always allow passing a typed instance. |
 | Module hot-reload | Out of goals; complicates the resolver enormously. Restart-to-change is fine for an agent runtime. |
 
 ## 6. Migration / rollout
 
-This is a v0.1 design; there is nothing to migrate from in AgentForge. a predecessor project agents
-that want to migrate run `agentforge migrate from-legacy` (provided by feat-011 once
-it lands), which reads the a predecessor project `cookiecutter` answer file and produces an
-equivalent `agentforge.yaml`.
+This is a v0.1 design; there is nothing to migrate from in AgentForge. A predecessor
+project's agents could be migrated with a future `agentforge migrate` importer (provided
+by feat-011 once it lands), which reads the predecessor's `cookiecutter` answer file and
+produces an equivalent `agentforge.yaml`.
 
 ## 7. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Module catalogue sprawls (LlamaIndex syndrome) | Coordinate releases; require two real users before new module category |
+| Module catalogue sprawls (version-matrix sprawl) | Coordinate releases; require two real users before new module category |
 | Manifest drift across modules | Conformance test that loads every published module's manifest and validates schema |
 | Marker-header collisions with developer formatters | Markers are syntactically valid comments in every target language; pre-commit verifies marker integrity |
 | Entry-point resolution slow on large installs | Cache the entry-point map at first agent construction; invalidate on `pip install`/`pip uninstall` |

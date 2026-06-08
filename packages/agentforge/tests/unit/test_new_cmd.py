@@ -161,7 +161,7 @@ def test_scaffold_ships_ai_assistant_instructions(tmp_path: Path):
     Claude Code, Cursor, Aider/agents.md tools, and GitHub Copilot —
     so the developer's AI assistant follows the framework's runbooks
     out of the box. Regression guard: missing one of these means a
-    user's AI helper hallucinates LangChain idioms instead of using
+    user's AI helper hallucinates another framework's idioms instead of using
     AgentForge's locked contracts."""
     dst = tmp_path / "ai-assist-check"
     code = _run_new(

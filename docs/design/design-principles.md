@@ -166,4 +166,4 @@ log below records every revision.
 
 - [`architecture.md`](./architecture.md)
 - [`module-system.md`](./module-system.md)
-- Archived a predecessor project principles at `docs/archive/` (predecessor; superseded by this doc)
+- Archived predecessor principles at `docs/archive/` (superseded by this doc)

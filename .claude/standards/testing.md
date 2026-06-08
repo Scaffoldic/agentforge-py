@@ -21,7 +21,7 @@ pre-commit. Test code is production code; same standards apply.
   generated stubs, and `live/` paths excluded via `[tool.coverage.run]
   omit`.
 - A coverage **ratchet** in CI fails any PR that drops main's coverage
-  by more than 0.5% (cf. a predecessor project's CR-005b pattern, archived). Even when
+  by more than 0.5% (cf. an earlier internal change pattern). Even when
   above 90%, regression is rejected.
 
 ## Configuration-driven, not hardcoded

@@ -161,7 +161,7 @@ server. Same primitives, different deployment shape.
 ## What AgentForge is not
 
 - A research playground. Stable contracts beat clever abstractions.
-- A LangChain replacement. We don't try to be the universal AI toolkit; we ship the
+- A universal framework-of-frameworks. We don't try to be the universal AI toolkit; we ship the
   pieces an agent needs and stop.
 - A no-code platform. The audience is Python and TypeScript engineers. We make their
   job easier; we don't try to remove them.

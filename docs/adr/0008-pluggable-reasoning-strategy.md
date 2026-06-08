@@ -41,7 +41,7 @@ loops without forking the framework or rewriting tools?
 2. **`ReasoningStrategy` ABC** with shipped reference implementations,
    custom strategies pluggable
 3. **DAG / workflow engine** — build everything on a generic graph
-   primitive (LangGraph approach)
+   primitive (the generic-graph approach)
 4. **Per-step plugin chain** — pluggable thinker, actor, observer
 
 ## 4. Decision outcome

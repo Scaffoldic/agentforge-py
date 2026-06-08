@@ -22,8 +22,8 @@
 
 A team building an agent today picks a framework and immediately faces a fork in
 the road: every framework has a slightly different way of expressing "an agent is
-a model + tools + a loop." LangChain has `AgentExecutor`. CrewAI has `Crew`.
-Pydantic AI has `Agent`. AutoGen has `AssistantAgent`. None of these compose; if
+a model + tools + a loop." Other frameworks each ship their own agent class
+(executors, crews, assistants) — and none of these compose; if
 you bet on one and it goes the wrong way, you rewrite.
 
 The pain is not that there are too many frameworks — it is that **the contracts
@@ -60,14 +60,14 @@ own the contracts:
 The anti-pattern if we don't ship this: every derived agent invents its own
 `Agent` class with subtly different lifecycle semantics, tools wired with
 slightly different signatures, and zero shared tooling between agents. We
-already saw the early stages of this in a predecessor project before CR-005a/b/c/d landed.
+already saw the early stages of this in a predecessor project before later fixes landed.
 
 ## 3. How derived agents benefit
 
 - **Day 1 — three-line agent.** An agent author writes `Agent(model="...",
   tools=[...])` and gets a working agent. No subclassing, no orchestrator class
-  to author, no wiring code. Compare to LangChain (~30 lines for an equivalent),
-  AutoGen (~15 lines), even bare Strands (~3 lines but no production rails).
+  to author, no wiring code. Comparable frameworks need far more wiring code,
+  or skip the production rails entirely.
 - **Day 30 — adding a module.** When the same agent later needs persistence, an
   evaluator, or MCP, the only code change is `Agent(memory=..., evaluators=...)`
   — same constructor, new keyword. The author's existing tool functions, prompt
@@ -395,7 +395,7 @@ their `Agent(...)` call. No managed code in the agent's repo to merge.
 | `RunResult` shape becomes a dumping ground | Locked at v0.1; new fields require feature doc and minor bump |
 | Sync vs async confusion (some users want a sync surface) | Provide `agent.run_sync()` as a thin `asyncio.run()` shim; mark "for notebooks/scripts only"; not part of the locked surface |
 | TS naming: `agentforge` (flat) vs `@agentforge/core` (scoped) | **Decided 2026-05-09: scoped** — `@agentforge/core`, `@agentforge/runtime`, `@agentforge/anthropic`, `@agentforge/memory-postgres`, etc. PyPI stays flat (`agentforge`, `agentforge-anthropic`); the asymmetry is normal in 2026. |
-| Should `Agent` be a class or a function (LangGraph's `create_react_agent` style)? | Class. Class lifecycle (`__aenter__`/`__aexit__`) maps to cleanup; functional factory loses that. Class with `tools=[...]` keyword is also more discoverable in IDEs. |
+| Should `Agent` be a class or a function (the functional `create_react_agent` factory style some frameworks use)? | Class. Class lifecycle (`__aenter__`/`__aexit__`) maps to cleanup; functional factory loses that. Class with `tools=[...]` keyword is also more discoverable in IDEs. |
 
 ## 9. Out of scope
 
@@ -407,7 +407,7 @@ their `Agent(...)` call. No managed code in the agent's repo to merge.
   appears.
 - Multi-modal input/output beyond text. Images, audio, video belong in tools or
   in a future feature doc. Core stays text-first.
-- A persistent agent (server-resident, like Letta). `Agent` is a per-process
+- A persistent agent (server-resident). `Agent` is a per-process
   object; persistent agents are constructed by wrapping `Agent` at a higher
   layer (see feat-020 for the chat/conversational deployment shape).
 - Multi-turn conversation state. `Agent.run()` is one-shot. Conversational
@@ -427,8 +427,8 @@ their `Agent(...)` call. No managed code in the agent's repo to merge.
 - feat-004 (tools) — consumes the `Tool` ABC
 - feat-007 (production rails) — wires `BudgetPolicy`, `run_id`, fallback into
   `Agent.run()`
-- Prior art: Pydantic AI's `Agent` (closest match to this surface), Strands'
-  `Agent` (close on minimum-viable line count)
+- Prior art: the typed `Agent`-class surface and minimum-viable-line-count
+  goals common to modern agent frameworks
 
 ---
 
@@ -593,6 +593,6 @@ async context, use `await agent.run(...)`.
   `MultiAgentSupervisor` (feat-002), not in a hand-rolled outer
   agent class.
 - **Server-resident persistent agent.** `Agent` is per-process.
-  For Letta-style residency, persist `Claim`s via `memory=` and
+  For server-resident persistence, persist `Claim`s via `memory=` and
   reconstruct state on the next process; framework support comes
   with feat-020.

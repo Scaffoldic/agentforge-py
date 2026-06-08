@@ -110,9 +110,9 @@
 
 ## What's deliberately not here
 
-- **No "framework agnostic" abstraction layer.** We don't try to wrap LangChain,
-  LlamaIndex, etc. Importing them as tools is fine; framework-of-frameworks is not
-  on the roadmap.
+- **No "framework agnostic" abstraction layer.** We don't try to wrap other
+  agent / orchestration frameworks. Importing them as tools is fine;
+  framework-of-frameworks is not on the roadmap.
 - **No vector store abstraction in core.** Embeddings + retrieval is a tool-level
   concern, not a primitive. (Discussed in `persistence-and-orm.md` §3.)
 - **No prompt-template engine.** Strings + f-strings (Python) / template literals
@@ -144,4 +144,5 @@
 3. Scaffold `python/agentforge-py/` package skeleton matching feat-001's
    contracts; begin v0.1 critical-path implementation.
 4. In parallel, lock the lockfile/release-train policy described in
-   `architecture.md` §10 to avoid LlamaIndex-style version-matrix drift.
+   `architecture.md` §10 to avoid the version-matrix drift seen in large
+   multi-package ecosystems.
