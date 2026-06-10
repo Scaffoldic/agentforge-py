@@ -8,6 +8,10 @@ scaffolds that keep your AI coding assistant on the rails.**
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#install)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
+![Run an AgentForge agent offline, then switch the LLM backend by editing one line of YAML — the agent code never changes](./examples/swap-by-config/demo.gif)
+
+<sub>Run a real agent offline (no key, no network) → switch the backend by editing **one line of YAML** → `agent.py` never names a vendor. [Runnable example →](./examples/swap-by-config/)</sub>
+
 > **AgentForge treats an agent like a system you operate, not a demo
 > you ship once.** Three things at its core:
 >
