@@ -3,20 +3,13 @@ name: Release
 # Publish every workspace package to PyPI. Triggered when a vX.Y.Z
 # tag is pushed to the repo.
 #
-# Auth: hybrid — uses `secrets.PYPI_API_TOKEN` if set, otherwise
-# falls back to PyPI Trusted Publishing (OIDC). The
-# `pypa/gh-action-pypi-publish` action prefers the `password`
-# input when present.
-#
-# Hybrid migration path (current state: API token):
-#   1. Today  — `PYPI_API_TOKEN` repo secret is set; this workflow
-#               uses it to publish + reserve the 34 package names.
-#   2. Later  — for each PyPI project, add a Trusted Publisher at
-#               https://pypi.org/manage/project/<pkg>/settings/publishing/
-#               with Owner=Scaffoldic, Repository=agentforge-py,
-#               Workflow=release.yml, Environment=pypi.
-#   3. Final  — delete the `PYPI_API_TOKEN` secret + the `password:`
-#               line below; OIDC takes over automatically.
+# Auth: PyPI Trusted Publishing (OIDC) via the `id-token: write`
+# permission on the publish job below — no long-lived API token.
+# Every one of the 34 workspace projects has a Trusted Publisher
+# configured (Owner=Scaffoldic, Repository=agentforge-py,
+# Workflow=release.yml, Environment=pypi). The former hybrid
+# `PYPI_API_TOKEN` secret + `password:` input were removed once
+# the OIDC migration completed (2026-06-10).
 #
 # The `pypi` GitHub environment (Settings → Environments → New
 # environment → "pypi") should be configured with required
@@ -94,10 +87,6 @@ jobs:
           # Skip duplicates so re-running on a partial-failure tag
           # doesn't 400 on packages that already uploaded.
           skip-existing: true
-          # Hybrid auth: use the API token when set; otherwise the
-          # action falls back to Trusted Publishing via the
-          # `id-token: write` permission above. To complete the
-          # migration to OIDC, remove this line + the
-          # `PYPI_API_TOKEN` secret once every PyPI project has a
-          # Trusted Publisher configured.
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          # Trusted Publishing (OIDC): no `password:` input — the
+          # action authenticates via the `id-token: write`
+          # permission on this job.
