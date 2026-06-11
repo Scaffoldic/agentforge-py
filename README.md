@@ -5,7 +5,7 @@ contracts you can depend on, every backend a swap-by-config package, and
 scaffolds that keep your AI coding assistant on the rails.**
 
 [![PyPI](https://img.shields.io/pypi/v/agentforge-py.svg)](https://pypi.org/project/agentforge-py/)
-[![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#install)
+[![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#build-your-own-agent)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
 ![Run an AgentForge agent offline, then switch the LLM backend by editing one line of YAML — the agent code never changes](./examples/swap-by-config/demo.gif)
@@ -118,6 +118,10 @@ follows the relevant runbook automatically when you ask it for
 "add a reranker" / "configure multi-provider" / "use streaming
 guardrails".
 
+Want the full developer walkthrough — custom tools, config,
+growing the agent over time? Jump to
+[Build your own agent](#build-your-own-agent).
+
 ---
 
 ## What's in the box
@@ -185,10 +189,17 @@ management) · `new` · `upgrade` · `fork` / `unfork` · `status` ·
 
 ---
 
-## Install
+## Build your own agent
+
+> **You don't need to clone this repository.** AgentForge ships as
+> PyPI packages — your agent lives in *your own project*, with the
+> framework as a dependency. Cloning this repo is only for
+> [contributing to the framework itself](#contributing).
+
+### 1. Install from PyPI
 
 ```bash
-pip install "agentforge-py[anthropic]"
+pip install "agentforge-py[anthropic]"   # or [openai], [bedrock], [ollama], [litellm]
 # combine extras
 pip install "agentforge-py[anthropic,openai,memory-postgres,otel]"
 # or install sister packages directly
@@ -198,6 +209,98 @@ pip install agentforge-py agentforge-memory-postgres agentforge-langfuse
 Every module is its own PyPI distribution. Install only what you
 use; the framework lazy-imports vendor SDKs so unused providers
 don't add startup cost.
+
+### 2. Scaffold your agent project
+
+```bash
+agentforge new my-agent --template minimal
+cd my-agent
+```
+
+Pick from six templates: `minimal`, `code-reviewer`, `patch-bot`,
+`docs-qa`, `triage`, `research`. You get a complete, runnable
+project:
+
+```
+my-agent/
+├── agentforge.yaml     # model, strategy, budget — the swap-by-config surface
+├── pyproject.toml
+├── .env.example        # copy to .env, add your API key
+├── src/my_agent/
+│   └── main.py         # your agent code — start editing here
+├── docs/runbooks/      # step-by-step guides your AI assistant follows
+├── AGENTS.md           # framework-aware instructions for AI coding
+└── CLAUDE.md           # assistants (Claude Code, Cursor, Copilot, …)
+```
+
+### 3. Add your API key
+
+```bash
+cp .env.example .env    # then set ANTHROPIC_API_KEY=sk-ant-…
+```
+
+### 4. Write what your agent does
+
+Edit `src/my_agent/main.py`. Give the agent your own tools — a
+typed function plus the `@tool` decorator is all it takes (the
+input schema is inferred from the signature and docstring):
+
+```python
+from agentforge import Agent, tool
+
+@tool
+def lookup_order(order_id: str) -> dict:
+    """Fetch an order record from your backend."""
+    return orders_db.get(order_id)
+
+async with Agent(tools=[lookup_order]) as agent:
+    result = await agent.run("What's the status of order 1042?")
+    print(result.output)
+```
+
+Stateful tools subclass the `Tool` ABC instead. Four defaults ship
+in `agentforge.tools`: `web_search`, `calculator`, `file_read`,
+`shell`.
+
+### 5. Configure behaviour in YAML, not code
+
+`agentforge.yaml` is where the model, reasoning strategy, and
+guardrails live — your Python never names a vendor:
+
+```yaml
+agent:
+  model: "anthropic:claude-sonnet-4-5"
+  strategy: "react"        # or plan-execute, tree-of-thoughts, supervisor
+  budget:
+    usd: 2.0               # over-budget runs fail before the bill lands
+```
+
+Switching providers is `agentforge swap llm openai` — one config
+line changes, your agent code doesn't.
+
+### 6. Run and validate
+
+```bash
+agentforge run "What's the status of order 1042?"
+agentforge config validate
+```
+
+### 7. Grow it as your needs grow
+
+```bash
+# durable state, tracing, safety, retrieval — one pip install + one `add` each
+pip install agentforge-memory-postgres && agentforge add memory-postgres
+pip install agentforge-otel            && agentforge add otel
+
+# framework upgrades refresh managed files; your custom code survives
+agentforge upgrade --to 0.3.0
+```
+
+Memory backends, rerankers, guardrail vendors, observability
+stacks, MCP/A2A protocols, evaluators — every capability in
+[What's in the box](#whats-in-the-box) plugs in the same way, and
+each has a matching `docs/runbooks/NN-*.md` guide in your scaffold
+that your AI coding assistant follows automatically.
 
 ---
 
@@ -228,7 +331,11 @@ agentforge-py/
 
 ---
 
-## Development
+## Development (contributing to the framework)
+
+You only need this section to work on AgentForge itself. To
+**build an agent**, you never clone this repo — see
+[Build your own agent](#build-your-own-agent).
 
 Prereqs: Python 3.13 + [uv](https://docs.astral.sh/uv/).
 
