@@ -7,12 +7,15 @@ argparse plumbing is verified via `main(...)` for the happy path.
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
 import yaml
+from agentforge.cli import module_cmd
 from agentforge.cli.manifest_apply import read_applied
 from agentforge.cli.module_cmd import (
+    _default_pip_runner,
     _run_add_module,
     _run_remove_module,
     _run_swap,
@@ -325,3 +328,85 @@ def test_swap_aborts_when_remove_fails(tmp_path: Path):
     assert code == 1
     # Nothing was added.
     assert read_applied(tmp_path, "agentforge-other") is None
+
+
+# --- default pip runner (bug-021) --------------------------------
+
+
+def _capture_pip_cmd(monkeypatch) -> dict[str, list[str]]:
+    """Monkeypatch `subprocess.run` to record the command it's given."""
+    captured: dict[str, list[str]] = {}
+
+    class _FakeCompleted:
+        returncode = 0
+
+    def _fake_run(cmd, check):
+        captured["cmd"] = list(cmd)
+        return _FakeCompleted()
+
+    monkeypatch.setattr(module_cmd.subprocess, "run", _fake_run)
+    return captured
+
+
+def test_default_pip_runner_uv_project_uses_uv_add_remove(tmp_path: Path, monkeypatch):
+    """bug-021: inside a uv-managed project (a `uv.lock` exists in the
+    cwd or any parent), install/uninstall translate to `uv add` /
+    `uv remove` so the dependency is persisted to pyproject + uv.lock
+    and survives a later `uv sync`.
+    """
+    (tmp_path / "uv.lock").write_text("# uv lockfile\n")
+    monkeypatch.chdir(tmp_path)
+    captured = _capture_pip_cmd(monkeypatch)
+
+    # install → uv add
+    code = _default_pip_runner(["install", "agentforge-memory-postgres"])
+    assert code == 0
+    assert captured["cmd"] == ["uv", "add", "agentforge-memory-postgres"]
+
+    # uninstall → uv remove (pip's `-y` flag dropped)
+    code = _default_pip_runner(["uninstall", "-y", "agentforge-memory-postgres"])
+    assert code == 0
+    assert captured["cmd"] == ["uv", "remove", "agentforge-memory-postgres"]
+
+
+def test_default_pip_runner_pip_available_uses_python_m_pip(tmp_path: Path, monkeypatch):
+    """No uv.lock but the `pip` module is importable → classic
+    `python -m pip` so traditional pip venvs keep working.
+    """
+    monkeypatch.chdir(tmp_path)  # no uv.lock anywhere under tmp_path
+    monkeypatch.setattr(
+        module_cmd.importlib.util,
+        "find_spec",
+        lambda name: object() if name == "pip" else None,
+    )
+    captured = _capture_pip_cmd(monkeypatch)
+
+    code = _default_pip_runner(["install", "agentforge-memory-postgres"])
+    assert code == 0
+    assert captured["cmd"] == [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "agentforge-memory-postgres",
+    ]
+
+
+def test_default_pip_runner_no_uv_project_no_pip_falls_back_to_uv_pip(tmp_path: Path, monkeypatch):
+    """No uv.lock and no importable `pip` module (a uv venv that isn't
+    a project) → fall back to `uv pip --python <interpreter>`.
+    """
+    monkeypatch.chdir(tmp_path)  # no uv.lock
+    monkeypatch.setattr(module_cmd.importlib.util, "find_spec", lambda name: None)
+    captured = _capture_pip_cmd(monkeypatch)
+
+    code = _default_pip_runner(["install", "agentforge-memory-postgres"])
+    assert code == 0
+    assert captured["cmd"] == [
+        "uv",
+        "pip",
+        "--python",
+        sys.executable,
+        "install",
+        "agentforge-memory-postgres",
+    ]
