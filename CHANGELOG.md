@@ -9,6 +9,20 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Fixed
+
+- **bug-021 (P1):** `agentforge add module` / `remove module` now use
+  an **environment-aware installer** instead of `python -m pip`. In a
+  uv-managed project (a `uv.lock` is found in the cwd or a parent) it
+  shells out to `uv add` / `uv remove`, so the module is persisted to
+  `pyproject.toml` + `uv.lock` and survives a later `uv sync`; in a
+  classic venv (the `pip` module is importable) it uses
+  `python -m pip`; otherwise it falls back to
+  `uv pip --python <interpreter>`. Previously `python -m pip` failed
+  with "No module named pip" in the uv-first `agentforge new` + `uv
+  sync` scaffold, and a plain `uv pip install` would have been
+  silently uninstalled by the next `uv sync`.
+
 ## [0.2.4] — 2026-06-03
 
 Tool-call round-trip fix **plus the MCP runtime-wiring cluster** —

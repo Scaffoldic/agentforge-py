@@ -5,13 +5,24 @@ PR #16. They edit `agentforge.yaml`, apply per-module manifest
 files, and shell out to `pip install` / `pip uninstall`.
 
 The pip subprocess is injected via the `pip_run` callable so tests
-can mock it without actually installing packages. Production uses
-`python -m pip` in the active venv.
+can mock it without actually installing packages. Production uses an
+environment-aware default runner (`_default_pip_runner`) that picks
+the right installer for the active environment:
+
+1. **uv-managed project** (a `uv.lock` exists in the cwd or any
+   parent): use `uv add` / `uv remove` so the dependency is persisted
+   to `pyproject.toml` + `uv.lock` and survives a later `uv sync`.
+2. **classic venv** (the `pip` module is importable): use
+   `python -m pip` so traditional pip-managed environments keep
+   working.
+3. **uv venv that isn't a project** (no `uv.lock`, no `pip` module):
+   fall back to `uv pip --python <interpreter>`.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import subprocess  # nosec B404
 import sys
 from collections.abc import Callable, Sequence
@@ -239,9 +250,46 @@ def _print_next_steps(manifest: Manifest) -> None:
         sys.stdout.write(f"    - {step}\n")
 
 
+def _find_uv_lock(start: Path) -> bool:
+    """Return True if a `uv.lock` exists in `start` or any parent.
+
+    Walks from `start` up to the filesystem root. The presence of a
+    `uv.lock` is uv's signal that the current directory belongs to a
+    uv-managed project, where `uv add` / `uv remove` (which edit
+    `pyproject.toml` + `uv.lock`) are the correct install verbs.
+    """
+    return any((directory / "uv.lock").exists() for directory in (start, *start.parents))
+
+
 def _default_pip_runner(args: Sequence[str]) -> int:
-    """Run `python -m pip <args>` in the active venv."""
-    cmd = [sys.executable, "-m", "pip", *args]
+    """Install/uninstall a distribution using the right tool for the
+    active environment.
+
+    The runner receives pip-style args — `["install", <dist>]` or
+    `["uninstall", "-y", <dist>]` — and selects one of three commands:
+
+    1. **uv-managed project** (a `uv.lock` is found in the cwd or any
+       parent): translate to `uv add <dist>` / `uv remove <dist>`.
+       These edit `pyproject.toml` + `uv.lock`, so the dependency is
+       persisted and survives a later `uv sync` (plain `uv pip install`
+       does not — `uv sync` would uninstall it).
+    2. **classic venv** (the `pip` module is importable): use
+       `python -m pip <args>` so traditional pip-managed environments
+       keep working.
+    3. **uv venv that isn't a project** (no `uv.lock`, no `pip`
+       module): fall back to `uv pip --python <sys.executable> <args>`,
+       which installs into the active interpreter without needing a
+       `pip` module.
+    """
+    if _find_uv_lock(Path.cwd()):
+        verb = args[0]
+        distribution = args[-1]
+        uv_verb = "add" if verb == "install" else "remove"
+        cmd = ["uv", uv_verb, distribution]
+    elif importlib.util.find_spec("pip") is not None:
+        cmd = [sys.executable, "-m", "pip", *args]
+    else:
+        cmd = ["uv", "pip", "--python", sys.executable, *args]
     # No untrusted input — args is built from CLI arg `distribution`
     # which is just a distribution name string. shell=False (default).
     return subprocess.run(cmd, check=False).returncode  # noqa: S603  # nosec B603
