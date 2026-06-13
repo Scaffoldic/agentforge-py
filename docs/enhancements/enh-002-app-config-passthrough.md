@@ -20,6 +20,15 @@
 | **Target version** | 0.5.0 |
 | **Languages** | `python` (TypeScript to follow under contract parity) |
 | **Improves** | feat-012 (configuration system) |
+| **Phase of** | feat-026 (application config extension) — this is **Phase 1** |
+| **Decision** | [ADR-0022](../adr/0022-app-passthrough-for-application-config.md) |
+
+> **Scope note.** This enhancement is Phase 1 of [feat-026](../features/feat-026-application-config-extension.md):
+> the reserved `app:` namespace + a typed accessor. Phase 2 (framework-validated
+> *registered* sections via entry points, reusing the `module_schemas.py` engine)
+> and Phase 3 (pluggable config sources / separate files) live in feat-026. Phase 1
+> is forward-compatible — an `app.<section>` here becomes a registered section later
+> with no breaking change.
 
 ---
 
@@ -85,7 +94,7 @@ class GraphConfig(BaseModel):
     store: StoreConfig
 
 cfg = load_config("agentforge.yaml")        # framework loader
-graph_cfg = GraphConfig.model_validate(cfg.app["graph"])
+graph_cfg = cfg.app_as(GraphConfig, "graph")  # typed + validated subtree
 ```
 
 ## 4. Backward compatibility
@@ -101,13 +110,30 @@ key becomes accepted.
   `AgentForgeConfig` (`agentforge_core/config/schema.py`). Keep
   `model_config = ConfigDict(strict=True, extra="forbid")` — only `app:`
   is added as a recognized field; everything else stays strict.
+- Add the typed accessor method on `AgentForgeConfig`:
+
+  ```python
+  def app_as(self, model: type[T], key: str | None = None) -> T:
+      """Validate + return an app-config subtree. `key=None` → whole
+      `app:`; else the `app[key]` subtree. The caller's model owns its
+      own strictness, so app-key typos are caught at this call."""
+      raw = self.app if key is None else self.app.get(key, {})
+      return model.model_validate(raw)
+  ```
+
+  This delegates (does not lose) strictness inside `app:` — a derived
+  agent's `extra="forbid"` model still fails fast on its own typos.
 - Confirm the interpolation + layering passes already operate on the raw
   mapping (so values inside `app:` get `${ENV}` resolution and env-file
-  layering with no extra wiring). Add coverage if any pass special-cases
-  known keys.
-- Ensure `config show --resolved` emits the resolved `app:` subtree.
-- The framework performs **no** schema validation inside `app:` — that is
-  the consuming agent's responsibility (documented explicitly).
+  layering with no extra wiring — they do, per `loader.py:_walk` /
+  `_deep_merge`, which run before `model_validate`). Add coverage anyway.
+- Ensure `config show --resolved` emits the resolved `app:` subtree (it
+  does for free — `_run_show` calls `cfg.model_dump(mode="json")`).
+- In Phase 1 the framework performs **no** *registered-schema* validation
+  inside `app:` — that arrives in feat-026 Phase 2 (`config validate`
+  coverage via entry-point sections). Document the Phase-1 boundary
+  explicitly: the subtree is app-owned and validated by the app's own
+  model via `app_as`.
 
 ## 6. Test plan
 
@@ -125,11 +151,13 @@ key becomes accepted.
 |---|---|
 | Apps treat `app:` as a dumping ground / scatter unrelated keys | Document the convention: one namespaced subtree, validated by the app's own model |
 | Users expect the framework to validate inside `app:` | Document clearly that the subtree is app-owned; `config validate` only checks framework keys |
-| Future demand for fully separate app files | `app:` does not preclude an "additional config files" mechanism later (ADR-0022 option 3) — it can layer on top |
+| Future demand for fully separate app files | Deferred to feat-026 Phase 3 (pluggable config **sources**) — `app:` does not preclude it; it layers on top |
+| Users want framework-level validation of `app:` | Arrives in feat-026 Phase 2 (registered sections + `config validate` coverage). Phase 1 delegates validation to the app's own model via `app_as` |
 
 ## 8. References
 
 - Reported in: issue #86 (`agentforge-graph`)
 - Decision: [ADR-0022](../adr/0022-app-passthrough-for-application-config.md)
-- Improves: feat-012 (configuration system)
-- Related: ADR-0013 (configuration is data, not code)
+- Full capability + phasing (this is Phase 1): [feat-026](../features/feat-026-application-config-extension.md)
+- Improves: feat-012 (configuration system) — esp. `module_schemas.py` (the engine Phase 2 reuses)
+- Related: ADR-0013 (configuration is data, not code), ADR-0004 (entry-point discovery)

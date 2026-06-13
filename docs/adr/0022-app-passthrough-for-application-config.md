@@ -61,6 +61,20 @@ typo protection for framework keys?
 - **Contract stability (ADR-0007).** Adding a field with a safe default to
   `AgentForgeConfig` is a minor bump; removing or renaming is major. We
   prefer the smallest additive change.
+- **Consistency with the framework's own pattern.** The framework *already*
+  validates per-component config sections: `module_schemas.py` walks
+  `modules.*`, resolves each driver via the entry-point resolver (ADR-0004),
+  reads its `config_schema`, and validates that section. feat-012's thesis is
+  *"validation must be uniform; per-module schemas compose."* App config
+  validated **differently** from module config would be an inconsistency in
+  our own design — so the end state should let app config register a typed,
+  validated section the same way modules do.
+- **Match the proven industry pattern.** "One shared config file, a reserved
+  namespace, many typed sub-sections each owned and validated by its
+  component" is the mature, widely-adopted answer: Spring Boot
+  `@ConfigurationProperties(prefix)`, Python `pyproject.toml` `[tool.<name>]`
+  (PEP 518), Kubernetes CRDs/annotations, Viper multi-source. We adopt it
+  rather than invent.
 
 ## 3. Considered options
 
@@ -95,6 +109,33 @@ mapping (which now includes `app:`), and `app` is a real field, the app's
 config gets interpolation, layering, and `config show --resolved` for
 free. The consuming agent is responsible for validating the *shape* of
 its own `app:` subtree.
+
+### Phasing — `app:` is the namespace; typed registered sections are the destination
+
+The reserved `app:` block is the **namespace** (the `[tool]` of
+`agentforge.yaml`). The decision is delivered in phases so #86 is unblocked
+immediately without building speculative machinery:
+
+- **Phase 1 (enh-002, 0.5.0):** the `app:` field + a typed accessor
+  `config.app_as(model, key)`. The agent validates its subtree with its own
+  (strict, if it likes) model — so typo protection inside `app:` is
+  *delegated*, not lost.
+- **Phase 2 (feat-026):** registered typed sections. A derived agent/plugin
+  declares `app.<section> → PydanticModel` via an entry-point group
+  (`agentforge.config_sections`), and the framework validates it during
+  `config validate` — reusing the **existing** `module_schemas.py` engine, so
+  app config becomes a first-class, framework-validated section exactly like
+  `modules.*`. Phase 1 is forward-compatible: `app.<section>` simply gains
+  framework validation, with no breaking change.
+- **Phase 3 (feat-026 §4.4, on demand):** pluggable config **sources** — let
+  an app register an additional file (e.g. `graph.yaml`) that still flows
+  through interpolation/layering/`--resolved`/validation. This is the separate
+  "sources" axis (Spring `spring.config.import`, Viper), distinct from the
+  "sections" (typed namespaces) axis above. Built only when a real need
+  appears.
+
+So this ADR blesses both the immediate `app:` block **and** the typed-section
+destination it grows into; feat-026 carries the full design.
 
 ```yaml
 # agentforge.yaml — after
@@ -157,7 +198,12 @@ app:
 ## 6. References
 
 - Reported in: issue #86 (filed by `agentforge-graph`)
-- Implemented by: [`docs/enhancements/enh-002-app-config-passthrough.md`](../enhancements/enh-002-app-config-passthrough.md)
+- Phase 1 (`app:` field + accessor): [`docs/enhancements/enh-002-app-config-passthrough.md`](../enhancements/enh-002-app-config-passthrough.md)
+- Full capability + phasing: [`docs/features/feat-026-application-config-extension.md`](../features/feat-026-application-config-extension.md)
 - Improves: [`docs/features/feat-012-configuration-system.md`](../features/feat-012-configuration-system.md)
-- Related: [ADR-0013](./0013-configuration-is-data-not-code.md) (config is data),
-  [ADR-0007](./0007-abc-protocol-as-stable-surface.md) (contract stability / minor-bump rule)
+  (esp. `agentforge_core/config/module_schemas.py` — the existing per-section validation engine)
+- Related ADRs: [ADR-0013](./0013-configuration-is-data-not-code.md) (config is data),
+  [ADR-0007](./0007-abc-protocol-as-stable-surface.md) (contract stability / minor-bump rule),
+  [ADR-0004](./0004-module-discovery-via-entry-points.md) (entry-point discovery — reused for section registration)
+- Prior art: Spring Boot `@ConfigurationProperties`; Python `pyproject.toml`
+  `[tool.*]` (PEP 518); Viper (Go) multi-source; Kubernetes CRDs + annotations
