@@ -23,6 +23,7 @@ from agentforge_core.resolver.discover import (
     module_info_for,
     reset_discovery,
 )
+from pydantic import BaseModel
 
 
 @pytest.fixture(autouse=True)
@@ -222,6 +223,42 @@ def test_non_class_entry_point_skipped(monkeypatch, caplog):
     discover_entry_points(Resolver.global_(), force=True)
 
     assert any("not a class" in r.message for r in caplog.records)
+
+
+def test_config_sections_group_excluded_from_resolver(monkeypatch):
+    """`agentforge.config_sections` maps app-config sections to pydantic
+    schemas (feat-026 Phase 2); the runtime resolver must skip the group
+    so schemas never land in the module registry."""
+
+    class _GraphSchema(BaseModel):
+        pass
+
+    section_ep = EntryPoint(
+        name="graph",
+        value="x:GraphSchema",
+        group="agentforge.config_sections",
+    )
+    tool_ep = EntryPoint(name="real", value="x:Real", group="agentforge.tools")
+
+    class _Real:
+        pass
+
+    monkeypatch.setattr(
+        EntryPoint,
+        "load",
+        lambda self: _GraphSchema if self.group.endswith("config_sections") else _Real,
+    )
+    monkeypatch.setattr(EntryPoint, "dist", property(lambda _self: None))
+    monkeypatch.setattr(discover_mod, "entry_points", lambda: [section_ep, tool_ep])
+
+    reset_discovery()
+    Resolver.global_().clear()
+    discover_entry_points(Resolver.global_(), force=True)
+
+    # The tool registered; the config section did NOT leak into the resolver.
+    assert Resolver.global_().resolve("tools", "real") is _Real
+    with pytest.raises(ModuleError):
+        Resolver.global_().resolve("config_sections", "graph")
 
 
 # --- helper coverage --------------------------------------------

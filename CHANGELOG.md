@@ -26,6 +26,26 @@ release tag bumps every workspace member to the same minor version.
   default is a minor bump under ADR-0007. See
   [ADR-0022](docs/adr/0022-app-passthrough-for-application-config.md).
 
+- **feat-026 Phase 2 — registered, validated `app:` sections.** A
+  derived agent or plugin can register a Pydantic schema per
+  `app.<section>` via a new `agentforge.config_sections` entry-point
+  group (mirroring module discovery, ADR-0004):
+
+  ```toml
+  [project.entry-points."agentforge.config_sections"]
+  graph = "agentforge_graph.config:GraphConfig"
+  ```
+
+  `agentforge config validate` now validates each registered section
+  present under `app:` — the same fail-fast parity `modules.*` already
+  has. Registered sections are checked strictly; unregistered sections
+  stay free-form (like an undocumented `[tool.x]` in `pyproject.toml`);
+  a section whose package isn't installed is simply not discovered, so
+  validation degrades gracefully. New public helpers
+  `discover_app_sections()` and `validate_app_config()` in
+  `agentforge_core.config`. See
+  [feat-026](docs/features/feat-026-application-config-extension.md).
+
 ### Fixed
 
 - **bug-021 (P1):** `agentforge add module` / `remove module` now use

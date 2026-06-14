@@ -34,6 +34,12 @@ _log = logging.getLogger("agentforge.resolver")
 
 _GROUP_PREFIX = "agentforge."
 
+# Groups under `agentforge.*` that are NOT runtime-resolver categories.
+# `config_sections` maps app-config section names to pydantic schemas
+# (feat-026 Phase 2); it is consumed by `config.app_sections`, not the
+# resolver, so skip it here to keep schemas out of the module registry.
+_NON_RESOLVER_GROUPS = frozenset({"config_sections"})
+
 # Module-level state held on a mutable list to avoid `global` (PLW0603).
 _discovered: list[bool] = [False]
 # Cache of resolved ModuleInfo per registered entry — keyed by
@@ -75,6 +81,8 @@ def discover_entry_points(resolver: Resolver, *, force: bool = False) -> int:
         if not ep.group.startswith(_GROUP_PREFIX):
             continue
         category = ep.group[len(_GROUP_PREFIX) :]
+        if category in _NON_RESOLVER_GROUPS:
+            continue
         try:
             cls = ep.load()
         except Exception as exc:

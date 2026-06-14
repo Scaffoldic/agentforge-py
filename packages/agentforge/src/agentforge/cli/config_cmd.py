@@ -26,6 +26,7 @@ import yaml
 from agentforge_core.config import (
     AgentForgeConfig,
     load_config,
+    validate_app_config,
     validate_module_configs,
 )
 from agentforge_core.production.exceptions import ModuleError
@@ -127,6 +128,14 @@ def _run_validate(args: argparse.Namespace) -> int:
         validate_module_configs(cfg, strict=args.strict_modules)
     except ModuleError as exc:
         sys.stderr.write(f"module config validation failed: {exc}\n")
+        return 1
+    # Registered `app.<section>` schemas are always validated strictly
+    # (feat-026 Phase 2). Unregistered / not-installed sections are
+    # free-form, so `--strict-modules` governs only module resolution.
+    try:
+        validate_app_config(cfg)
+    except ModuleError as exc:
+        sys.stderr.write(f"app config validation failed: {exc}\n")
         return 1
     sys.stdout.write("OK\n")
     return 0

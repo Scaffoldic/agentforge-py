@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from importlib.metadata import EntryPoint
 from pathlib import Path
 from typing import ClassVar
 
@@ -10,6 +11,7 @@ import pytest
 import yaml
 from agentforge.cli.main import main
 from agentforge_core import Resolver, register
+from agentforge_core.config import app_sections as app_sections_mod
 from agentforge_core.resolver import discover as discover_mod
 from pydantic import BaseModel, ConfigDict
 
@@ -115,6 +117,60 @@ def test_validate_module_config_against_schema(tmp_path: Path, capsys) -> None:
     code = main(["config", "validate", "--path", str(yaml_path)])
     assert code == 1
     assert "modules.memory.config" in capsys.readouterr().err
+
+
+# --- registered app-config sections (feat-026 Phase 2) ------------
+
+
+class _AppStoreConfig(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    path: str
+
+
+class _AppGraphConfig(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+    store: _AppStoreConfig
+
+
+def _register_app_section(monkeypatch: pytest.MonkeyPatch, name: str, model: type) -> None:
+    """Point app-section discovery at a single in-test schema."""
+    ep = EntryPoint(name=name, value="x:Schema", group=app_sections_mod.SECTIONS_GROUP)
+    monkeypatch.setattr(EntryPoint, "load", lambda _self: model)
+    monkeypatch.setattr(app_sections_mod, "entry_points", lambda group: [ep])
+
+
+def test_validate_registered_app_section_ok(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    _register_app_section(monkeypatch, "graph", _AppGraphConfig)
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text("app:\n  graph:\n    store:\n      path: .ckg\n")
+    code = main(["config", "validate", "--path", str(yaml_path)])
+    assert code == 0
+    assert "OK" in capsys.readouterr().out
+
+
+def test_validate_registered_app_section_typo_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    _register_app_section(monkeypatch, "graph", _AppGraphConfig)
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text("app:\n  graph:\n    stor:\n      path: .ckg\n")  # typo: stor
+    code = main(["config", "validate", "--path", str(yaml_path)])
+    assert code == 1
+    assert "app.graph" in capsys.readouterr().err
+
+
+def test_validate_unregistered_app_section_is_freeform(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    """A section nobody registered passes validation untouched."""
+    _register_app_section(monkeypatch, "graph", _AppGraphConfig)
+    yaml_path = tmp_path / "agentforge.yaml"
+    yaml_path.write_text("app:\n  telemetry:\n    anything: goes\n")
+    code = main(["config", "validate", "--path", str(yaml_path)])
+    assert code == 0
+    assert "OK" in capsys.readouterr().out
 
 
 # --- show ---------------------------------------------------------
