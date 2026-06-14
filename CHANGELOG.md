@@ -11,6 +11,28 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **feat-026 Phase 3 — `imports:` config directive (multi-file config).**
+  Any `agentforge.yaml` (or env overlay, or imported file) may declare a
+  top-level `imports:` list of additional config files:
+
+  ```yaml
+  imports:
+    - graph.yaml          # the app's own config, in its own file
+  agent: { model: "anthropic:claude-haiku-4-5" }
+  ```
+
+  Imported files flow through the full pipeline — `${ENV}` interpolation,
+  env-overlay layering, `--override`, `config show --resolved`, and
+  schema/section validation — so a derived agent can finally split its
+  config across files without losing any framework machinery. Imports are
+  **lower precedence than the file that imports them** (Spring
+  `spring.config.import` semantics: import shared defaults, override
+  locally); later entries in a list win; imports compose transitively
+  with cycle detection; paths resolve relative to the importer and accept
+  `${ENV}`. The directive is consumed by the loader, so it never reaches
+  the strict root model. Declarative — data, not code (ADR-0013). See
+  [feat-026 §4.4](docs/features/feat-026-application-config-extension.md).
+
 - **enh-002 / feat-026 Phase 1 — reserved `app:` namespace.**
   `agentforge.yaml` now accepts a top-level `app:` block for
   **application** config. The framework stores the subtree but does not

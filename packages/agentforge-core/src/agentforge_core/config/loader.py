@@ -3,11 +3,13 @@
 Resolution order (last wins) per spec §4.3:
 
     1. Defaults from each Pydantic model.
-    2. agentforge.yaml on disk (if present).
-    3. agentforge.<env>.yaml (if AGENTFORGE_ENV set).
-    4. Env-var interpolation inside YAML values.
-    5. CLI / loader-API `--override agent.budget.usd=10` arguments.
-    6. Constructor kwargs to Agent (handled in `agentforge.agent`).
+    2. Files pulled in via an `imports:` directive (feat-026 Phase 3),
+       lower precedence than the file that imports them.
+    3. agentforge.yaml on disk (if present).
+    4. agentforge.<env>.yaml (if AGENTFORGE_ENV set).
+    5. Env-var interpolation inside YAML values.
+    6. CLI / loader-API `--override agent.budget.usd=10` arguments.
+    7. Constructor kwargs to Agent (handled in `agentforge.agent`).
 
 Env-var interpolation syntax (feat-001):
 - `${VAR}` — required; raises at load if missing.
@@ -155,6 +157,65 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return raw
 
 
+#: Reserved top-level loader directive (feat-026 Phase 3): a list of
+#: paths to other config files to pull in. Consumed by the loader
+#: (popped before validation), so it never reaches `AgentForgeConfig`.
+_IMPORTS_KEY = "imports"
+
+
+def _load_file_with_imports(path: Path, *, _visiting: tuple[Path, ...] = ()) -> dict[str, Any]:
+    """Read a config file and resolve its ``imports:`` directive (feat-026
+    Phase 3 — pluggable config *sources*).
+
+    ``imports:`` is a top-level list of paths to other config files,
+    resolved **relative to this file's directory** (absolute paths are
+    honoured as-is). Import path strings get ``${ENV}`` interpolation so
+    ``imports: ["${EXTRA_CONFIG}"]`` works.
+
+    Precedence follows Spring Boot's ``spring.config.import``: an imported
+    file is **lower precedence than the file that imports it** — you
+    import shared defaults and override them locally. Within one
+    ``imports:`` list, later entries beat earlier ones. Imports compose
+    transitively (an imported file may itself import); cycles raise
+    ``ModuleError``.
+
+    The directive is consumed here — the returned mapping never contains
+    an ``imports`` key, so it doesn't collide with the root model's
+    ``extra="forbid"`` and ``config show --resolved`` shows the merged
+    result, not the directive.
+    """
+    resolved = path.resolve()
+    if resolved in _visiting:
+        chain = " -> ".join(str(p) for p in (*_visiting, resolved))
+        raise ModuleError(f"Circular config import detected: {chain}")
+
+    raw = _read_yaml(path)
+    imports = raw.pop(_IMPORTS_KEY, None)
+    if imports is None:
+        return raw
+    if not isinstance(imports, list):
+        raise ModuleError(
+            f"`imports:` in {path} must be a list of file paths; got {type(imports).__name__}."
+        )
+
+    merged: dict[str, Any] = {}
+    for entry in imports:
+        if not isinstance(entry, str):
+            raise ModuleError(f"`imports:` entries in {path} must be strings; got {entry!r}.")
+        import_path = Path(_interp(entry))
+        if not import_path.is_absolute():
+            import_path = path.parent / import_path
+        if not import_path.exists():
+            raise ModuleError(
+                f"Imported config file not found: {import_path} (imported by {path})."
+            )
+        imported = _load_file_with_imports(import_path, _visiting=(*_visiting, resolved))
+        merged = _deep_merge(merged, imported)
+
+    # The importing file's own keys win over everything it imports.
+    return _deep_merge(merged, raw)
+
+
 def _env_overlay_path(base: Path, env: str) -> Path:
     """Compute the overlay path next to `base`: foo.yaml → foo.<env>.yaml."""
     return base.with_suffix(f".{env}{base.suffix}")
@@ -191,14 +252,15 @@ def load_config(
     if resolved_path is None or not resolved_path.exists():
         merged: dict[str, Any] = {}
     else:
-        merged = _read_yaml(resolved_path)
+        merged = _load_file_with_imports(resolved_path)
         # Layered env file overlays the base. Missing overlay is fine
-        # (env-without-file is just "use base").
+        # (env-without-file is just "use base"). The overlay is itself
+        # import-aware, so an `agentforge.<env>.yaml` may pull in files too.
         resolved_env = env if env is not None else os.environ.get("AGENTFORGE_ENV")
         if resolved_env:
             overlay_path = _env_overlay_path(resolved_path, resolved_env)
             if overlay_path.exists():
-                merged = _deep_merge(merged, _read_yaml(overlay_path))
+                merged = _deep_merge(merged, _load_file_with_imports(overlay_path))
 
     interpolated = _walk(merged)
     if overrides:

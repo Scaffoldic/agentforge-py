@@ -6,10 +6,10 @@
 |---|---|
 | **ID** | feat-026 |
 | **Title** | Application config extension — reserved `app:` namespace, registered typed sections, pluggable sources |
-| **Status** | accepted — Phases 1 & 2 shipped in 0.5.0; Phase 3 on demand |
+| **Status** | accepted — Phases 1, 2 & 3 all shipped in 0.5.0 |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-13 |
-| **Target version** | 0.5.0 (Phases 1 & 2) → on-demand (Phase 3) |
+| **Target version** | 0.5.0 (all three phases) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-core`, `agentforge` |
 | **Depends on** | feat-012 (configuration system) |
@@ -155,15 +155,31 @@ conflated:
   under `app:`. Pattern: Spring Boot `@ConfigurationProperties(prefix)`,
   Python `pyproject.toml` `[tool.<name>]`. Each owner validates its
   own subtree.
-- **Sources** (Phase 3, deferred): *where config comes from*. Today the
-  loader has a fixed source list (base file → `agentforge.<env>.yaml`
-  overlay → env interpolation → `--override`). Phase 3 generalizes this
-  into an ordered, pluggable source list so an app can register an
-  **additional file** (e.g. `graph.yaml`) that still flows through
-  interpolation, layering, `--resolved`, and validation. Pattern:
+- **Sources** (Phase 3): *where config comes from*. Before Phase 3 the
+  loader had a fixed source list (base file → `agentforge.<env>.yaml`
+  overlay → env interpolation → `--override`). Phase 3 adds an
+  **`imports:` directive** — a reserved top-level list of additional
+  config files that flow through the same machinery (interpolation,
+  layering, `--override`, `--resolved`, validation):
+
+  ```yaml
+  # agentforge.yaml
+  imports:
+    - graph.yaml          # the app's own config, in its own file
+  agent: { model: "anthropic:claude-haiku-4-5" }   # overrides imports
+  ```
+
+  **Precedence** follows Spring Boot `spring.config.import`: an imported
+  file is *lower precedence than the file that imports it* — you import
+  shared defaults and override locally. Within one list, later entries
+  win; imports compose transitively; cycles raise. Paths resolve
+  relative to the importing file and get `${ENV}` interpolation. The
+  directive is **consumed by the loader** (popped before validation), so
+  it never collides with the root model's `extra="forbid"` and
+  `config show --resolved` shows the merged result, not the directive.
+  This is declarative — data, not code (ADR-0013) — and directly answers
+  the "tomorrow someone wants their own config file" need. Prior art:
   Spring `spring.config.import`, Viper multi-source, kustomize layers.
-  Built only on demand — it directly answers the "tomorrow someone
-  wants their own config file" need without forfeiting the machinery.
 
 ### 4.5 Phasing
 
@@ -171,7 +187,7 @@ conflated:
 |---|---|---|---|
 | **1** | `app:` field + `app_as()` accessor + docs | **0.5.0** ✅ | [enh-002](../enhancements/enh-002-app-config-passthrough.md) |
 | **2** | Registered typed sections (entry points) + `config validate` coverage | **0.5.0** ✅ | this feat |
-| **3** | Pluggable config **sources** (extra files) | on demand | this feat §4.4 |
+| **3** | Pluggable config **sources** — `imports:` directive | **0.5.0** ✅ | this feat §4.4 |
 
 Phase 1 is a forward-compatible slice: `app.<section>` becomes a
 registered section in Phase 2 with **no breaking change** — the raw
@@ -203,6 +219,15 @@ accessor (Zod), and (Phase 2) section registration via npm
   during `config validate`; a typo under a registered section fails;
   an unregistered section is left untouched; `strict=False` tolerates a
   not-yet-installed section package.
+- **Phase 3 unit (real files):** an `imports:` file merges into the base;
+  the importing file overrides its imports; later imports beat earlier;
+  transitive imports compose; cycles + missing files + malformed
+  directives raise; relative/absolute/`${ENV}` paths resolve; imported
+  *values* get interpolation; `--override` still wins; the env overlay is
+  import-aware; the directive is consumed (absent from `--resolved`); and
+  the #86 scenario (app config in its own imported file) validates via
+  `app_as`. Plus CLI subprocess e2e over the real `agentforge config
+  {show,validate}` binary.
 - **Doc test:** the `agentforge-graph` repro from #86 validates.
 
 ## 8. Risks & open questions
@@ -218,8 +243,11 @@ accessor (Zod), and (Phase 2) section registration via npm
 
 - Loosening `extra="forbid"` on framework keys (rejected in ADR-0022).
 - Turing-complete config / templating (ADR-0013 stands).
-- Phase 3 pluggable sources beyond the design sketch in §4.4 (built on
-  demand).
+- Non-file config **sources** (remote/HTTP, secrets managers, env-only
+  providers). Phase 3 ships file imports; a future `agentforge.config_sources`
+  provider interface could generalize beyond files if a real need appears.
+- `optional:`-prefixed imports (Spring-style soft imports). Phase 3
+  imports are required — a missing import is a config error. Add on demand.
 
 ## 10. References
 
@@ -269,5 +297,19 @@ discovery resolves the section, and runs the real `agentforge config
 validate` binary in a subprocess against it (valid → exit 0; typo →
 exit 1).
 
-**Phase 3 — not started.** Pluggable config *sources* (separate files,
-`spring.config.import`-style). On demand.
+**Phase 3 — shipped (0.5.0).** Pluggable config *sources* via the
+`imports:` directive — a reserved top-level list of additional config
+files, resolved entirely in the loader
+(`agentforge_core/config/loader.py`, `_load_file_with_imports`). Imports
+sit at lower precedence than the importing file (Spring
+`spring.config.import` semantics); later entries in a list win; imports
+compose transitively with cycle detection; paths resolve relative to the
+importer and get `${ENV}` interpolation; the directive is popped before
+validation so it never reaches the strict root model and `--resolved`
+shows the merged result. No schema or CLI changes were needed — imported
+values ride the existing interpolation / layering / override / validation
+passes. Covered by `tests/unit/test_config_imports.py` (18, real files)
+and `tests/integration/test_config_imports_cli.py` (4, real
+`agentforge config` subprocess). Brought forward from on-demand to ship
+with Phases 1 & 2 in 0.5.0. Stays within ADR-0013 (config is data, not
+code) — no new ADR required.
