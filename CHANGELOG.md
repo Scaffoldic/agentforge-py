@@ -9,6 +9,43 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Added
+
+- **enh-002 / feat-026 Phase 1 — reserved `app:` namespace.**
+  `agentforge.yaml` now accepts a top-level `app:` block for
+  **application** config. The framework stores the subtree but does not
+  interpret it; a consuming agent validates it with its own Pydantic
+  model via the new `AgentForgeConfig.app_as(model, key=None)` accessor
+  (`key=None` → whole `app:`; otherwise the `app[key]` subtree). Values
+  under `app:` ride the existing loader passes, so they get `${ENV}`
+  interpolation, env-file layering, dotted-path overrides, and
+  `config show --resolved` for free. Every other top-level key stays
+  strict (`extra="forbid"`), so framework-key typos are still caught.
+  Resolves issue #86 (raised by a derived agent that needed its own
+  config in the one file it already ships). Adding a field with a safe
+  default is a minor bump under ADR-0007. See
+  [ADR-0022](docs/adr/0022-app-passthrough-for-application-config.md).
+
+- **feat-026 Phase 2 — registered, validated `app:` sections.** A
+  derived agent or plugin can register a Pydantic schema per
+  `app.<section>` via a new `agentforge.config_sections` entry-point
+  group (mirroring module discovery, ADR-0004):
+
+  ```toml
+  [project.entry-points."agentforge.config_sections"]
+  graph = "agentforge_graph.config:GraphConfig"
+  ```
+
+  `agentforge config validate` now validates each registered section
+  present under `app:` — the same fail-fast parity `modules.*` already
+  has. Registered sections are checked strictly; unregistered sections
+  stay free-form (like an undocumented `[tool.x]` in `pyproject.toml`);
+  a section whose package isn't installed is simply not discovered, so
+  validation degrades gracefully. New public helpers
+  `discover_app_sections()` and `validate_app_config()` in
+  `agentforge_core.config`. See
+  [feat-026](docs/features/feat-026-application-config-extension.md).
+
 ### Fixed
 
 - **bug-021 (P1):** `agentforge add module` / `remove module` now use

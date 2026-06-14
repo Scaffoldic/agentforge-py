@@ -55,7 +55,7 @@ Template: [`/.claude/templates/adr.md`](../../.claude/templates/adr.md).
 | [0019](./0019-chatsession-as-wrapper-over-agent.md) | `ChatSession` as wrapper over `Agent` (not a new class) | Accepted | architecture, deployment |
 | [0020](./0020-safety-guardrails-separate-from-legacyluators.md) | Safety guardrails as a separate feature with three ABCs (vs evaluators) | Accepted | architecture, security |
 | [0021](./0021-native-typescript-scaffolding-engine.md) | Native TypeScript scaffolding engine (companion to ADR-0005) | Accepted | scaffolding, upgrade, typescript |
-| [0022](./0022-app-passthrough-for-application-config.md) | Reserved `app:` block for application config in `agentforge.yaml` | Proposed | architecture, config |
+| [0022](./0022-app-passthrough-for-application-config.md) | Reserved `app:` block for application config in `agentforge.yaml` | Accepted | architecture, config |
 
 ## Process
 

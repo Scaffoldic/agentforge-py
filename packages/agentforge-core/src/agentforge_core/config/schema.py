@@ -15,9 +15,11 @@ is the data-side representation.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+_AppModelT = TypeVar("_AppModelT", bound=BaseModel)
 
 
 def _normalise_named_entry(value: Any) -> Any:
@@ -470,3 +472,34 @@ class AgentForgeConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     guardrail_policy: GuardrailPolicy = Field(default_factory=GuardrailPolicy)
+    app: dict[str, Any] = Field(default_factory=dict)
+    """Reserved namespace for **application** config (enh-002, feat-026
+    Phase 1). The framework accepts this subtree but does not interpret
+    it: a consuming agent puts its own config here and validates it with
+    its own Pydantic model via :meth:`app_as`. Every other top-level key
+    stays strict (`extra="forbid"`), so framework-key typos are still
+    caught. Values inside `app:` get `${ENV}` interpolation, env-file
+    layering, dotted-path overrides, and `config show --resolved` for
+    free — they ride the same loader passes as framework keys. The
+    framework performs no *registered-schema* validation inside `app:`
+    in Phase 1; that arrives in feat-026 Phase 2."""
+
+    def app_as(self, model: type[_AppModelT], key: str | None = None) -> _AppModelT:
+        """Validate and return an application-config subtree.
+
+        `key=None` validates the whole `app:` mapping; otherwise the
+        `app[key]` subtree (missing key → empty mapping, so the caller's
+        model supplies its own defaults). The caller's model owns its own
+        strictness, so app-key typos surface here — strictness is
+        delegated into `app:`, not lost.
+
+        Example::
+
+            class GraphConfig(BaseModel):
+                store: StoreConfig
+
+
+            graph_cfg = cfg.app_as(GraphConfig, "graph")
+        """
+        raw = self.app if key is None else self.app.get(key, {})
+        return model.model_validate(raw)

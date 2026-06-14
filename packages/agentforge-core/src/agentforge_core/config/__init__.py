@@ -20,6 +20,10 @@ bump; removing or renaming requires a major bump.
 
 from __future__ import annotations
 
+from agentforge_core.config.app_sections import (
+    discover_app_sections,
+    validate_app_config,
+)
 from agentforge_core.config.loader import load_config, parse_overrides
 from agentforge_core.config.module_schemas import validate_module_configs
 from agentforge_core.config.schema import (
@@ -56,7 +60,9 @@ __all__ = [
     "RerankerEntry",
     "RetrievalConfig",
     "RetrieverModuleConfig",
+    "discover_app_sections",
     "load_config",
     "parse_overrides",
+    "validate_app_config",
     "validate_module_configs",
 ]

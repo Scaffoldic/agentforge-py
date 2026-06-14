@@ -6,10 +6,10 @@
 |---|---|
 | **ID** | feat-026 |
 | **Title** | Application config extension — reserved `app:` namespace, registered typed sections, pluggable sources |
-| **Status** | accepted (design approved; Phase 1 ships via enh-002 in 0.5.0, Phase 2 in this feat) |
+| **Status** | accepted — Phases 1 & 2 shipped in 0.5.0; Phase 3 on demand |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-13 |
-| **Target version** | 0.5 (Phase 1) → 0.6 (Phase 2) |
+| **Target version** | 0.5.0 (Phases 1 & 2) → on-demand (Phase 3) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-core`, `agentforge` |
 | **Depends on** | feat-012 (configuration system) |
@@ -169,8 +169,8 @@ conflated:
 
 | Phase | Scope | Ships in | Spec |
 |---|---|---|---|
-| **1** | `app:` field + `app_as()` accessor + docs | **0.5.0** | [enh-002](../enhancements/enh-002-app-config-passthrough.md) |
-| **2** | Registered typed sections (entry points) + `config validate` coverage | 0.6 | this feat |
+| **1** | `app:` field + `app_as()` accessor + docs | **0.5.0** ✅ | [enh-002](../enhancements/enh-002-app-config-passthrough.md) |
+| **2** | Registered typed sections (entry points) + `config validate` coverage | **0.5.0** ✅ | this feat |
 | **3** | Pluggable config **sources** (extra files) | on demand | this feat §4.4 |
 
 Phase 1 is a forward-compatible slice: `app.<section>` becomes a
@@ -235,6 +235,39 @@ accessor (Zod), and (Phase 2) section registration via npm
 
 ## Implementation status
 
-Not started. Design approved 2026-06-13 (this spec + revised ADR-0022).
-Phase 1 (`app:` field + `app_as`) is specified in enh-002 and targeted
-at 0.5.0; Phase 2 (registered sections) targeted at 0.6.
+**Phase 1 — shipped (0.5.0).** The reserved `app:` namespace
+(`dict[str, Any]`, default `{}`) and the typed accessor
+`AgentForgeConfig.app_as(model, key=None)` landed in
+`agentforge_core/config/schema.py` per enh-002. `app:` rides the
+existing loader passes, so values get `${ENV}` interpolation, env-file
+layering, dotted-path overrides, and `config show --resolved` with no
+extra wiring; framework keys stay strict (`extra="forbid"`). Covered by
+`tests/unit/test_config_app_passthrough.py` (11 tests: field default,
+acceptance, intact typo-protection on non-`app` keys, `app_as` keyed /
+whole / missing-key / delegated-strictness, interpolation + env-file
+layering inside `app:`, and resolved-dump inclusion). ADR-0022 accepted.
+
+**Phase 2 — shipped (0.5.0).** Registered typed sections via the new
+`agentforge.config_sections` entry-point group. A derived agent maps
+`app.<section>` → a Pydantic schema; `discover_app_sections()` scans the
+group and `validate_app_config(cfg)` validates each registered section
+present in `app:` (`agentforge_core/config/app_sections.py`), mirroring
+`validate_module_configs`: registered sections are strict, unregistered
+ones stay free-form, and a not-installed section's package simply isn't
+discovered (graceful degradation, no special-casing). Wired into
+`agentforge config validate` after module validation. The runtime
+resolver skips the `config_sections` group so schemas don't pollute the
+module registry (`resolver/discover.py`). Covered by
+`tests/unit/test_config_app_sections.py` (11), the resolver-exclusion
+test, and three CLI tests in `agentforge/tests/unit/test_cli_config.py`.
+Brought forward from 0.6 — ships alongside Phase 1 in the same 0.5.0
+release train. Beyond the monkeypatched unit tests, a real end-to-end
+suite (`tests/integration/test_app_sections_real_discovery.py`, 6 tests)
+proves the path with **no mocking**: it lays down a real `.dist-info` +
+`entry_points.txt` on `sys.path` so actual `importlib.metadata`
+discovery resolves the section, and runs the real `agentforge config
+validate` binary in a subprocess against it (valid → exit 0; typo →
+exit 1).
+
+**Phase 3 — not started.** Pluggable config *sources* (separate files,
+`spring.config.import`-style). On demand.
