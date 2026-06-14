@@ -261,7 +261,13 @@ module registry (`resolver/discover.py`). Covered by
 `tests/unit/test_config_app_sections.py` (11), the resolver-exclusion
 test, and three CLI tests in `agentforge/tests/unit/test_cli_config.py`.
 Brought forward from 0.6 — ships alongside Phase 1 in the same 0.5.0
-release train.
+release train. Beyond the monkeypatched unit tests, a real end-to-end
+suite (`tests/integration/test_app_sections_real_discovery.py`, 6 tests)
+proves the path with **no mocking**: it lays down a real `.dist-info` +
+`entry_points.txt` on `sys.path` so actual `importlib.metadata`
+discovery resolves the section, and runs the real `agentforge config
+validate` binary in a subprocess against it (valid → exit 0; typo →
+exit 1).
 
 **Phase 3 — not started.** Pluggable config *sources* (separate files,
 `spring.config.import`-style). On demand.
