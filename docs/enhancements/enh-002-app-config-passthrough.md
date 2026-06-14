@@ -14,7 +14,7 @@
 |---|---|
 | **ID** | enh-002 |
 | **Title** | Reserved `app:` block for application config in `agentforge.yaml` |
-| **Status** | `proposed` |
+| **Status** | `shipped` (0.5.0) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-13 |
 | **Target version** | 0.5.0 |
@@ -154,7 +154,20 @@ key becomes accepted.
 | Future demand for fully separate app files | Deferred to feat-026 Phase 3 (pluggable config **sources**) — `app:` does not preclude it; it layers on top |
 | Users want framework-level validation of `app:` | Arrives in feat-026 Phase 2 (registered sections + `config validate` coverage). Phase 1 delegates validation to the app's own model via `app_as` |
 
-## 8. References
+## 8. Implementation status
+
+**Shipped in 0.5.0.** `app: dict[str, Any] = Field(default_factory=dict)`
+and `AgentForgeConfig.app_as(model, key=None)` added to
+`agentforge_core/config/schema.py`; `model_config` stays
+`strict=True, extra="forbid"`. No loader changes were needed —
+interpolation (`_walk`), env-file layering (`_deep_merge`), dotted
+overrides, and the `config show --resolved` dump all already operate on
+the raw mapping before `model_validate`, so `app:` rides them for free
+(verified by tests, not assumed). Covered by
+`packages/agentforge-core/tests/unit/test_config_app_passthrough.py`
+(11 tests, all green; mypy `--strict` clean). ADR-0022 accepted.
+
+## 9. References
 
 - Reported in: issue #86 (`agentforge-graph`)
 - Decision: [ADR-0022](../adr/0022-app-passthrough-for-application-config.md)

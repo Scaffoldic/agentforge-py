@@ -235,6 +235,22 @@ accessor (Zod), and (Phase 2) section registration via npm
 
 ## Implementation status
 
-Not started. Design approved 2026-06-13 (this spec + revised ADR-0022).
-Phase 1 (`app:` field + `app_as`) is specified in enh-002 and targeted
-at 0.5.0; Phase 2 (registered sections) targeted at 0.6.
+**Phase 1 — shipped (0.5.0).** The reserved `app:` namespace
+(`dict[str, Any]`, default `{}`) and the typed accessor
+`AgentForgeConfig.app_as(model, key=None)` landed in
+`agentforge_core/config/schema.py` per enh-002. `app:` rides the
+existing loader passes, so values get `${ENV}` interpolation, env-file
+layering, dotted-path overrides, and `config show --resolved` with no
+extra wiring; framework keys stay strict (`extra="forbid"`). Covered by
+`tests/unit/test_config_app_passthrough.py` (11 tests: field default,
+acceptance, intact typo-protection on non-`app` keys, `app_as` keyed /
+whole / missing-key / delegated-strictness, interpolation + env-file
+layering inside `app:`, and resolved-dump inclusion). ADR-0022 accepted.
+
+**Phase 2 — not started.** Registered typed sections via the
+`agentforge.config_sections` entry-point group, validated in
+`agentforge config validate` by reusing the `module_schemas.py` engine.
+Targeted at 0.6.
+
+**Phase 3 — not started.** Pluggable config *sources* (separate files,
+`spring.config.import`-style). On demand.

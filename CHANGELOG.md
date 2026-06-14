@@ -9,6 +9,23 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Added
+
+- **enh-002 / feat-026 Phase 1 — reserved `app:` namespace.**
+  `agentforge.yaml` now accepts a top-level `app:` block for
+  **application** config. The framework stores the subtree but does not
+  interpret it; a consuming agent validates it with its own Pydantic
+  model via the new `AgentForgeConfig.app_as(model, key=None)` accessor
+  (`key=None` → whole `app:`; otherwise the `app[key]` subtree). Values
+  under `app:` ride the existing loader passes, so they get `${ENV}`
+  interpolation, env-file layering, dotted-path overrides, and
+  `config show --resolved` for free. Every other top-level key stays
+  strict (`extra="forbid"`), so framework-key typos are still caught.
+  Resolves issue #86 (raised by a derived agent that needed its own
+  config in the one file it already ships). Adding a field with a safe
+  default is a minor bump under ADR-0007. See
+  [ADR-0022](docs/adr/0022-app-passthrough-for-application-config.md).
+
 ### Fixed
 
 - **bug-021 (P1):** `agentforge add module` / `remove module` now use

@@ -6,7 +6,7 @@
 |---|---|
 | **Number** | 0022 |
 | **Title** | Reserved `app:` block for application config in `agentforge.yaml` |
-| **Status** | Proposed |
+| **Status** | Accepted |
 | **Date** | 2026-06-13 |
 | **Deciders** | kjoshi |
 | **Tags** | architecture, config |
