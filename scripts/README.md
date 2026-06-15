@@ -17,6 +17,7 @@ hooks are no-ops when the scripts don't yet exist).
 | `check_no_magic_numbers.py` | Verifies production Python code under `python/` has no magic numbers / hardcoded thresholds (per `.claude/standards/configuration.md`) | feat-001 |
 | `coverage_ratchet.py` | CI-only. Compares PR coverage to main; fails if coverage regressed by > 0.5% | feat-001 |
 | `testpypi_dry_run.py` | Mandatory pre-release step. Builds all 34 packages, uploads to TestPyPI in rate-limit-aware batches, smoke-installs `agentforge-py` from TestPyPI and imports `agentforge.Agent`. Driven by `playbooks/publish-to-pypi.md` §3 and `.claude/checklists/pre-release.md` §8. | v0.2.1 |
+| `packaged_e2e.py` | Packaged-wheel E2E gate. Builds the wheels (or reuses `dist/` with `--skip-build`), installs **only the local `agentforge-*` wheels** into a throwaway venv, then runs the real CLI end-to-end — `agentforge new` (proves templates shipped), `config validate` (reproduces #86, then proves the `app:` + `imports:` + registered-section fix), and `add module` in the scaffold (proves the bug-021 uv installer persists). Run by `release.yml` as a **pre-publish gate**; runnable locally via `python scripts/packaged_e2e.py`. | v0.5.0 |
 
 ## Implementation note
 

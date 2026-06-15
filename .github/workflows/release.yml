@@ -61,9 +61,36 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  packaged-e2e:
+    name: Packaged-wheel E2E gate
+    needs: [build]
+    runs-on: ubuntu-latest
+    # Install the freshly-built wheels into a clean venv and run the
+    # real CLI end-to-end (scaffold + config validate + add module).
+    # Catches packaging bugs — missing templates, entry points, or
+    # module data — BEFORE the publish job can run. See
+    # scripts/packaged_e2e.py.
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - name: Set up Python
+        run: uv python install 3.13
+      - name: Download build artefacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Run packaged-wheel E2E against the built artefacts
+        run: uv run --no-project python scripts/packaged_e2e.py --skip-build --dist dist
+
   publish:
     name: Publish to PyPI
-    needs: [build]
+    needs: [build, packaged-e2e]
     runs-on: ubuntu-latest
     # The `pypi` environment gates this job on a manual approve
     # click (configured in Settings → Environments → pypi).

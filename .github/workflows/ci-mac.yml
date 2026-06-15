@@ -51,6 +51,9 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.13"]
+    env:
+      # bug-021 was first found on macOS — run the real uv-add test here too.
+      RUN_LIVE_UV: "1"
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -64,6 +67,7 @@ jobs:
       - name: Pytest live (mcp + a2a only; service-backed suites skip)
         run: |
           uv run pytest -q -m live \
+            packages/agentforge/tests/integration \
             packages/agentforge-mcp/tests/integration \
             packages/agentforge-a2a/tests/integration \
             packages/agentforge-chat-history-postgres/tests/integration \

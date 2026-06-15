@@ -117,6 +117,9 @@ jobs:
     env:
       RUN_LIVE_POSTGRES_DSN: postgresql://postgres:test@localhost:5432/agentforge_test
       REDIS_URL: redis://localhost:6379
+      # bug-021: opt the real `agentforge add module` uv test into CI
+      # (builds a real uv project + spawns `uv add`). uv is on PATH here.
+      RUN_LIVE_UV: "1"
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -130,6 +133,7 @@ jobs:
       - name: Pytest live (every package shipping integration/)
         run: |
           uv run pytest -q -m live \
+            packages/agentforge/tests/integration \
             packages/agentforge-mcp/tests/integration \
             packages/agentforge-a2a/tests/integration \
             packages/agentforge-chat-history-postgres/tests/integration \
