@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -76,17 +76,27 @@ class MCPServer:
         port: int = 8765,
         allowed: tuple[str, ...] = (),
         server_name: str = "agentforge",
+        middleware: Sequence[Any] | None = None,
         runner: MCPServerRunner | None = None,
     ) -> MCPServer:
         """Build an HTTP MCP server with `tools` already registered.
 
         Like `from_stdio`, registers tools up front so `serve()` advertises
         them without a manual `register_tools()` call (bug-013).
+
+        `middleware` (enh-003) is a sequence of Starlette `Middleware`
+        instances applied to the streamable-HTTP app the default runner
+        builds — the seam for adding auth (e.g. a bearer-token gate),
+        rate limiting, or CORS in front of an otherwise open transport,
+        without re-implementing the HTTP serve path via a custom
+        `runner`. Ignored when a custom `runner` is supplied (the runner
+        owns its own app).
         """
         runner = runner or _build_http_server_runner(
             server_name=server_name,
             host=host,
             port=port,
+            middleware=middleware,
         )
         server = cls(tools=tools, runner=runner, allowed=allowed)
         server.register_tools()
@@ -171,6 +181,7 @@ def _build_http_server_runner(  # pragma: no cover — exercised only with `mcp`
     server_name: str,
     host: str,
     port: int,
+    middleware: Sequence[Any] | None = None,
 ) -> MCPServerRunner:
     try:
         from mcp.server import Server  # noqa: PLC0415
@@ -180,7 +191,31 @@ def _build_http_server_runner(  # pragma: no cover — exercised only with `mcp`
             "(or `agentforge-py[mcp]`) to expose tools as an MCP HTTP server."
         )
         raise ModuleError(msg) from exc
-    return _SDKServerRunner(server=Server(server_name), transport="http", host=host, port=port)
+    return _SDKServerRunner(
+        server=Server(server_name),
+        transport="http",
+        host=host,
+        port=port,
+        middleware=middleware,
+    )
+
+
+def _build_http_app(asgi_handler: Any, *, lifespan: Any, middleware: Sequence[Any] | None) -> Any:
+    """Assemble the streamable-HTTP Starlette app, applying `middleware` (enh-003).
+
+    Mounts `asgi_handler` at `/mcp` and wraps the app in any caller-supplied
+    Starlette `Middleware` (auth, rate-limit, CORS, …). Split out from
+    `_serve_http` so the middleware seam is unit-testable without the mcp
+    SDK or a live uvicorn server — the `/mcp` route is just an ASGI app.
+    """
+    from starlette.applications import Starlette  # noqa: PLC0415
+    from starlette.routing import Mount  # noqa: PLC0415
+
+    return Starlette(
+        routes=[Mount("/mcp", app=asgi_handler)],
+        middleware=list(middleware) if middleware else None,
+        lifespan=lifespan,
+    )
 
 
 @dataclass
@@ -214,6 +249,7 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
         transport: str,
         host: str | None = None,
         port: int | None = None,
+        middleware: Sequence[Any] | None = None,
     ) -> None:
         if transport not in ("stdio", "http"):
             # Fail fast at construction, not at serve() (enh-001 §5).
@@ -223,6 +259,7 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
         self._transport = transport
         self._host = host
         self._port = port
+        self._middleware = middleware
         self._tools: dict[str, _RegisteredTool] = {}
         self._serve_task: asyncio.Task[None] | None = None
         self._uv_server: Any = None
@@ -293,8 +330,6 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
         from mcp.server.streamable_http_manager import (  # noqa: PLC0415
             StreamableHTTPSessionManager,
         )
-        from starlette.applications import Starlette  # noqa: PLC0415
-        from starlette.routing import Mount  # noqa: PLC0415
 
         manager = StreamableHTTPSessionManager(app=self._server, json_response=True, stateless=True)
 
@@ -306,7 +341,7 @@ class _SDKServerRunner:  # pragma: no cover — only with `mcp` SDK + `-m live`
             async with manager.run():
                 yield
 
-        app = Starlette(routes=[Mount("/mcp", app=_asgi)], lifespan=_lifespan)
+        app = _build_http_app(_asgi, lifespan=_lifespan, middleware=self._middleware)
         config = uvicorn.Config(
             app,
             host=self._host or "127.0.0.1",
