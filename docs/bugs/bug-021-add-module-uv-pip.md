@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.3.0
 severity: P1
 found-in: 0.2.4
 found-via: agentforge-graph
