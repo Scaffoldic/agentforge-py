@@ -90,6 +90,14 @@ return (
 
 ## Notes
 
+- A companion run-lifecycle fix ships alongside: `agentforge run` never
+  closed the agent (and therefore its memory store) after a one-shot
+  run. With an in-process `InMemoryStore` that was harmless, but a real
+  backend leaked its connection — for sqlite the `aiosqlite` worker
+  thread then raised "Event loop is closed" after the loop tore down,
+  which `pytest` escalates to a test error. `_dispatch` now closes the
+  agent in a `finally`. This only became reachable once `--record` /
+  `--replay` exercised a configured store (bug-022 + this fix).
 - Found while building the README demo gif, whose "it really runs,
   offline" beat uses `agentforge run --replay` against a recorded
   fixture. This bug (plus [bug-022](./bug-022-memory-from-config.md),

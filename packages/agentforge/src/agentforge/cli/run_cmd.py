@@ -122,7 +122,15 @@ async def _dispatch(args: argparse.Namespace) -> int:
         sys.stderr.write(f"agentforge run: failed to construct agent: {exc}\n")
         return EXIT_GENERIC
 
-    return await _run_and_emit(agent, task, args.output_format, replay_pipeline=replay_pipeline)
+    # Close the agent (and its memory store) when the one-shot run ends.
+    # Without this a configured backend leaks its connection — for
+    # sqlite the aiosqlite worker thread then raises "Event loop is
+    # closed" after the loop tears down (surfaced once `--record` /
+    # `--replay` exercised a real store; bug-023).
+    try:
+        return await _run_and_emit(agent, task, args.output_format, replay_pipeline=replay_pipeline)
+    finally:
+        await agent.close()
 
 
 def _load_config_or_exit(args: argparse.Namespace) -> Any:
