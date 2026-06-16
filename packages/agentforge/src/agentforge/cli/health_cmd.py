@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -113,6 +114,8 @@ async def _check_backends(config: AgentForgeConfig) -> list[dict[str, Any]]:
 async def _probe(label: str, factory: Any) -> dict[str, Any]:
     try:
         instance = factory()
+        if inspect.isawaitable(instance):
+            instance = await instance
         if instance is None:
             return {"name": label, "kind": "backend", "ok": True, "detail": "none configured"}
         init = getattr(instance, "init_schema", None)

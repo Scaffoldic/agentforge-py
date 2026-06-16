@@ -47,6 +47,23 @@ class Neo4jMemoryStore(MemoryStore):
         driver = AsyncGraphDatabase.driver(url, auth=auth)
         return cls(runner=_Neo4jDriverRunner(driver, database))
 
+    @classmethod
+    async def from_config(
+        cls,
+        *,
+        url: str,
+        auth: tuple[str, str] | list[str],
+        database: str = "neo4j",
+    ) -> Neo4jMemoryStore:  # pragma: no cover — exercised only with `-m live`.
+        """Build from a `modules.memory.config` block (bug-022).
+
+        Async config-driven factory matching the framework convention.
+        `auth` arrives from YAML as a 2-item list; coerce to the tuple
+        `from_url` expects.
+        """
+        username, password = auth
+        return await cls.from_url(url, auth=(username, password), database=database)
+
     async def __aenter__(self) -> Neo4jMemoryStore:
         return self
 
