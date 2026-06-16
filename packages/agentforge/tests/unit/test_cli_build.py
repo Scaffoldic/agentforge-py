@@ -460,3 +460,36 @@ async def test_build_agent_wires_protocol_tools_and_closes_bridges() -> None:
     assert bridge.closed is False
     await agent.close()
     assert bridge.closed is True
+
+
+@pytest.mark.parametrize("provider_type", ["bedrock", "anthropic", "openai", "litellm", "ollama"])
+def test_provider_config_is_forwarded_to_every_installed_provider(
+    provider_type: str,
+) -> None:
+    """enh-004 class guard: `providers.config` must reach EVERY shipped
+    provider's constructor — not just the fake/bedrock we fixed against.
+
+    An unknown config key is forwarded and rejected (a `TypeError` at
+    call binding → `ModuleError`), which proves the block isn't dropped.
+    This works for any installed provider WITHOUT its vendor SDK: the
+    bad kwarg is rejected before `__init__` runs (before the SDK import).
+    """
+    try:
+        Resolver.global_().resolve("providers", provider_type)
+    except ModuleError:
+        pytest.skip(f"provider {provider_type!r} not installed")
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        providers={
+            "default": ProviderConfig(
+                type=provider_type,
+                model="some-model",
+                config={"definitely_not_a_real_kwarg": 1},
+            )
+        },
+        modules=ModulesConfig(),
+    )
+    from agentforge.cli._build import _resolve_llm  # noqa: PLC0415
+
+    with pytest.raises(ModuleError, match=r"rejected providers\.default\.config"):
+        _resolve_llm(cfg)
