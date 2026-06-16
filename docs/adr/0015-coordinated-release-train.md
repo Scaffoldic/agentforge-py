@@ -46,10 +46,10 @@ benefits of separation without the drift cost?
 
 **Chosen: Option 3 — Coordinated release train.**
 
-A framework release (e.g. v0.5.0) cuts every in-scope package to the
+A framework release (e.g. v0.3.0) cuts every in-scope package to the
 same minor version simultaneously. Between releases, individual modules
 may publish patch versions (bug fixes only). Every module's `pyproject.toml`
-pins `agentforge-core ~=0.5` (compatible with 0.5.x; not 0.6.x). The
+pins `agentforge-core ~=0.3` (compatible with 0.3.x; not 0.4.x). The
 release train runs every 2 weeks during 0.x; monthly during 1.x.
 
 This shape mirrors monorepo workspaces (uv workspaces, pnpm workspaces)

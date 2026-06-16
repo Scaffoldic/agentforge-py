@@ -9,6 +9,8 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-16
+
 ### Added
 
 - **enh-004 — provider `config:` passthrough + Bedrock STS assume-role.**

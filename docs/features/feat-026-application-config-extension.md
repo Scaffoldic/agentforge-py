@@ -6,10 +6,10 @@
 |---|---|
 | **ID** | feat-026 |
 | **Title** | Application config extension — reserved `app:` namespace, registered typed sections, pluggable sources |
-| **Status** | accepted — Phases 1, 2 & 3 all shipped in 0.5.0 |
+| **Status** | accepted — Phases 1, 2 & 3 all shipped in 0.3.0 |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-13 |
-| **Target version** | 0.5.0 (all three phases) |
+| **Target version** | 0.3.0 (all three phases) |
 | **Languages** | both |
 | **Module package(s)** | `agentforge-core`, `agentforge` |
 | **Depends on** | feat-012 (configuration system) |
@@ -185,9 +185,9 @@ conflated:
 
 | Phase | Scope | Ships in | Spec |
 |---|---|---|---|
-| **1** | `app:` field + `app_as()` accessor + docs | **0.5.0** ✅ | [enh-002](../enhancements/enh-002-app-config-passthrough.md) |
-| **2** | Registered typed sections (entry points) + `config validate` coverage | **0.5.0** ✅ | this feat |
-| **3** | Pluggable config **sources** — `imports:` directive | **0.5.0** ✅ | this feat §4.4 |
+| **1** | `app:` field + `app_as()` accessor + docs | **0.3.0** ✅ | [enh-002](../enhancements/enh-002-app-config-passthrough.md) |
+| **2** | Registered typed sections (entry points) + `config validate` coverage | **0.3.0** ✅ | this feat |
+| **3** | Pluggable config **sources** — `imports:` directive | **0.3.0** ✅ | this feat §4.4 |
 
 Phase 1 is a forward-compatible slice: `app.<section>` becomes a
 registered section in Phase 2 with **no breaking change** — the raw
@@ -263,7 +263,7 @@ accessor (Zod), and (Phase 2) section registration via npm
 
 ## Implementation status
 
-**Phase 1 — shipped (0.5.0).** The reserved `app:` namespace
+**Phase 1 — shipped (0.3.0).** The reserved `app:` namespace
 (`dict[str, Any]`, default `{}`) and the typed accessor
 `AgentForgeConfig.app_as(model, key=None)` landed in
 `agentforge_core/config/schema.py` per enh-002. `app:` rides the
@@ -275,7 +275,7 @@ acceptance, intact typo-protection on non-`app` keys, `app_as` keyed /
 whole / missing-key / delegated-strictness, interpolation + env-file
 layering inside `app:`, and resolved-dump inclusion). ADR-0022 accepted.
 
-**Phase 2 — shipped (0.5.0).** Registered typed sections via the new
+**Phase 2 — shipped (0.3.0).** Registered typed sections via the new
 `agentforge.config_sections` entry-point group. A derived agent maps
 `app.<section>` → a Pydantic schema; `discover_app_sections()` scans the
 group and `validate_app_config(cfg)` validates each registered section
@@ -288,7 +288,7 @@ resolver skips the `config_sections` group so schemas don't pollute the
 module registry (`resolver/discover.py`). Covered by
 `tests/unit/test_config_app_sections.py` (11), the resolver-exclusion
 test, and three CLI tests in `agentforge/tests/unit/test_cli_config.py`.
-Brought forward from 0.6 — ships alongside Phase 1 in the same 0.5.0
+Brought forward from 0.6 — ships alongside Phase 1 in the same 0.3.0
 release train. Beyond the monkeypatched unit tests, a real end-to-end
 suite (`tests/integration/test_app_sections_real_discovery.py`, 6 tests)
 proves the path with **no mocking**: it lays down a real `.dist-info` +
@@ -297,7 +297,7 @@ discovery resolves the section, and runs the real `agentforge config
 validate` binary in a subprocess against it (valid → exit 0; typo →
 exit 1).
 
-**Phase 3 — shipped (0.5.0).** Pluggable config *sources* via the
+**Phase 3 — shipped (0.3.0).** Pluggable config *sources* via the
 `imports:` directive — a reserved top-level list of additional config
 files, resolved entirely in the loader
 (`agentforge_core/config/loader.py`, `_load_file_with_imports`). Imports
@@ -311,5 +311,5 @@ values ride the existing interpolation / layering / override / validation
 passes. Covered by `tests/unit/test_config_imports.py` (18, real files)
 and `tests/integration/test_config_imports_cli.py` (4, real
 `agentforge config` subprocess). Brought forward from on-demand to ship
-with Phases 1 & 2 in 0.5.0. Stays within ADR-0013 (config is data, not
+with Phases 1 & 2 in 0.3.0. Stays within ADR-0013 (config is data, not
 code) — no new ADR required.

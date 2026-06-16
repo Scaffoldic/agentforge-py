@@ -15,10 +15,10 @@
 |---|---|
 | **ID** | enh-004 |
 | **Title** | Pass `providers.config` to the provider constructor + Bedrock `role_arn` assume-role |
-| **Status** | `shipped` (0.5.0) |
+| **Status** | `shipped` (0.3.0) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-16 |
-| **Target version** | 0.5.0 |
+| **Target version** | 0.3.0 |
 | **Languages** | `python` |
 | **Improves** | feat-003 (LLM provider abstraction) |
 

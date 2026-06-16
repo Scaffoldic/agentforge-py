@@ -15,10 +15,10 @@
 |---|---|
 | **ID** | enh-003 |
 | **Title** | `middleware=` seam on `MCPServer.from_http` |
-| **Status** | `shipped` (0.5.0) |
+| **Status** | `shipped` (0.3.0) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-16 |
-| **Target version** | 0.5.0 |
+| **Target version** | 0.3.0 |
 | **Languages** | `python` |
 | **Improves** | feat-013 (MCP) / enh-001 (HTTP transport) |
 
