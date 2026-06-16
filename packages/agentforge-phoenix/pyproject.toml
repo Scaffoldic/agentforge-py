@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-phoenix"
-version = "0.2.4"
+version = "0.3.0"
 description = "Arize Phoenix dashboard hook for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -27,7 +27,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.4",
+    "agentforge-core ~= 0.3.0",
 ]
 
 [project.optional-dependencies]

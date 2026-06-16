@@ -116,7 +116,7 @@ The reserved `app:` block is the **namespace** (the `[tool]` of
 `agentforge.yaml`). The decision is delivered in phases so #86 is unblocked
 immediately without building speculative machinery:
 
-- **Phase 1 (enh-002, 0.5.0):** the `app:` field + a typed accessor
+- **Phase 1 (enh-002, 0.3.0):** the `app:` field + a typed accessor
   `config.app_as(model, key)`. The agent validates its subtree with its own
   (strict, if it likes) model — so typo protection inside `app:` is
   *delegated*, not lost.

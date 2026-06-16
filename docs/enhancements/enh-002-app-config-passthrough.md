@@ -14,10 +14,10 @@
 |---|---|
 | **ID** | enh-002 |
 | **Title** | Reserved `app:` block for application config in `agentforge.yaml` |
-| **Status** | `shipped` (0.5.0) |
+| **Status** | `shipped` (0.3.0) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-13 |
-| **Target version** | 0.5.0 |
+| **Target version** | 0.3.0 |
 | **Languages** | `python` (TypeScript to follow under contract parity) |
 | **Improves** | feat-012 (configuration system) |
 | **Phase of** | feat-026 (application config extension) — this is **Phase 1** |
@@ -156,7 +156,7 @@ key becomes accepted.
 
 ## 8. Implementation status
 
-**Shipped in 0.5.0.** `app: dict[str, Any] = Field(default_factory=dict)`
+**Shipped in 0.3.0.** `app: dict[str, Any] = Field(default_factory=dict)`
 and `AgentForgeConfig.app_as(model, key=None)` added to
 `agentforge_core/config/schema.py`; `model_config` stays
 `strict=True, extra="forbid"`. No loader changes were needed —

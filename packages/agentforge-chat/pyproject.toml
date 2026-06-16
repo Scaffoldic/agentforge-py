@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-chat"
-version = "0.2.4"
+version = "0.3.0"
 description = "Chat-agent runtime (ChatSession + history drivers + truncation) for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.4",
-    "agentforge-py ~= 0.2.4",
+    "agentforge-core ~= 0.3.0",
+    "agentforge-py ~= 0.3.0",
     # aiosqlite is a hard dependency, not an optional extra: the package
     # eagerly imports SqliteChatHistory (agentforge_chat/__init__.py ->
     # sqlite.py -> `import aiosqlite`), so `import agentforge_chat` fails
