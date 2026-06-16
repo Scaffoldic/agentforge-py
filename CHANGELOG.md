@@ -11,6 +11,15 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **enh-003 — MCP HTTP transport middleware seam.** `MCPServer.from_http`
+  now accepts `middleware=[Middleware(...)]`, applied to the
+  streamable-HTTP Starlette app the default runner builds — the seam for
+  a bearer-token gate (or rate-limit / CORS) in front of an otherwise
+  open transport, without re-implementing the serve path via a custom
+  `runner`. Additive (`middleware=None` is unchanged); ignored when a
+  custom `runner` is supplied. Closes #93. See
+  [enh-003](docs/enhancements/enh-003-mcp-http-middleware-seam.md).
+
 - **feat-026 Phase 3 — `imports:` config directive (multi-file config).**
   Any `agentforge.yaml` (or env overlay, or imported file) may declare a
   top-level `imports:` list of additional config files:

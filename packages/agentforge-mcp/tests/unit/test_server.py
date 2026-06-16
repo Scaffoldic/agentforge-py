@@ -153,3 +153,60 @@ def test_set_tools_re_arms_registration() -> None:
     server.set_tools([_Echo()])
     assert server.register_tools() == 1
     assert [r["name"] for r in runner.registered] == ["lookup_user"]
+
+
+# ---- enh-003: HTTP middleware seam ----
+
+
+def _ok_asgi_app() -> Any:
+    """A trivial ASGI handler standing in for the streamable-HTTP route."""
+    from starlette.responses import PlainTextResponse  # noqa: PLC0415
+
+    async def _app(scope: Any, receive: Any, send: Any) -> None:
+        await PlainTextResponse("ok")(scope, receive, send)
+
+    return _app
+
+
+def test_build_http_app_applies_caller_middleware_as_auth_gate() -> None:
+    """enh-003: a caller-supplied Starlette middleware must wrap the app,
+    so an agent can put a bearer-token gate in front of the otherwise-open
+    MCP HTTP transport without re-implementing the serve path."""
+    pytest.importorskip("starlette")
+    from agentforge_mcp.server import _build_http_app  # noqa: PLC0415
+    from starlette.middleware import Middleware  # noqa: PLC0415
+    from starlette.middleware.base import BaseHTTPMiddleware  # noqa: PLC0415
+    from starlette.responses import PlainTextResponse  # noqa: PLC0415
+    from starlette.testclient import TestClient  # noqa: PLC0415
+
+    class _BearerGate(BaseHTTPMiddleware):
+        def __init__(self, app: Any, *, token: str) -> None:
+            super().__init__(app)
+            self._token = token
+
+        async def dispatch(self, request: Any, call_next: Any) -> Any:
+            if request.headers.get("authorization") != f"Bearer {self._token}":
+                return PlainTextResponse("unauthorized", status_code=401)
+            return await call_next(request)
+
+    app = _build_http_app(
+        _ok_asgi_app(),
+        lifespan=None,
+        middleware=[Middleware(_BearerGate, token="s3cret")],
+    )
+    client = TestClient(app)
+
+    assert client.get("/mcp").status_code == 401  # no token → gated
+    authed = client.get("/mcp", headers={"Authorization": "Bearer s3cret"})
+    assert authed.status_code == 200  # correct token → reaches the route
+    assert authed.text == "ok"
+
+
+def test_build_http_app_without_middleware_reaches_route() -> None:
+    """No middleware → the mounted ASGI route is reached directly."""
+    pytest.importorskip("starlette")
+    from agentforge_mcp.server import _build_http_app  # noqa: PLC0415
+    from starlette.testclient import TestClient  # noqa: PLC0415
+
+    app = _build_http_app(_ok_asgi_app(), lifespan=None, middleware=None)
+    assert TestClient(app).get("/mcp").status_code == 200
