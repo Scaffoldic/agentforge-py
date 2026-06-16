@@ -111,7 +111,7 @@ async def test_build_memory_resolves_driver_and_calls_init_schema() -> None:
         agent=AgentConfig(),
         modules=ModulesConfig(memory=MemoryModuleConfig(driver="build-fake-mem")),
     )
-    memory = build_memory_from_config(cfg)
+    memory = await build_memory_from_config(cfg)
     assert isinstance(memory, _FakeMemory)
 
 
@@ -126,18 +126,42 @@ async def test_build_evaluators_resolves_entries() -> None:
     assert isinstance(evaluators[0], _FakeEvaluator)
 
 
-def test_build_memory_returns_none_when_no_module_configured() -> None:
+@pytest.mark.asyncio
+async def test_build_memory_returns_none_when_no_module_configured() -> None:
     cfg = AgentForgeConfig(agent=AgentConfig(), modules=ModulesConfig())
-    assert build_memory_from_config(cfg) is None
+    assert await build_memory_from_config(cfg) is None
 
 
-def test_build_memory_errors_on_unregistered_driver() -> None:
+@pytest.mark.asyncio
+async def test_build_memory_errors_on_unregistered_driver() -> None:
     cfg = AgentForgeConfig(
         agent=AgentConfig(),
         modules=ModulesConfig(memory=MemoryModuleConfig(driver="no-such")),
     )
     with pytest.raises(ModuleError, match="No module registered for memory"):
-        build_memory_from_config(cfg)
+        await build_memory_from_config(cfg)
+
+
+@pytest.mark.asyncio
+async def test_build_memory_builds_real_sqlite_store_from_config() -> None:
+    """Regression for bug-022: a real async backend (sqlite) must build
+    from `modules.memory` config via its async `from_config`, and the
+    returned store must be live (a round-trip `put`/`get` works)."""
+    pytest.importorskip("agentforge_memory_sqlite")
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        modules=ModulesConfig(
+            memory=MemoryModuleConfig(driver="sqlite", config={"path": ":memory:"}),
+        ),
+    )
+    memory = await build_memory_from_config(cfg)
+    assert isinstance(memory, MemoryStore)
+    claim = Claim(run_id="r1", project="p", agent="a", category="__step", payload={"k": "v"})
+    claim_id = await memory.put(claim)
+    fetched = await memory.get(claim_id)
+    assert fetched is not None
+    assert fetched.payload == {"k": "v"}
+    await memory.close()
 
 
 @pytest.mark.asyncio
@@ -222,7 +246,7 @@ async def test_in_memory_store_used_when_no_module_section() -> None:
     cfg = AgentForgeConfig(agent=AgentConfig(), modules=ModulesConfig())
     # We can't construct the Agent without a strategy; instead check
     # the helper returns None.
-    assert build_memory_from_config(cfg) is None
+    assert await build_memory_from_config(cfg) is None
     # And InMemoryStore is the runtime default — caller wires it.
     fallback = InMemoryStore()
     assert isinstance(fallback, MemoryStore)

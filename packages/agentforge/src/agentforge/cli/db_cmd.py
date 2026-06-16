@@ -83,7 +83,7 @@ async def _dispatch(args: argparse.Namespace) -> int:
     from agentforge_core.config.loader import load_config  # noqa: PLC0415
 
     config = load_config(args.path, env=args.env, overrides=list(args.override) or None)
-    memory = build_memory_from_config(config)
+    memory = await build_memory_from_config(config)
     if memory is None:
         sys.stderr.write("agentforge db: modules.memory must be configured.\n")
         return 1

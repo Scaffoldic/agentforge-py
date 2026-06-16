@@ -70,6 +70,19 @@ release tag bumps every workspace member to the same minor version.
 
 ### Fixed
 
+- **bug-022 (P2):** `modules.memory` can now be built from config for
+  every real backend. `build_memory_from_config` previously called the
+  stores' bare constructors (`SqliteMemoryStore(path=…)`), which
+  raised `TypeError` because sqlite/postgres/neo4j/surrealdb all
+  construct asynchronously via `from_path`/`from_dsn`/`from_url` and
+  none implemented the `from_config` factory every other module type
+  has. Each store now exposes an **async** `from_config`, and
+  `build_memory_from_config` is async (its CLI callers — `run`,
+  `health`, `db`, `debug` — already run in async contexts). Without
+  this, any `agentforge run`/`health`/`db migrate`/`debug` (and
+  `run --replay`) with a configured memory backend failed before the
+  agent started.
+
 - **bug-021 (P1):** `agentforge add module` / `remove module` now use
   an **environment-aware installer** instead of `python -m pip`. In a
   uv-managed project (a `uv.lock` is found in the cwd or a parent) it

@@ -21,6 +21,7 @@ deterministic exit codes (per feat-017 §4 — config invalid → 2).
 from __future__ import annotations
 
 import contextlib
+import inspect
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -75,7 +76,7 @@ async def build_agent_from_config(
     Splits out from `load_and_build` for tests + reuse — tests build
     a `AgentForgeConfig` directly and skip the YAML parse.
     """
-    memory = build_memory_from_config(config)
+    memory = await build_memory_from_config(config)
     if memory is not None:
         await _maybe_init_schema(memory)
     evaluators = build_evaluators_from_config(config)
@@ -115,12 +116,18 @@ async def build_agent_from_config(
         raise
 
 
-def build_memory_from_config(config: AgentForgeConfig) -> MemoryStore | None:
-    """Resolve + instantiate `modules.memory`. Returns None when absent."""
+async def build_memory_from_config(config: AgentForgeConfig) -> MemoryStore | None:
+    """Resolve + instantiate `modules.memory`. Returns None when absent.
+
+    Async because the real memory backends (sqlite/postgres/neo4j/
+    surrealdb) open a connection at construction and expose an async
+    `from_config` factory (bug-022). Falls back to the sync
+    `_instantiate` path for stores that ship a plain/sync constructor.
+    """
     if config.modules.memory is None:
         return None
     cls = _resolve_class("memory", config.modules.memory.driver)
-    instance = _instantiate(cls, config.modules.memory.config)
+    instance = await _ainstantiate_memory(cls, config.modules.memory.config)
     if not isinstance(instance, MemoryStore):
         msg = (
             f"Resolved memory driver {config.modules.memory.driver!r} "
@@ -399,6 +406,29 @@ def _instantiate(cls: type, cfg: dict[str, Any]) -> Any:
             return from_config(**cfg)
         except TypeError:
             return from_config(cfg)
+    return cls(**cfg)
+
+
+async def _ainstantiate_memory(cls: type, cfg: dict[str, Any]) -> Any:
+    """Async-aware construction for memory stores (bug-022).
+
+    Memory backends construct asynchronously (they open a connection)
+    and expose an awaitable `from_config`. Prefer it; if the resolved
+    class only offers a sync constructor (e.g. a test double), fall
+    back to the shared sync `_instantiate`.
+
+    Mirrors `_instantiate`'s keyword-then-positional `from_config`
+    shape so externally-shipped stores using either signature load.
+    """
+    from_config = getattr(cls, "from_config", None)
+    if callable(from_config):
+        try:
+            result = from_config(**cfg)
+        except TypeError:
+            result = from_config(cfg)
+        if inspect.isawaitable(result):
+            return await result
+        return result
     return cls(**cfg)
 
 

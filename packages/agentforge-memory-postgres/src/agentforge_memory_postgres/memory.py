@@ -76,6 +76,21 @@ class PostgresMemoryStore(MemoryStore):
         pool = await asyncpg.create_pool(dsn=dsn, min_size=min_size, max_size=max_size)
         return cls(runner=_AsyncpgPoolRunner(pool))
 
+    @classmethod
+    async def from_config(
+        cls,
+        *,
+        dsn: str,
+        min_size: int = 1,
+        max_size: int = 10,
+    ) -> Self:  # pragma: no cover — exercised only with `-m live`.
+        """Build from a `modules.memory.config` block (bug-022).
+
+        Async config-driven factory matching the framework convention;
+        delegates to `from_dsn`.
+        """
+        return await cls.from_dsn(dsn, min_size=min_size, max_size=max_size)
+
     async def __aenter__(self) -> Self:
         return self
 

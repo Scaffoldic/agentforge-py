@@ -33,6 +33,19 @@ async def test_passes_memory_conformance_suite() -> None:
         await store.close()
 
 
+@pytest.mark.asyncio
+async def test_from_config_builds_a_live_store() -> None:
+    """bug-022: `from_config` is the config-driven factory the CLI's
+    `build_memory_from_config` uses. It must return a live store."""
+    store = await SqliteMemoryStore.from_config(path=":memory:")
+    try:
+        claim = Claim(run_id="r1", project="p", agent="a", category="c", payload={"x": 1})
+        claim_id = await store.put(claim)
+        assert (await store.get(claim_id)) is not None
+    finally:
+        await store.close()
+
+
 # ---- Lifecycle ----
 
 

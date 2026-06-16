@@ -170,7 +170,7 @@ async def _build_for_run(args: argparse.Namespace, config: Any) -> tuple[Agent, 
     side-effect-bearing pipeline doesn't re-execute on replay.
     """
     if args.replay is not None:
-        memory = build_memory_from_config(config)
+        memory = await build_memory_from_config(config)
         if memory is None:
             msg = "--replay requires modules.memory to be configured."
             raise ModuleError(msg)

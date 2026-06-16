@@ -64,6 +64,24 @@ class SurrealMemoryStore(MemoryStore):
         await client.use(namespace, database)
         return cls(runner=_SurrealClientRunner(client))
 
+    @classmethod
+    async def from_config(
+        cls,
+        *,
+        url: str,
+        namespace: str = "agentforge",
+        database: str = "default",
+        auth: tuple[str, str] | list[str] | None = None,
+    ) -> SurrealMemoryStore:  # pragma: no cover — exercised only with `-m live`.
+        """Build from a `modules.memory.config` block (bug-022).
+
+        Async config-driven factory matching the framework convention.
+        `auth` arrives from YAML as a 2-item list (or omitted); coerce
+        to the tuple `from_url` expects.
+        """
+        auth_tuple = (auth[0], auth[1]) if auth is not None else None
+        return await cls.from_url(url, namespace=namespace, database=database, auth=auth_tuple)
+
     async def __aenter__(self) -> SurrealMemoryStore:
         return self
 

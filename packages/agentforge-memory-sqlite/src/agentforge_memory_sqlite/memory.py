@@ -56,6 +56,18 @@ class SqliteMemoryStore(MemoryStore):
         await SqliteMigrator(connection).apply_pending()
         return cls(connection=connection)
 
+    @classmethod
+    async def from_config(cls, *, path: str | Path) -> SqliteMemoryStore:
+        """Build from a `modules.memory.config` block (bug-022).
+
+        The framework's config-driven module convention: every module
+        type exposes a `from_config` factory so `build_*_from_config`
+        can instantiate it from YAML. Memory construction is async
+        (it opens a connection), so unlike the sync `from_config` on
+        stateless modules this one is a coroutine.
+        """
+        return await cls.from_path(path)
+
     def migrator(self) -> SqliteMigrator:
         """Return a `SqliteMigrator` configured against the
         package's bundled migrations directory (feat-024)."""
