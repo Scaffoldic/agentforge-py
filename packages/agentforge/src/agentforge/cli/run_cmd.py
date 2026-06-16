@@ -176,7 +176,24 @@ async def _build_for_run(args: argparse.Namespace, config: Any) -> tuple[Agent, 
             raise ModuleError(msg)
         replay_llm = await ReplayLLMClient.from_recording(memory, args.replay)
         replay_pipeline = await load_pipeline_result(memory, args.replay)
-        return Agent(model=replay_llm, memory=memory), replay_pipeline
+        # bug-023: the recorded run was driven by a strategy; the replay
+        # re-drives the same loop against `replay_llm`, so it needs the
+        # same strategy (and budget / system prompt / iteration cap) the
+        # original run used. Omitting them made `Agent(...)` reject
+        # construction ("No reasoning strategy provided") for every real
+        # recording — the replay happy path was never exercised.
+        strategy = config.agent.strategy if isinstance(config.agent.strategy, str) else None
+        return (
+            Agent(
+                model=replay_llm,
+                memory=memory,
+                strategy=strategy,
+                system_prompt=config.agent.system_prompt,
+                budget_usd=config.agent.budget.usd,
+                max_iterations=config.agent.max_iterations,
+            ),
+            replay_pipeline,
+        )
     return await build_agent_from_config(config, enable_recording=args.record), None
 
 
