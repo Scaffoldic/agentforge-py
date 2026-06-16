@@ -1,8 +1,14 @@
-# VHS tape — swap-by-config demo for the README.
+# VHS tape — README hero reel for AgentForge.
 # Render headlessly from the repo root (python/agentforge-py):
 #   vhs examples/swap-by-config/demo.tape
 # Produces demo.gif (deterministic, offline, no API key / network).
-# Assumes the uv workspace venv exists at ./.venv (run `uv sync` first).
+# Assumes the uv workspace venv exists at ./.venv (run `uv sync` first)
+# and that examples/swap-by-config/demo-recording.sqlite was seeded
+# (run `python examples/swap-by-config/seed_recording.py` first).
+#
+# Three beats: (1) from zero to a runnable project, (2) the full loop
+# running offline with budget + tracing, (3) swap vendor or reasoning
+# loop by config. The run_id below comes from seed_recording.py.
 
 Output examples/swap-by-config/demo.gif
 
@@ -10,45 +16,63 @@ Set Shell "bash"
 Set FontSize 19
 Set Width 1180
 Set Height 720
-Set Padding 22
+Set Padding 20
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 38ms
+Set TypingSpeed 32ms
+Set Framerate 24
 
-# --- setup (hidden): enter the example dir, use the workspace venv ---
+# --- setup (hidden) ---
 Hide
-Type "source .venv/bin/activate && cd examples/swap-by-config"
+Type "source .venv/bin/activate && cd examples/swap-by-config && rm -rf my-agent"
 Enter
 Type "clear"
 Enter
 Show
 
-# --- scene 1: an agent that runs locally, no key, no network ---
-Type "# Run a real AgentForge agent locally — no API key, no network:"
+# --- beat 1: from an empty folder to a complete agent project ---
+Type "# 1. From zero to a complete, runnable agent project — one command:"
 Enter
-Sleep 900ms
-Type "python smoke.py"
+Sleep 800ms
+Type "agentforge new my-agent --template minimal --no-prompts"
 Enter
-Sleep 2.6s
+Sleep 2.2s
 
-# --- scene 2: swap the backend by editing one line of YAML ---
-Type "# Switch the LLM backend by editing ONE line of YAML:"
+# --- beat 2: run the full loop offline, no API key (a recorded run) ---
+Hide
+Type "clear"
 Enter
-Sleep 900ms
-Type "grep -n 'model:' *.yaml"
+Show
+Type "# 2. Run the full loop — budget + tracing wired in — offline, no key:"
+Enter
+Sleep 800ms
+Type 'agentforge run --replay 01KV76FZTJ2SZ9EKV5R5Z10DAD --path agentforge.demo.yaml "Summarise the Agile Manifesto in three bullets."'
 Enter
 Sleep 2.8s
 
-# --- scene 3: the agent code never names a vendor ---
-Type "# ...and agent.py never changes — it never names a provider:"
+# --- beat 3: swap the vendor OR the reasoning loop, by config ---
+Hide
+Type "clear"
 Enter
-Sleep 900ms
-Type "grep -n 'Agent(' agent.py"
+Show
+Type "# 3. Swap the vendor — one line of YAML, agent.py never changes:"
 Enter
-Sleep 2.6s
+Sleep 800ms
+Type "grep -n 'model:' agentforge.anthropic.yaml agentforge.openai.yaml"
+Enter
+Sleep 2.1s
+Type "# ...and the reasoning loop is the same one-line swap:"
+Enter
+Sleep 700ms
+Type "grep -n 'strategy:' agentforge.demo.yaml"
+Enter
+Sleep 2.0s
 
 # --- closing beat ---
-Type "# Every backend is its own package, swapped by config,"
+Type "# Same agent.py. Swap the vendor, the memory, the reasoning loop — all by config."
 Enter
-Type "# behind a version-locked contract. That's the whole idea."
+Sleep 2.2s
+
+# --- cleanup (hidden) ---
+Hide
+Type "rm -rf my-agent"
 Enter
-Sleep 3s

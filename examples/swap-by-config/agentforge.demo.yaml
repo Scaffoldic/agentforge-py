@@ -1,0 +1,23 @@
+# Offline demo config for the README hero gif.
+#
+# Points `modules.memory` at the recording seeded by `seed_recording.py`,
+# so `agentforge run --replay <id>` replays a real agent loop with NO
+# API key, NO network. The `model:` below is never called on replay
+# (a ReplayLLMClient is substituted), but it shows the swap-by-config
+# surface the other beats demonstrate.
+agent:
+  name: "swap-demo"
+  model: "anthropic:claude-sonnet-4-5"
+  strategy: "react"
+  budget:
+    usd: 1.0
+
+modules:
+  memory:
+    driver: "sqlite"
+    config:
+      path: "demo-recording.sqlite"
+
+logging:
+  level: "INFO"
+  format: "text"
