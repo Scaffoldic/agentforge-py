@@ -10,9 +10,9 @@ case; the framework is already production-grade.
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#build-your-own-agent)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](./LICENSE)
 
-![Run an AgentForge agent offline, then switch the LLM backend by editing one line of YAML — the agent code never changes](./examples/swap-by-config/demo.gif)
+![Scaffold a complete agent project, run the full loop offline with budget and tracing wired in, then swap the vendor or the reasoning loop by editing one line of YAML — the agent code never changes](./examples/swap-by-config/demo.gif)
 
-<sub>Run a real agent offline (no key, no network) → switch the backend by editing **one line of YAML** → `agent.py` never names a vendor. [Runnable example →](./examples/swap-by-config/)</sub>
+<sub>From zero: `agentforge new` scaffolds a runnable project → the full loop runs **offline, no API key** (a recorded run) with budget + tracing already wired → swap the vendor *or* the reasoning loop by editing **one line of YAML**, `agent.py` never changes. [Runnable example →](./examples/swap-by-config/)</sub>
 
 > **AgentForge treats an agent like a system you operate, not a demo
 > you ship once.** Four things at its core:
