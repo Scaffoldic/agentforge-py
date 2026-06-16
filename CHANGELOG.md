@@ -70,6 +70,14 @@ release tag bumps every workspace member to the same minor version.
 
 ### Fixed
 
+- **bug-023 (P2):** `agentforge run --replay` now reconstructs the
+  agent with the configured strategy (and budget / system prompt /
+  iteration cap). Previously the replay path built `Agent(model=…,
+  memory=…)` with no strategy, so replaying any real recording failed
+  with "No reasoning strategy provided" before it started — the replay
+  happy path had no end-to-end test. Depends on bug-022 (a replay can
+  only load its recording once `modules.memory` builds from config).
+
 - **bug-022 (P2):** `modules.memory` can now be built from config for
   every real backend. `build_memory_from_config` previously called the
   stores' bare constructors (`SqliteMemoryStore(path=…)`), which

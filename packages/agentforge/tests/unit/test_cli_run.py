@@ -103,6 +103,52 @@ def test_run_replay_without_memory_errors(
     assert "modules.memory" in err
 
 
+def _write_yaml_with_memory(tmp_path: Path) -> Path:
+    """Config with sqlite memory so `--record` / `--replay` have a store."""
+    db = tmp_path / "rec.sqlite"
+    cfg = tmp_path / "agentforge.yaml"
+    cfg.write_text(
+        "agent:\n"
+        "  strategy: noop-run\n"
+        "  budget:\n    usd: 5\n"
+        "modules:\n"
+        "  memory:\n"
+        "    driver: sqlite\n"
+        f"    config:\n      path: {db}\n",
+        encoding="utf-8",
+    )
+    return cfg
+
+
+def test_run_replay_happy_path_reconstructs_agent_with_strategy(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Regression for bug-023: replaying a recorded run must succeed.
+
+    The replay path rebuilds the Agent and re-drives the recorded loop,
+    so it needs the configured strategy. Previously it constructed
+    `Agent(model=replay_llm, memory=memory)` with no strategy, so this
+    failed with "No reasoning strategy provided" (exit 1) for every
+    real recording — the happy path had no test.
+    """
+    pytest.importorskip("agentforge_memory_sqlite")
+    cfg = _write_yaml_with_memory(tmp_path)
+
+    # Record a run.
+    code = main(["run", "--path", str(cfg), "--record", "--output-format", "json", "hello"])
+    assert code == 0
+    run_id = json.loads(capsys.readouterr().out)["run_id"]
+
+    # Replay it — must reconstruct the agent (with strategy) and exit 0.
+    code = main(
+        ["run", "--path", str(cfg), "--replay", run_id, "--output-format", "plain", "hello"]
+    )
+    out = capsys.readouterr().out.strip()
+    assert code == 0, out
+    assert out == "hello"
+
+
 def test_run_invalid_config_returns_2(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
