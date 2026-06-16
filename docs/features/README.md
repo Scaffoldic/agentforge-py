@@ -41,7 +41,7 @@
 | **feat-007** | Production rails — cost & resilience (budget, fallback chain, run_id propagation, idempotency) | shipped (Python) | 0.1 | both | `agentforge-core`, `agentforge` |
 | **feat-008** | Findings & output shapes (Simple/Patch/Narrative/MultiSpan + renderers) | shipped (Python) | 0.1 | both | `agentforge`, `agentforge-core` |
 | **feat-009** | Observability — structured logging (JSON) + distributed tracing (OTel) + hook fan-out; vendor backends (Langfuse / Phoenix / Evidently / StatsD) slated for v0.2 | shipped (Python, OTel only) | 0.1 (framework + OTel — shipped), 0.2 (vendor backends) | both | `agentforge`, `agentforge-otel`, future `agentforge-langfuse`, `agentforge-phoenix`, `agentforge-evidently`, `agentforge-statsd` |
-| **feat-026** | Application config extension — reserved `app:` namespace + typed `app_as()` accessor (Phase 1), registered typed sections validated via the module-schema engine + entry points (Phase 2), pluggable config sources / separate files (Phase 3). Lets agents built on AgentForge reuse the config machinery (interpolation, layering, `--resolved`, uniform validation). Reported via #86 | accepted (Phase 1 → 0.5 via enh-002; Phase 2 → 0.6) | 0.5 → 0.6 | both | `agentforge-core`, `agentforge` |
+| **feat-026** | Application config extension — reserved `app:` namespace + typed `app_as()` accessor (Phase 1), registered typed sections validated via the module-schema engine + entry points (Phase 2), pluggable config sources / separate files via `imports:` (Phase 3). Lets agents built on AgentForge reuse the config machinery (interpolation, layering, `--resolved`, uniform validation). Reported via #86 | shipped (all 3 phases → 0.5.0) | 0.5.0 | both | `agentforge-core`, `agentforge` |
 
 ### Safety & security
 

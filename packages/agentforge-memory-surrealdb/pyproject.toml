@@ -12,7 +12,7 @@
 
 [project]
 name = "agentforge-memory-surrealdb"
-version = "0.2.4"
+version = "0.5.0"
 description = "SurrealDB-backed MemoryStore, VectorStore, and GraphStore for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -34,7 +34,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.4",
+    "agentforge-core ~= 0.5.0",
     "surrealdb>=1.0",
 ]
 

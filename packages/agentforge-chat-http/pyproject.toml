@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-chat-http"
-version = "0.2.4"
+version = "0.5.0"
 description = "FastAPI HTTP + WebSocket + SSE server for AgentForge chat sessions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -24,9 +24,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.2.4",
-    "agentforge-py ~= 0.2.4",
-    "agentforge-chat ~= 0.2.4",
+    "agentforge-core ~= 0.5.0",
+    "agentforge-py ~= 0.5.0",
+    "agentforge-chat ~= 0.5.0",
     "fastapi>=0.115",
     "uvicorn>=0.32",
     "httpx>=0.27",
