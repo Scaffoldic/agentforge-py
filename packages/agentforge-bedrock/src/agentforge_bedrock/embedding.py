@@ -76,6 +76,8 @@ class BedrockEmbeddingClient(EmbeddingClient):
         max_retries: int = _DEFAULT_MAX_RETRIES,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
         aws_profile: str | None = None,
+        role_arn: str | None = None,
+        role_session_name: str = "agentforge",
         cohere_input_type: str = "search_document",
         session: Any | None = None,
     ) -> None:
@@ -90,6 +92,8 @@ class BedrockEmbeddingClient(EmbeddingClient):
         self._max_retries = max_retries
         self._timeout_seconds = timeout_seconds
         self._aws_profile = aws_profile
+        self._role_arn = role_arn
+        self._role_session_name = role_session_name
         self._cohere_input_type = cohere_input_type
         self._session: Any | None = session
         self._client_cm: Any | None = None
@@ -197,9 +201,26 @@ class BedrockEmbeddingClient(EmbeddingClient):
             return self._client
         if self._session is None:
             self._session = aioboto3.Session(profile_name=self._aws_profile)
-        self._client_cm = self._session.client("bedrock-runtime", region_name=self._region)
+        creds = await self._assume_role_credentials() if self._role_arn else {}
+        self._client_cm = self._session.client("bedrock-runtime", region_name=self._region, **creds)
         self._client = await self._client_cm.__aenter__()
         return self._client
+
+    async def _assume_role_credentials(self) -> dict[str, str]:
+        """Assume `role_arn` via STS and return temporary credential
+        kwargs for the `bedrock-runtime` client (enh-004)."""
+        assert self._session is not None
+        async with self._session.client("sts", region_name=self._region) as sts:
+            resp = await sts.assume_role(
+                RoleArn=self._role_arn,
+                RoleSessionName=self._role_session_name,
+            )
+        creds = resp["Credentials"]
+        return {
+            "aws_access_key_id": creds["AccessKeyId"],
+            "aws_secret_access_key": creds["SecretAccessKey"],
+            "aws_session_token": creds["SessionToken"],
+        }
 
 
 # ----------------------------------------------------------------------

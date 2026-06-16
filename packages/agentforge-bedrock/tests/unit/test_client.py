@@ -454,3 +454,88 @@ async def test_multi_turn_conversation_translates_each_role(
     )
     sent_messages: list[dict[str, Any]] = fake_bedrock.calls[0]["messages"]
     assert [m["role"] for m in sent_messages] == ["user", "assistant", "user"]
+
+
+# ---- enh-004: STS assume-role ----
+
+
+class _FakeSTS:
+    """Records `assume_role` calls and returns scripted temp credentials."""
+
+    def __init__(self) -> None:
+        self.assume_calls: list[dict[str, Any]] = []
+
+    async def assume_role(self, **kwargs: Any) -> dict[str, Any]:
+        self.assume_calls.append(kwargs)
+        return {
+            "Credentials": {
+                "AccessKeyId": "AK-TEMP",
+                "SecretAccessKey": "SK-TEMP",
+                "SessionToken": "TOKEN-TEMP",
+            }
+        }
+
+
+class _AssumeRoleSession:
+    """Fake session: routes `sts` to `_FakeSTS`, records the kwargs the
+    `bedrock-runtime` client is built with (so the test can assert the
+    temp credentials were threaded in)."""
+
+    def __init__(self, bedrock: _FakeBedrockClient, sts: _FakeSTS) -> None:
+        self._bedrock = bedrock
+        self._sts = sts
+        self.runtime_kwargs: dict[str, Any] = {}
+
+    def client(self, service: str, **kwargs: Any) -> Any:
+        from collections.abc import AsyncIterator  # noqa: PLC0415
+        from contextlib import asynccontextmanager  # noqa: PLC0415
+
+        target = self._sts if service == "sts" else self._bedrock
+        if service != "sts":
+            self.runtime_kwargs = kwargs
+
+        @asynccontextmanager
+        async def _cm() -> AsyncIterator[Any]:
+            yield target
+
+        return _cm()
+
+
+@pytest.mark.asyncio
+async def test_assume_role_drives_bedrock_with_temp_credentials() -> None:
+    """When `role_arn` is set, the client assumes the role via STS and
+    builds `bedrock-runtime` with the returned temporary credentials."""
+    bedrock = _FakeBedrockClient()
+    bedrock.responses.append(converse_response(text="ok"))
+    sts = _FakeSTS()
+    session = _AssumeRoleSession(bedrock, sts)
+
+    client = BedrockClient(
+        model_id="us.anthropic.claude-3-haiku-20240307-v1:0",
+        role_arn="arn:aws:iam::123456789012:role/bedrock-invoke",
+        session=session,
+    )
+    resp = await client.call("sys", [Message(role="user", content="hi")])
+
+    assert resp.content == "ok"
+    assert sts.assume_calls == [
+        {
+            "RoleArn": "arn:aws:iam::123456789012:role/bedrock-invoke",
+            "RoleSessionName": "agentforge",
+        }
+    ]
+    assert session.runtime_kwargs["aws_access_key_id"] == "AK-TEMP"
+    assert session.runtime_kwargs["aws_secret_access_key"] == "SK-TEMP"
+    assert session.runtime_kwargs["aws_session_token"] == "TOKEN-TEMP"
+
+
+@pytest.mark.asyncio
+async def test_no_role_arn_skips_sts_and_uses_ambient_credentials(
+    fake_bedrock: _FakeBedrockClient, fake_session: _FakeSession
+) -> None:
+    """Without `role_arn`, no STS call happens and bedrock-runtime is built
+    with no explicit credential kwargs (ambient chain)."""
+    fake_bedrock.responses.append(converse_response(text="ok"))
+    client = BedrockClient(model_id="anthropic.claude-3-haiku-20240307-v1:0", session=fake_session)
+    resp = await client.call("sys", [Message(role="user", content="hi")])
+    assert resp.content == "ok"

@@ -240,6 +240,79 @@ def test_provider_config_synthesised_into_model_string() -> None:
     assert _resolve_llm(cfg) == "bedrock:my-id"
 
 
+class _RecordingProvider:
+    """Fake LLM provider that records the kwargs it was built with."""
+
+    last_kwargs: ClassVar[dict[str, Any]] = {}
+
+    def __init__(self, **kwargs: Any) -> None:
+        type(self).last_kwargs = kwargs
+
+    async def call(self, *a: Any, **k: Any) -> Any:  # pragma: no cover
+        raise NotImplementedError
+
+    async def close(self) -> None:  # pragma: no cover
+        return
+
+
+def test_provider_config_block_passed_to_constructor() -> None:
+    """enh-004: `providers.default.config` is passed through to the
+    provider constructor (region / role_arn / … reach the client),
+    instead of being silently dropped."""
+    from agentforge_core.contracts.llm import LLMClient  # noqa: PLC0415
+
+    LLMClient.register(_RecordingProvider)  # treat the fake as an LLMClient
+    register("providers", "rec-prov")(_RecordingProvider)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        providers={
+            "default": ProviderConfig(
+                type="rec-prov",
+                model="us.anthropic.claude-haiku-20251001-v1:0",
+                config={"region": "us-east-1", "role_arn": "arn:aws:iam::1:role/r"},
+            )
+        },
+        modules=ModulesConfig(),
+    )
+    from agentforge.cli._build import _resolve_llm  # noqa: PLC0415
+
+    instance = _resolve_llm(cfg)
+    assert isinstance(instance, _RecordingProvider)
+    assert _RecordingProvider.last_kwargs == {
+        "model_id": "us.anthropic.claude-haiku-20251001-v1:0",
+        "region": "us-east-1",
+        "role_arn": "arn:aws:iam::1:role/r",
+    }
+
+
+def test_provider_config_rejects_unknown_keys() -> None:
+    """A config key the provider can't accept surfaces a clear error."""
+
+    class _StrictProvider:
+        def __init__(self, *, model_id: str) -> None:
+            self._m = model_id
+
+        async def call(self, *a: Any, **k: Any) -> Any:  # pragma: no cover
+            raise NotImplementedError
+
+        async def close(self) -> None:  # pragma: no cover
+            return
+
+    from agentforge_core.contracts.llm import LLMClient  # noqa: PLC0415
+
+    LLMClient.register(_StrictProvider)
+    register("providers", "strict-prov")(_StrictProvider)
+    cfg = AgentForgeConfig(
+        agent=AgentConfig(),
+        providers={"default": ProviderConfig(type="strict-prov", model="m", config={"nope": 1})},
+        modules=ModulesConfig(),
+    )
+    from agentforge.cli._build import _resolve_llm  # noqa: PLC0415
+
+    with pytest.raises(ModuleError, match=r"rejected providers\.default\.config"):
+        _resolve_llm(cfg)
+
+
 @pytest.mark.asyncio
 async def test_in_memory_store_used_when_no_module_section() -> None:
     """Confirm the default path produces an `InMemoryStore`."""

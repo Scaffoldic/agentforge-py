@@ -369,8 +369,12 @@ def _resolve_llm(config: AgentForgeConfig) -> LLMClient | str | None:
     We hand a string back to `Agent.__init__` when the model is a
     plain `"<provider>:<model>"` string — `Agent` already knows how
     to resolve that. When `agent.model` is missing but
-    `providers["default"]` is present, we synthesize the string from
-    the named-provider record.
+    `providers["default"]` is present, the named-provider record is
+    used — and its `config:` block is **passed through to the provider
+    constructor** (enh-004): a plain `type:model` string can only carry
+    the model id, so provider settings (`region`, `aws_profile`,
+    `role_arn`, `timeout_seconds`, …) have to ride the `config` block.
+    Without this they were silently dropped.
     """
     raw = config.agent.model
     if isinstance(raw, str):
@@ -378,7 +382,25 @@ def _resolve_llm(config: AgentForgeConfig) -> LLMClient | str | None:
     default = config.providers.get("default")
     if default is None or default.model is None:
         return None
-    return f"{default.type}:{default.model}"
+    if not default.config:
+        return f"{default.type}:{default.model}"
+    # Construct the provider directly with `model_id` + the `config`
+    # kwargs — the same `cls(model_id=...)` contract `Agent` uses to
+    # resolve a model string (every provider's __init__ accepts
+    # `model_id`), extended with the per-provider settings.
+    cls = _resolve_class("providers", default.type)
+    try:
+        instance = cls(model_id=default.model, **default.config)
+    except TypeError as exc:
+        msg = (
+            f"Provider {default.type!r} ({cls.__name__}) rejected "
+            f"providers.default.config keys {sorted(default.config)}: {exc}"
+        )
+        raise ModuleError(msg) from exc
+    if not isinstance(instance, LLMClient):
+        msg = f"Resolved provider {default.type!r} ({cls.__name__}) does not implement LLMClient."
+        raise ModuleError(msg)
+    return instance
 
 
 def _resolve_class(category: str, name: str) -> type:

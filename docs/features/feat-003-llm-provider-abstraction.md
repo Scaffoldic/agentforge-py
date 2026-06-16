@@ -456,6 +456,14 @@ Shipped:
   `global.…`) supported transparently.
 - Resolver pattern for `Agent(model="bedrock:…")` lookup.
 - Pricing entry-point with strip-cross-region-prefix logic.
+- **enh-004** — `providers.<name>.config` is passed through to the
+  provider constructor (`region` / `aws_profile` / `role_arn` /
+  `timeout_seconds` reach the client from YAML; previously dropped —
+  a plain `type:model` string carries only the model id, and an
+  unknown config key now raises `ModuleError`). The Bedrock chat +
+  embedding clients gained `role_arn` (+ `role_session_name`) STS
+  assume-role. Runbook 13 documents the AWS Bedrock path
+  (inference-profile ids, IAM, assume-role). Closes #92.
 
 Not yet shipped (backlog):
 
