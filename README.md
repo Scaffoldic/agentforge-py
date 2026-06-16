@@ -1,8 +1,10 @@
 # AgentForge
 
-**An AI-agent framework that behaves like infrastructure — versioned
-contracts you can depend on, every backend a swap-by-config package, and
-scaffolds that keep your AI coding assistant on the rails.**
+**An AI-agent framework that behaves like infrastructure, not a demo you
+ship once.**
+Production plumbing — cost, tracing, memory, guardrails, failover — comes as
+swap-by-config packages behind version-locked contracts. You write your use
+case; the framework is already production-grade.
 
 [![PyPI](https://img.shields.io/pypi/v/agentforge-py.svg)](https://pypi.org/project/agentforge-py/)
 [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](#build-your-own-agent)
@@ -13,7 +15,7 @@ scaffolds that keep your AI coding assistant on the rails.**
 <sub>Run a real agent offline (no key, no network) → switch the backend by editing **one line of YAML** → `agent.py` never names a vendor. [Runnable example →](./examples/swap-by-config/)</sub>
 
 > **AgentForge treats an agent like a system you operate, not a demo
-> you ship once.** Three things at its core:
+> you ship once.** Four things at its core:
 >
 > 1. **Version-locked contracts.** ~30 ABCs in a small
 >    `agentforge-core` describe the agent surface, and breaking one
@@ -23,7 +25,12 @@ scaffolds that keep your AI coding assistant on the rails.**
 >    provider, memory store, observability stack, reranker, guardrail
 >    — each ships as a separate PyPI distribution you plug in and swap
 >    by editing one line of YAML, never your agent code.
-> 3. **Scaffolds keep your AI coding assistant on-idiom.** Every
+> 3. **The reasoning loop is swap-by-config too.** ReAct,
+>    Plan-and-Execute, Tree-of-Thoughts, and a Multi-Agent Supervisor
+>    ship behind one `Strategy` contract — pick the loop in YAML, or
+>    compose your own from the ABC. The same agent code runs under any
+>    of them; the strategy is a configuration choice, not a rewrite.
+> 4. **Scaffolds keep your AI coding assistant on-idiom.** Every
 >    generated project ships framework-aware instructions for **Claude
 >    Code, Cursor, GitHub Copilot, Aider, Codex, and Windsurf** plus
 >    task runbooks — so the AI helping you build stays inside the
@@ -42,9 +49,11 @@ async with Agent(model="anthropic:claude-sonnet-4-7") as agent:
 ```
 
 Swap `anthropic:` for `openai:`, `bedrock:`, `ollama:`, or
-`litellm:` — same code, different vendor. The swap happens *behind a
-locked contract*, so it can't quietly change the shape of what your
-agent gets back.
+`litellm:` — same code, different vendor. Swap the reasoning loop the
+same way: `strategy: react` → `plan-execute` → `tree-of-thoughts` →
+`supervisor`, no code change. Every swap happens *behind a locked
+contract*, so it can't quietly change the shape of what your agent gets
+back.
 
 ---
 
@@ -270,7 +279,7 @@ guardrails live — your Python never names a vendor:
 ```yaml
 agent:
   model: "anthropic:claude-sonnet-4-5"
-  strategy: "react"        # or plan-execute, tree-of-thoughts, supervisor
+  strategy: "react"        # swap-by-config: plan-execute · tree-of-thoughts · supervisor
   budget:
     usd: 2.0               # over-budget runs fail before the bill lands
 ```
