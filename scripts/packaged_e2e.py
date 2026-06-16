@@ -25,6 +25,11 @@ This script closes that gap. It:
          `config_sections` plugin catching an app-config typo.
        - `agentforge add module` in the scaffolded uv project → proves
          the bug-021 env-aware installer persists to pyproject + uv.lock.
+       - a CONFIGURED agent run → seeds a recording via the shipped
+         `FakeLLMClient`, then `agentforge run --replay` builds
+         `modules.memory` from config (bug-022) and reconstructs the
+         strategy (bug-023) and exits 0, all offline. The anti-drift
+         guard for the config→runtime seam.
 
 Exit 0 only if every step passes. Wired into `release.yml` as a
 pre-publish gate (a broken wheel never reaches PyPI) and runnable
@@ -290,6 +295,77 @@ def _check_85(py: Path, workdir: Path) -> None:
     )
 
 
+_SEED_SCRIPT = '''\
+"""Seed one offline run into a sqlite store via the SHIPPED FakeLLMClient."""
+import asyncio
+import sys
+
+from agentforge import Agent
+from agentforge._testing import FakeLLMClient, echo_response
+from agentforge_memory_sqlite import SqliteMemoryStore
+
+
+async def _main(db: str) -> None:
+    store = await SqliteMemoryStore.from_path(db)
+    fake = FakeLLMClient(responses=[echo_response(content="Hello.", cost_usd=0.001)])
+    async with Agent(model=fake, strategy="react", record_runs=store) as agent:
+        result = await agent.run("say hi")
+    await store.close()
+    print(result.run_id)
+
+
+asyncio.run(_main(sys.argv[1]))
+'''
+
+
+def _check_configured_runtime(py: Path, workdir: Path) -> None:
+    """bug-022 / bug-023 / enh-004 — a CONFIGURED agent actually runs
+    against the built wheel: `modules.memory` is built from config (bug-022)
+    and `agentforge run --replay` rebuilds the memory store + the strategy
+    (bug-023) and completes. Offline: the run is a recording replayed via a
+    `ReplayLLMClient`. This is the anti-drift guard at the wheel level — the
+    config→runtime seam these bugs lived in, exercised end to end."""
+    af = _bin(py, "agentforge")
+    proj = workdir / "runtime"
+    proj.mkdir()
+    seed = proj / "seed.py"
+    seed.write_text(_SEED_SCRIPT, encoding="utf-8")
+
+    print("\n=== configured runtime: sqlite memory-from-config + replay (offline) ===")
+    seeded = _capture([str(py), str(seed), "rec.sqlite"], cwd=proj)
+    _expect(
+        seeded.returncode == 0,
+        "seeded an offline recording via the shipped FakeLLMClient + Agent(record_runs=...)",
+    )
+    run_id = seeded.stdout.strip().splitlines()[-1]
+
+    cfg = proj / "agentforge.yaml"
+    cfg.write_text(
+        "agent:\n  strategy: react\n  budget:\n    usd: 5\n"
+        "modules:\n  memory:\n    driver: sqlite\n    config:\n      path: rec.sqlite\n",
+        encoding="utf-8",
+    )
+    replayed = _capture(
+        [
+            str(af),
+            "run",
+            "--path",
+            "agentforge.yaml",
+            "--replay",
+            run_id,
+            "--output-format",
+            "plain",
+            "say hi",
+        ],
+        cwd=proj,
+    )
+    _expect(
+        replayed.returncode == 0,
+        "agentforge run --replay builds memory-from-config + strategy and exits 0 (bug-022/023)",
+    )
+    _expect("Hello." in replayed.stdout, "the replayed run produced the recorded output")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-build", action="store_true", help="reuse an existing dist/")
@@ -316,13 +392,17 @@ def main() -> int:
         _probe_build_under_test(py)
         _check_86(py, workdir)
         _check_85(py, workdir)
+        _check_configured_runtime(py, workdir)
     except GateError as exc:
         print(f"\nPACKAGED E2E FAILED: {exc}", file=sys.stderr)
         return 1
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
 
-    print("\nPACKAGED E2E PASSED — the built wheels scaffold + validate + add-module cleanly.")
+    print(
+        "\nPACKAGED E2E PASSED — the built wheels scaffold + validate + add-module + "
+        "run a configured agent cleanly."
+    )
     return 0
 
 
