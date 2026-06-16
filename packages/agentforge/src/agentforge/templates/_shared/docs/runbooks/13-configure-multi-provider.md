@@ -59,6 +59,45 @@ modules:
 5. **Per-module overrides.** Any module that takes an LLM (
    guardrails / evaluators / etc.) can name a provider.
 
+## AWS Bedrock (Claude on Bedrock, IAM, assume-role)
+
+Run Claude (or Titan/Cohere embeddings) on **Bedrock** with IAM
+credentials instead of an Anthropic API key — the framework `Agent`
+runtime, `BudgetPolicy`, retries, and cost/provenance all apply unchanged.
+
+```yaml
+providers:
+  default:
+    type: bedrock
+    # Use the INFERENCE-PROFILE id (us./eu./apac./global. prefix).
+    # The bare id rejects on-demand throughput with
+    #   "… isn't supported. Retry … with an inference profile".
+    model: "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+    config:
+      region: us-east-1
+      # Optional: assume an IAM role via STS before calling Bedrock
+      # (cross-account / least-privilege). Omit to use the ambient
+      # credential chain (env vars, instance profile, IRSA, or an
+      # AWS_PROFILE configured with role_arn + source_profile).
+      role_arn: "arn:aws:iam::123456789012:role/bedrock-invoke"
+agent:
+  budget:
+    usd: 2.0
+```
+
+- **Model id:** the trailing `…-v1:0` is parsed safely — the
+  provider/model split is on the *first* `:` only.
+- **Credentials:** by default the standard AWS chain is used (env /
+  instance profile / IRSA / `AWS_PROFILE`). `role_arn` (+ optional
+  `role_session_name`, default `"agentforge"`) performs an explicit STS
+  assume-role and drives Bedrock with the temporary credentials.
+- **Settings ride the `config:` block.** A plain `agent.model:
+  "bedrock:…"` string can only carry the model id; `region` / `role_arn`
+  / `aws_profile` / `timeout_seconds` must go under `providers.<name>.config`.
+- **Embeddings:** `type: bedrock` also provides Titan / Cohere embeddings
+  (`amazon.titan-embed-text-v2:0`, `cohere.embed-english-v3`), with the
+  same `region` / `role_arn` config.
+
 ## Variations
 
 - **Fallback chain.** Use `agentforge_core.production.FallbackChain`

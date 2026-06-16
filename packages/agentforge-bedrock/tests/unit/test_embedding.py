@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json as _json
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
 
 import pytest
 from agentforge_bedrock import _retry as retry_mod
@@ -257,3 +260,56 @@ def test_default_capabilities_empty() -> None:
     client = BedrockEmbeddingClient(model_id=_TITAN)
     assert client.capabilities() == set()
     assert client.supports("multimodal") is False
+
+
+# ---- enh-004: STS assume-role ----
+
+
+@pytest.mark.asyncio
+async def test_embedding_assume_role_drives_runtime_with_temp_credentials() -> None:
+    """When `role_arn` is set, the embedding client assumes the role via STS
+    and builds `bedrock-runtime` with the returned temporary credentials."""
+    bedrock = _FakeBedrockClient()
+    bedrock.invoke_responses.append({"embedding": [0.1] * 1024, "inputTextTokenCount": 3})
+
+    assume_calls: list[dict[str, Any]] = []
+    runtime_kwargs: dict[str, Any] = {}
+
+    class _STS:
+        async def assume_role(self, **kwargs: Any) -> dict[str, Any]:
+            assume_calls.append(kwargs)
+            return {
+                "Credentials": {
+                    "AccessKeyId": "AK-TEMP",
+                    "SecretAccessKey": "SK-TEMP",
+                    "SessionToken": "TOKEN-TEMP",
+                }
+            }
+
+    class _Session:
+        def client(self, service: str, **kwargs: Any) -> Any:
+            target: Any = _STS() if service == "sts" else bedrock
+            if service != "sts":
+                runtime_kwargs.update(kwargs)
+
+            @asynccontextmanager
+            async def _cm() -> AsyncIterator[Any]:
+                yield target
+
+            return _cm()
+
+    client = BedrockEmbeddingClient(
+        model_id=_TITAN,
+        role_arn="arn:aws:iam::123456789012:role/bedrock-embed",
+        session=_Session(),
+    )
+    resp = await client.embed(["hello"])
+
+    assert len(resp.vectors) == 1
+    assert assume_calls == [
+        {
+            "RoleArn": "arn:aws:iam::123456789012:role/bedrock-embed",
+            "RoleSessionName": "agentforge",
+        }
+    ]
+    assert runtime_kwargs["aws_session_token"] == "TOKEN-TEMP"

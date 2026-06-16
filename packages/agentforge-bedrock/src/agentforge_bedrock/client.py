@@ -85,6 +85,16 @@ class BedrockClient(LLMClient):
         timeout_seconds: Per-request timeout. Default 60s.
         aws_profile: Optional named profile from `~/.aws/credentials`.
             `None` uses the default boto3 credential chain.
+        role_arn: Optional IAM role ARN to assume via STS before
+            calling Bedrock (enh-004). When set, the client assumes the
+            role on first use and drives `bedrock-runtime` with the
+            returned temporary credentials — for cross-account access
+            or least-privilege Bedrock roles. `None` (default) uses the
+            ambient credentials (profile / env / instance / IRSA),
+            which is itself enough for assume-role via an `AWS_PROFILE`
+            configured with `role_arn` + `source_profile`.
+        role_session_name: STS session name for the assume-role call.
+            Defaults to `"agentforge"`.
         session: Optional injected `aioboto3.Session` — primarily for
             tests; production code passes nothing.
     """
@@ -97,6 +107,8 @@ class BedrockClient(LLMClient):
         max_retries: int = _DEFAULT_MAX_RETRIES,
         timeout_seconds: float = _DEFAULT_TIMEOUT_SECONDS,
         aws_profile: str | None = None,
+        role_arn: str | None = None,
+        role_session_name: str = "agentforge",
         session: Any | None = None,
     ) -> None:
         if not model_id:
@@ -110,6 +122,8 @@ class BedrockClient(LLMClient):
         self._max_retries = max_retries
         self._timeout_seconds = timeout_seconds
         self._aws_profile = aws_profile
+        self._role_arn = role_arn
+        self._role_session_name = role_session_name
         self._session: Any | None = session
         self._client_cm: Any | None = None
         self._client: Any | None = None
@@ -311,14 +325,36 @@ class BedrockClient(LLMClient):
         )
 
     async def _ensure_client(self) -> Any:
-        """Lazily instantiate the aioboto3 Bedrock Runtime client."""
+        """Lazily instantiate the aioboto3 Bedrock Runtime client.
+
+        When `role_arn` is set, assume the role via STS first and drive
+        `bedrock-runtime` with the returned temporary credentials
+        (enh-004); otherwise use the session's ambient credentials.
+        """
         if self._client is not None:
             return self._client
         if self._session is None:
             self._session = aioboto3.Session(profile_name=self._aws_profile)
-        self._client_cm = self._session.client("bedrock-runtime", region_name=self._region)
+        creds = await self._assume_role_credentials() if self._role_arn else {}
+        self._client_cm = self._session.client("bedrock-runtime", region_name=self._region, **creds)
         self._client = await self._client_cm.__aenter__()
         return self._client
+
+    async def _assume_role_credentials(self) -> dict[str, str]:
+        """Assume `role_arn` via STS and return temporary credential
+        kwargs for the `bedrock-runtime` client (enh-004)."""
+        assert self._session is not None
+        async with self._session.client("sts", region_name=self._region) as sts:
+            resp = await sts.assume_role(
+                RoleArn=self._role_arn,
+                RoleSessionName=self._role_session_name,
+            )
+        creds = resp["Credentials"]
+        return {
+            "aws_access_key_id": creds["AccessKeyId"],
+            "aws_secret_access_key": creds["SecretAccessKey"],
+            "aws_session_token": creds["SessionToken"],
+        }
 
     def _build_converse_request(
         self,

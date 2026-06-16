@@ -11,6 +11,18 @@ release tag bumps every workspace member to the same minor version.
 
 ### Added
 
+- **enh-004 — provider `config:` passthrough + Bedrock STS assume-role.**
+  `providers.<name>.config` is now passed to the provider constructor, so
+  `region` / `aws_profile` / `role_arn` / `timeout_seconds` reach the
+  client from YAML (it was documented but silently dropped — a plain
+  `type:model` string could only carry the model id; an unknown key now
+  raises a clear `ModuleError`). The Bedrock chat + embedding clients gain
+  a `role_arn` (+ `role_session_name`) option that assumes an IAM role via
+  STS before driving `bedrock-runtime` (cross-account / least-privilege),
+  alongside the existing ambient credential chain. Runbook 13 gains an AWS
+  Bedrock section (inference-profile ids, IAM, assume-role). Closes #92.
+  See [enh-004](docs/enhancements/enh-004-bedrock-provider-config-and-assume-role.md).
+
 - **enh-003 — MCP HTTP transport middleware seam.** `MCPServer.from_http`
   now accepts `middleware=[Middleware(...)]`, applied to the
   streamable-HTTP Starlette app the default runner builds — the seam for
