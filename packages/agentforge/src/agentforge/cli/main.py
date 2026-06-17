@@ -72,7 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _resolve_version() -> str:
     """Return the installed `agentforge` distribution's version."""
     try:
-        return version("agentforge")
+        return version("agentforge-py")
     except PackageNotFoundError:  # pragma: no cover - unusual at runtime
         return "0.0.0+unknown"
 

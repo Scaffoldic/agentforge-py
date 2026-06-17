@@ -9,6 +9,16 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Fixed
+
+- **bug-024 (P3) — version reporting.** `agentforge --version` reported
+  `0.0.0+unknown` (the CLI looked up distribution `agentforge` instead of
+  `agentforge-py`, broken since the v0.2.1 rename), and every package's
+  `__version__` was a hardcoded literal that drifted from `pyproject.toml`
+  (all read `0.2.3`). Both now source the version from the installed
+  distribution metadata, so they can't drift again. Found by E2E-testing the
+  published 0.3.0 wheel. Ships in 0.3.1.
+
 ## [0.3.0] — 2026-06-16
 
 ### Added
