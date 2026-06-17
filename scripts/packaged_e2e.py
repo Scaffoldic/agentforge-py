@@ -366,6 +366,35 @@ def _check_configured_runtime(py: Path, workdir: Path) -> None:
     _expect("Hello." in replayed.stdout, "the replayed run produced the recorded output")
 
 
+def _check_version(py: Path) -> None:
+    """bug-024 — the INSTALLED wheel reports its real version, not the
+    `0.0.0+unknown` fallback or a drifted literal. The source-tree unit test
+    (`test_cli_version.py`) can't catch a packaging-level regression — e.g.
+    metadata missing from the artifact — because an editable install always
+    has metadata. Only this wheel-level check can."""
+    af = _bin(py, "agentforge")
+    print("\n=== bug-024 / version: installed wheel reports its real version ===")
+    expected = _capture(
+        [str(py), "-c", "from importlib.metadata import version; print(version('agentforge-py'))"],
+    ).stdout.strip()
+    _expect(
+        bool(expected) and expected != "0.0.0+unknown",
+        f"distribution metadata resolves a real version ({expected!r})",
+    )
+    cli = _capture([str(af), "--version"]).stdout.strip()
+    _expect(
+        cli == expected,
+        f"`agentforge --version` prints the real version ({cli!r} == {expected!r})",
+    )
+    dunder = _capture(
+        [str(py), "-c", "import agentforge; print(agentforge.__version__)"],
+    ).stdout.strip()
+    _expect(
+        dunder == expected,
+        f"agentforge.__version__ tracks the distribution ({dunder!r} == {expected!r})",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-build", action="store_true", help="reuse an existing dist/")
@@ -390,6 +419,7 @@ def main() -> int:
         py = _make_clean_venv(workdir)
         _install_local_wheels(py, dist_dir)
         _probe_build_under_test(py)
+        _check_version(py)
         _check_86(py, workdir)
         _check_85(py, workdir)
         _check_configured_runtime(py, workdir)

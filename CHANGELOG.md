@@ -9,6 +9,8 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-06-17
+
 ### Fixed
 
 - **bug-024 (P3) — version reporting.** `agentforge --version` reported
@@ -17,7 +19,24 @@ release tag bumps every workspace member to the same minor version.
   `__version__` was a hardcoded literal that drifted from `pyproject.toml`
   (all read `0.2.3`). Both now source the version from the installed
   distribution metadata, so they can't drift again. Found by E2E-testing the
-  published 0.3.0 wheel. Ships in 0.3.1.
+  published 0.3.0 wheel. The packaged-wheel E2E gate now also asserts the
+  installed artifact reports its real version (the source-tree unit test
+  can't catch a packaging-level regression).
+
+### Security
+
+- **pyjwt 2.12.1 → 2.13.0** — pulls in pyjwt's security release (five
+  advisories). Two are directly relevant to the MCP auth seam (enh-003):
+  `GHSA-jq35-7prp-9v3f` (algorithm allow-list bypass with `PyJWK`/
+  `PyJWKClient`) and `GHSA-993g-76c3-p5m4` (`PyJWKClient` accepting
+  non-HTTP(S) URIs → local-file read / SSRF), plus an HS256 algorithm-
+  confusion forge, a detached-payload DoS, and a JWKS cache-wipe DoS.
+
+### Changed
+
+- **Dependency bumps** (transitive/runtime, lockfile): cryptography
+  48.0.0 → 48.0.1, aiohttp 3.14.0 → 3.14.1, python-multipart 0.0.28 →
+  0.0.31, litestar 2.21.1 → 2.22.0.
 
 ## [0.3.0] — 2026-06-16
 

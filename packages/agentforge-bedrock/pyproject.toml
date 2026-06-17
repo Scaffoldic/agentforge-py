@@ -10,7 +10,7 @@
 
 [project]
 name = "agentforge-bedrock"
-version = "0.3.0"
+version = "0.3.1"
 description = "AWS Bedrock provider for AgentForge — Anthropic, Titan, Cohere on Bedrock"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.0",
+    "agentforge-core ~= 0.3.1",
     "aioboto3>=13.0",
     "botocore>=1.35",
 ]
