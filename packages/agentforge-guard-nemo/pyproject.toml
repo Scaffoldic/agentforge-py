@@ -2,7 +2,7 @@
 
 [project]
 name = "agentforge-guard-nemo"
-version = "0.3.0"
+version = "0.3.1"
 description = "NeMo Guardrails programmable rails for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -21,7 +21,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 
-dependencies = ["agentforge-core ~= 0.3.0"]
+dependencies = ["agentforge-core ~= 0.3.1"]
 
 [project.urls]
 Homepage = "https://github.com/Scaffoldic/agentforge-py"

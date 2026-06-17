@@ -11,7 +11,7 @@
 
 [project]
 name = "agentforge-a2a"
-version = "0.3.0"
+version = "0.3.1"
 description = "A2A (Agent-to-Agent) protocol client + server for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -33,8 +33,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.0",
-    "agentforge-py ~= 0.3.0",
+    "agentforge-core ~= 0.3.1",
+    "agentforge-py ~= 0.3.1",
     "fastapi>=0.115",
     "uvicorn>=0.32",
     "httpx>=0.27",

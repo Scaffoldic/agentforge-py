@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-eval-geval"
-version = "0.3.0"
+version = "0.3.1"
 description = "LLM-judge evaluators (G-Eval) for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.0",
+    "agentforge-core ~= 0.3.1",
     "PyYAML>=6.0",
 ]
 

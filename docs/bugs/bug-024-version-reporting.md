@@ -1,5 +1,5 @@
 ---
-status: open
+status: fixed in 0.3.1
 severity: P3
 found-in: 0.3.0
 found-via: dogfooding (post-release E2E of the published 0.3.0 wheel)
@@ -77,6 +77,11 @@ longer needs to touch any `__version__` (only `pyproject.toml`).
   `_resolve_version()` equals `version("agentforge-py")` and is not the
   fallback; `agentforge.__version__` equals `version("agentforge-py")`;
   `agentforge --version` exits 0 and prints the real version.
+- `scripts/packaged_e2e.py::_check_version` — the wheel-level guard: against
+  the freshly built+installed artifact, asserts `agentforge --version` and
+  `agentforge.__version__` both equal the distribution metadata and aren't
+  the `0.0.0+unknown` fallback. Catches a packaging-level regression the
+  source-tree unit test can't see. Runs per-PR and in `release.yml` pre-publish.
 - Manual: a clean `pip install agentforge-py==0.3.1` → `agentforge --version`
   prints `0.3.1`; `agentforge.__version__ == "0.3.1"`.
 - `uv run pre-commit run --all-files` green.

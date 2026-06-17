@@ -9,7 +9,7 @@
 
 [project]
 name = "agentforge-core"
-version = "0.3.0"
+version = "0.3.1"
 description = "AgentForge core — stable contracts (ABCs, value types) for the agentic framework"
 readme = "README.md"
 requires-python = ">=3.13"

@@ -13,7 +13,7 @@
 
 [project]
 name = "agentforge-memory-postgres"
-version = "0.3.0"
+version = "0.3.1"
 description = "Postgres + pgvector-backed MemoryStore and VectorStore for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -35,7 +35,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.0",
+    "agentforge-core ~= 0.3.1",
     "asyncpg>=0.30",
     "pgvector>=0.3",
 ]
