@@ -9,6 +9,15 @@ release tag bumps every workspace member to the same minor version.
 
 ## [Unreleased]
 
+### Changed
+
+- **starlette 1.0.1 → 1.3.1** (transitive, via fastapi / arize-phoenix).
+  starlette ≥ 1.3 moved `starlette.testclient` onto `httpx2` and emits a
+  `StarletteDeprecationWarning` (fatal under our `filterwarnings=error`) when
+  only `httpx` is installed. `httpx2 >= 2.4` is now in the dev dependency
+  group so the a2a / chat-http / mcp test suites import `TestClient` cleanly;
+  runtime HTTP clients are unchanged (still `httpx`). Unblocks dependabot #105.
+
 ## [0.3.1] — 2026-06-17
 
 ### Fixed
