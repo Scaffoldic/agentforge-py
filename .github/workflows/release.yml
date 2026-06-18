@@ -40,7 +40,7 @@ jobs:
     name: Build wheels + sdists
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Install uv
@@ -71,7 +71,7 @@ jobs:
     # module data — BEFORE the publish job can run. See
     # scripts/packaged_e2e.py.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
       - name: Install uv
