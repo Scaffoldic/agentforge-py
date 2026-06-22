@@ -248,3 +248,53 @@ def merge_three_section(new_managed: str, existing_custom: str) -> str:
     if END_MANAGED_MARKER not in managed:
         managed = managed.rstrip() + "\n\n" + END_MANAGED_MARKER + "\n"
     return managed.rstrip() + "\n" + existing_custom.lstrip("\n")
+
+
+def preserve_custom_section(new_content: str, existing_content: str | None) -> str:
+    """Carry a developer-owned custom section across an upgrade.
+
+    Given freshly rendered `new_content` and the file's current
+    on-disk `existing_content`, return the body to write so that the
+    custom section (everything after `END_MANAGED_MARKER`) is taken
+    from the existing file rather than the template default. This is
+    the bug-025 guard: it stops `agentforge upgrade` from clobbering
+    the `<!-- agentforge:custom -->` block consumers are promised will
+    "survive upgrade".
+
+    The merge only runs when **both** sides are three-section files
+    (each carries the end-managed marker). When either side lacks the
+    marker — a plain config/yaml file, or a file whose markers a
+    consumer stripped without forking — we cannot tell managed from
+    custom, so we fall back to the previous whole-file behaviour and
+    return `new_content` unchanged. (The supported way to protect a
+    fully hand-edited file is `agentforge fork`.)
+    """
+    if existing_content is None:
+        return new_content
+    if END_MANAGED_MARKER not in new_content or END_MANAGED_MARKER not in existing_content:
+        return new_content
+    new_managed, _ = split_three_section(new_content)
+    _, existing_custom = split_three_section(existing_content)
+    if not existing_custom.strip():
+        # Existing file has the marker but an empty custom tail — nothing
+        # to preserve; the new template default (if any) is fine.
+        return new_content
+    return merge_three_section(new_managed, existing_custom)
+
+
+def custom_section_diverged(new_content: str, existing_content: str | None) -> bool:
+    """Report whether the on-disk custom section actually differs from
+    the freshly rendered template's custom section.
+
+    Used to label `agentforge upgrade` output: `preserve_custom_section`
+    always carries the on-disk tail (safe even when identical), but only
+    a *diverged* tail is worth flagging to the user as "custom block
+    preserved". Comparison ignores surrounding whitespace.
+    """
+    if existing_content is None:
+        return False
+    if END_MANAGED_MARKER not in new_content or END_MANAGED_MARKER not in existing_content:
+        return False
+    _, new_custom = split_three_section(new_content)
+    _, existing_custom = split_three_section(existing_content)
+    return existing_custom.strip() != new_custom.strip()

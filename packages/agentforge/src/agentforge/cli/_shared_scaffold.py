@@ -21,6 +21,7 @@ verbatim (apart from the marker header prepend).
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 from typing import Any
@@ -31,12 +32,28 @@ from jinja2 import Environment
 from agentforge.cli._scaffold_state import (
     END_MANAGED_MARKER,
     answers_path,
+    custom_section_diverged,
     hash_content,
     lock_path,
     marker_for,
+    preserve_custom_section,
     read_lock,
     write_lock,
 )
+
+
+@dataclass
+class SharedScaffoldResult:
+    """Outcome of `inject_shared_scaffold`, broken down per file.
+
+    `written` is the list of files (re)written; the other lists record
+    files left untouched so callers can report — and `--dry-run` can
+    preview — exactly what an upgrade would do (bug-025).
+    """
+
+    written: list[str] = field(default_factory=list)
+    skipped_forked: list[str] = field(default_factory=list)
+    preserved_custom: list[str] = field(default_factory=list)
 
 
 def inject_shared_scaffold(
@@ -44,14 +61,26 @@ def inject_shared_scaffold(
     *,
     template_name: str,
     template_version: str,
-) -> int:
+    dry_run: bool = False,
+) -> SharedScaffoldResult:
     """Copy `_shared/` into the destination after Copier rendered.
 
-    Returns the count of files written.
+    Re-injection is fork- and custom-block aware (bug-025):
+
+    - a file the lock marks ``forked`` is **never** rewritten — its
+      lock entry is left exactly as-is;
+    - for a still-managed three-section file, the developer-owned
+      ``<!-- agentforge:custom -->`` tail on disk is preserved while
+      the managed region is refreshed from the template.
+
+    When `dry_run` is set, nothing is written (neither files nor the
+    lock); the returned result still classifies every file so callers
+    can preview the plan.
     """
+    result = SharedScaffoldResult()
     shared_root = _shared_root()
     if shared_root is None:
-        return 0
+        return result
 
     context = _build_context(dst, template_name=template_name)
     # The shared payload is markdown / YAML / plain text — never HTML
@@ -63,31 +92,48 @@ def inject_shared_scaffold(
     )
 
     lock = read_lock(dst)
-    count = 0
     for src_path in _walk(shared_root):
         rel_path = src_path.relative_to(shared_root)
         out_rel, content = _render_one(src_path, rel_path, env, context)
+        rel_key = str(out_rel)
         target = dst / out_rel
-        target.parent.mkdir(parents=True, exist_ok=True)
 
-        marker = marker_for(
-            target.suffix, f"template:{template_name}", template_version, hash_content(content)[:12]
-        )
-        body = content
-        if marker is not None and not content.lstrip().startswith(marker.strip()):
-            body = marker + "\n" + content
-        target.write_text(body, encoding="utf-8")
+        # Respect fork status: a forked file is owned by the consumer.
+        # Leave both the file and its lock entry untouched.
+        existing_entry = lock.get(rel_key)
+        if existing_entry and existing_entry.get("forked"):
+            result.skipped_forked.append(rel_key)
+            continue
 
-        lock[str(out_rel)] = {
-            "hash": hash_content(content),
-            "source_module": f"template:{template_name}:_shared",
-            "source_version": template_version,
-            "forked": False,
-        }
-        count += 1
+        existing = target.read_text(encoding="utf-8") if target.exists() else None
+        body_content = preserve_custom_section(content, existing)
+        if custom_section_diverged(content, existing):
+            result.preserved_custom.append(rel_key)
 
-    write_lock(dst, lock)
-    return count
+        if not dry_run:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            marker = marker_for(
+                target.suffix,
+                f"template:{template_name}",
+                template_version,
+                hash_content(body_content)[:12],
+            )
+            body = body_content
+            if marker is not None and not body_content.lstrip().startswith(marker.strip()):
+                body = marker + "\n" + body_content
+            target.write_text(body, encoding="utf-8")
+
+            lock[rel_key] = {
+                "hash": hash_content(body_content),
+                "source_module": f"template:{template_name}:_shared",
+                "source_version": template_version,
+                "forked": False,
+            }
+        result.written.append(rel_key)
+
+    if not dry_run:
+        write_lock(dst, lock)
+    return result
 
 
 def _walk(root: Path) -> list[Path]:
@@ -173,4 +219,4 @@ def _shared_root() -> Path | None:
 _ = (lock_path,)
 
 
-__all__ = ["inject_shared_scaffold"]
+__all__ = ["SharedScaffoldResult", "inject_shared_scaffold"]

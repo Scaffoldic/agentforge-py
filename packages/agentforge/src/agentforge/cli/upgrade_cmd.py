@@ -16,9 +16,13 @@ import argparse
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 from agentforge_core.production.exceptions import ModuleError
+
+if TYPE_CHECKING:
+    from agentforge.cli._shared_scaffold import SharedScaffoldResult
 
 from agentforge.cli._scaffold_state import (
     _HASH_PREFIX_LEN,
@@ -118,13 +122,6 @@ def _run_upgrade(
         )
         return 1
 
-    if args.dry_run:
-        sys.stdout.write(
-            f"  → dry-run: would re-render template {template_name!r} into this "
-            f"directory and refresh every non-forked managed file.\n"
-        )
-        return 0
-
     template_version = args.to if args.to else _template_version()
     try:
         return _do_upgrade(
@@ -133,6 +130,7 @@ def _run_upgrade(
             template_root=template_root,
             template_version=template_version,
             answers=answers,
+            dry_run=args.dry_run,
         )
     except ModuleError as exc:
         sys.stderr.write(f"upgrade failed: {exc}\n")
@@ -153,9 +151,20 @@ def _do_upgrade(
     template_root: Path,
     template_version: str,
     answers: dict[str, object],
+    dry_run: bool = False,
 ) -> int:
     """Render template → temp; copy each non-forked managed file
-    into work_dir; refresh lock; re-inject shared scaffold."""
+    into work_dir; refresh lock; re-inject shared scaffold.
+
+    Forked files are never rewritten and the developer-owned
+    ``agentforge:custom`` block of three-section files is preserved
+    across the refresh (bug-025). With `dry_run`, nothing is written —
+    a per-file plan is printed instead.
+    """
+    from agentforge.cli._scaffold_state import (  # noqa: PLC0415
+        custom_section_diverged,
+        preserve_custom_section,
+    )
     from agentforge.cli._shared_scaffold import inject_shared_scaffold  # noqa: PLC0415
     from agentforge.cli.new_cmd import _run_copier  # noqa: PLC0415
 
@@ -170,6 +179,8 @@ def _do_upgrade(
     refreshed: list[str] = []
     forked_kept: list[str] = []
     new_files: list[str] = []
+    # rel → human-readable action, used for the --dry-run plan.
+    actions: dict[str, str] = {}
 
     with tempfile.TemporaryDirectory(prefix="agentforge-upgrade-") as temp_str:
         temp = Path(temp_str)
@@ -180,6 +191,7 @@ def _do_upgrade(
             if entry.get("forked"):
                 new_lock[rel] = entry
                 forked_kept.append(rel)
+                actions[rel] = "skip (forked)"
                 continue
             src = temp / rel
             dst = work_dir / rel
@@ -187,18 +199,26 @@ def _do_upgrade(
                 # File was in scaffold but isn't in current template.
                 # Drop it from the new lock — `agentforge upgrade`
                 # treats template removals as "no longer managed".
+                # (Shared-scaffold files live here too; Pass 3 re-adds
+                # them.)
                 continue
-            _write_with_marker(
-                dst,
-                src.read_text(encoding="utf-8"),
-                source_module=str(entry.get("source_module", f"template:{template_name}")),
-                source_version=template_version,
-            )
-            new_lock[rel] = {
-                **entry,
-                "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
-                "source_version": template_version,
-            }
+            new_content = src.read_text(encoding="utf-8")
+            existing = dst.read_text(encoding="utf-8") if dst.exists() else None
+            merged = preserve_custom_section(new_content, existing)
+            kept_custom = custom_section_diverged(new_content, existing)
+            actions[rel] = "refresh (preserve custom block)" if kept_custom else "refresh"
+            if not dry_run:
+                _write_with_marker(
+                    dst,
+                    merged,
+                    source_module=str(entry.get("source_module", f"template:{template_name}")),
+                    source_version=template_version,
+                )
+                new_lock[rel] = {
+                    **entry,
+                    "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
+                    "source_version": template_version,
+                }
             refreshed.append(rel)
 
         # Pass 2: add files in the new template that weren't in the
@@ -212,33 +232,85 @@ def _do_upgrade(
             if rel.startswith(".agentforge-state/"):
                 continue
             dst = work_dir / rel
-            _write_with_marker(
-                dst,
-                src.read_text(encoding="utf-8"),
-                source_module=f"template:{template_name}",
-                source_version=template_version,
-            )
-            new_lock[rel] = {
-                "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
-                "source_module": f"template:{template_name}",
-                "source_version": template_version,
-                "forked": False,
-            }
+            actions[rel] = "add (new)"
+            if not dry_run:
+                _write_with_marker(
+                    dst,
+                    src.read_text(encoding="utf-8"),
+                    source_module=f"template:{template_name}",
+                    source_version=template_version,
+                )
+                new_lock[rel] = {
+                    "hash": hash_content(_strip_marker_for_hash(dst.read_text(encoding="utf-8"))),
+                    "source_module": f"template:{template_name}",
+                    "source_version": template_version,
+                    "forked": False,
+                }
             new_files.append(rel)
 
-    write_lock(work_dir, new_lock)
+    if not dry_run:
+        write_lock(work_dir, new_lock)
 
     # Re-inject the shared scaffold (runbooks + AGENTS.md / CLAUDE.md /
     # .cursorrules / copilot-instructions) so they track the new
-    # framework version.
+    # framework version. Fork- and custom-block-aware (bug-025).
     shared = inject_shared_scaffold(
         work_dir,
         template_name=template_name,
         template_version=template_version,
+        dry_run=dry_run,
+    )
+    return _report_upgrade(
+        actions=actions,
+        refreshed=refreshed,
+        new_files=new_files,
+        forked_kept=forked_kept,
+        shared=shared,
+        dry_run=dry_run,
     )
 
+
+def _report_upgrade(
+    *,
+    actions: dict[str, str],
+    refreshed: list[str],
+    new_files: list[str],
+    forked_kept: list[str],
+    shared: SharedScaffoldResult,
+    dry_run: bool,
+) -> int:
+    """Merge Pass-3 shared verdicts into the action map, then print the
+    dry-run plan or the post-upgrade summary."""
+    # Shared files are owned by Pass 3; let its verdict win over the
+    # Pass-1 "dropped/forked" bookkeeping for the same paths.
+    for rel in shared.skipped_forked:
+        actions[rel] = "skip (forked)"
+    for rel in shared.written:
+        actions[rel] = (
+            "refresh shared (preserve custom block)"
+            if rel in shared.preserved_custom
+            else "refresh shared"
+        )
+
+    forked_total = sorted(set(forked_kept) | set(shared.skipped_forked))
+    custom_preserved = sorted(
+        {rel for rel in refreshed if actions.get(rel, "").startswith("refresh (preserve")}
+        | set(shared.preserved_custom)
+    )
+
+    if dry_run:
+        sys.stdout.write("  → dry-run: no files written. Planned changes:\n")
+        for rel in sorted(actions):
+            sys.stdout.write(f"      {rel}: {actions[rel]}\n")
+        sys.stdout.write(
+            f"  → summary: {len(actions)} files; "
+            f"{len(forked_total)} forked (skipped), "
+            f"{len(custom_preserved)} with custom blocks preserved.\n"
+        )
+        return 0
+
     sys.stdout.write(
-        f"  → refreshed {len(refreshed)} managed files; preserved {len(forked_kept)} forked.\n"
+        f"  → refreshed {len(refreshed)} managed files; preserved {len(forked_total)} forked.\n"
     )
     if new_files:
         max_preview = 3
@@ -246,7 +318,9 @@ def _do_upgrade(
         if len(new_files) > max_preview:
             preview += "…"
         sys.stdout.write(f"  → added {len(new_files)} new managed files: {preview}\n")
-    sys.stdout.write(f"  → re-injected {shared} shared scaffold files.\n")
+    sys.stdout.write(f"  → re-injected {len(shared.written)} shared scaffold files.\n")
+    if custom_preserved:
+        sys.stdout.write(f"  → preserved custom blocks in {len(custom_preserved)} files.\n")
     sys.stdout.write("  → upgrade complete; lock refreshed.\n")
     return 0
 
