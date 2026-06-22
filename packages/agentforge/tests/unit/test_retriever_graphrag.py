@@ -12,6 +12,7 @@ import math
 
 import pytest
 from agentforge import InMemoryGraphStore, InMemoryVectorStore, Retriever
+from agentforge_core.config.schema import GraphExpansionConfig, ModuleEntry
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.values.graph import GraphEdge, GraphNode
@@ -243,6 +244,160 @@ async def test_missing_graph_node_is_silently_skipped() -> None:
     )
     results = await retriever.retrieve("orphan")
     assert [m.id for m in results] == ["orphan"]
+
+
+# ---------- Directional expansion (enh-005) ----------
+
+
+async def _directional_stores() -> tuple[InMemoryVectorStore, InMemoryGraphStore]:
+    """`a` cites `b`; `c` cites `a`. So out(a) = {b} (what a cites);
+    in(a) = {c} (who cites a). The reference `traverse` follows
+    out-edges only, so only `direction="in"` surfaces `c`."""
+    return await _seeded_stores(
+        docs={"a": "alpha", "b": "beta", "c": "gamma"},
+        edges=[("a", "b", "CITES"), ("c", "a", "CITES")],
+    )
+
+
+def test_graph_expansion_direction_defaults_to_any() -> None:
+    gs = InMemoryGraphStore()
+    assert GraphExpansion(store=gs).direction == "any"
+    assert GraphExpansion(store=gs, direction="in").direction == "in"
+
+
+def test_graph_expansion_config_direction_field() -> None:
+    entry = ModuleEntry(driver="kuzu", config={"path": ".ckg"})
+    assert GraphExpansionConfig(store=entry).direction == "any"  # default
+    assert GraphExpansionConfig(store=entry, direction="in").direction == "in"
+    with pytest.raises(ValueError, match="direction"):
+        GraphExpansionConfig(store=entry, direction="backwards")  # type: ignore[arg-type]
+
+
+def test_graph_expansion_rejects_bad_direction() -> None:
+    with pytest.raises(ValueError, match="direction"):
+        GraphExpansion(store=InMemoryGraphStore(), direction="sideways")  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_direction_out_returns_successors() -> None:
+    vec_store, graph_store = await _directional_stores()
+    retriever = Retriever(
+        store=vec_store,
+        embedder=_FakeEmbedder(dim=4),
+        top_k=1,
+        over_fetch_factor=1,
+        graph_expansion=GraphExpansion(store=graph_store, max_hops=1, direction="out", decay=0.5),
+    )
+    ids = [m.id for m in await retriever.retrieve("alpha")]
+    assert ids == ["a", "b"]  # what `a` cites; `c` (a caller) is excluded
+
+
+@pytest.mark.asyncio
+async def test_direction_in_returns_predecessors() -> None:
+    vec_store, graph_store = await _directional_stores()
+    retriever = Retriever(
+        store=vec_store,
+        embedder=_FakeEmbedder(dim=4),
+        top_k=1,
+        over_fetch_factor=1,
+        graph_expansion=GraphExpansion(store=graph_store, max_hops=1, direction="in", decay=0.5),
+    )
+    ids = [m.id for m in await retriever.retrieve("alpha")]
+    assert ids == ["a", "c"]  # who cites `a`; `b` (a callee) is excluded
+
+
+@pytest.mark.asyncio
+async def test_direction_in_surfaces_what_traverse_cannot() -> None:
+    """`direction="in"` reaches predecessors the undirected `traverse`
+    path (`any`) misses, and excludes the out-neighbours it would add."""
+    vec_store, graph_store = await _directional_stores()
+    base = {
+        "store": vec_store,
+        "embedder": _FakeEmbedder(dim=4),
+        "top_k": 1,
+        "over_fetch_factor": 1,
+    }
+    any_ids = {
+        m.id
+        for m in await Retriever(
+            **base,
+            graph_expansion=GraphExpansion(store=graph_store, max_hops=1, direction="any"),
+        ).retrieve("alpha")
+    }
+    in_ids = {
+        m.id
+        for m in await Retriever(
+            **base,
+            graph_expansion=GraphExpansion(store=graph_store, max_hops=1, direction="in"),
+        ).retrieve("alpha")
+    }
+    assert "c" in in_ids  # `direction=in` reaches the caller `c`
+    assert "c" not in any_ids  # the undirected traverse path misses it
+    assert "b" in any_ids  # `any` reaches the callee `b`
+    assert "b" not in in_ids  # `direction=in` excludes it
+
+
+@pytest.mark.asyncio
+async def test_direction_in_multi_hop_walks_caller_chain() -> None:
+    """`b` cites `c`, `c` cites `a`. From `a`, direction=in, 2 hops →
+    who-cites-a (`c`) then who-cites-c (`b`)."""
+    vec_store, graph_store = await _seeded_stores(
+        docs={"a": "alpha", "b": "beta", "c": "gamma"},
+        edges=[("c", "a", "CITES"), ("b", "c", "CITES")],
+    )
+    retriever = Retriever(
+        store=vec_store,
+        embedder=_FakeEmbedder(dim=4),
+        top_k=1,
+        over_fetch_factor=1,
+        graph_expansion=GraphExpansion(store=graph_store, max_hops=2, direction="in", decay=0.5),
+    )
+    results = await retriever.retrieve("alpha")
+    by_id = {m.id: m for m in results}
+    assert {"a", "c", "b"} <= set(by_id)
+    assert by_id["c"].metadata["agentforge.hop"] == 1
+    assert by_id["b"].metadata["agentforge.hop"] == 2
+    assert by_id["c"].score == pytest.approx(by_id["a"].score * 0.5)
+    assert by_id["b"].score == pytest.approx(by_id["a"].score * 0.25)
+    assert by_id["c"].metadata["agentforge.expanded_from"] == "a"
+
+
+@pytest.mark.asyncio
+async def test_direction_in_respects_edge_types() -> None:
+    """`b` CALLS `a`, `c` IMPORTS `a`. direction=in + edge_types=(CALLS,)
+    surfaces only the caller `b`, not the importer `c`."""
+    vec_store, graph_store = await _seeded_stores(
+        docs={"a": "alpha", "b": "beta", "c": "gamma"},
+        edges=[("b", "a", "CALLS"), ("c", "a", "IMPORTS")],
+    )
+    retriever = Retriever(
+        store=vec_store,
+        embedder=_FakeEmbedder(dim=4),
+        top_k=1,
+        over_fetch_factor=1,
+        graph_expansion=GraphExpansion(
+            store=graph_store, max_hops=1, direction="in", edge_types=("CALLS",), decay=0.5
+        ),
+    )
+    ids = {m.id for m in await retriever.retrieve("alpha")}
+    assert "b" in ids
+    assert "c" not in ids
+
+
+@pytest.mark.asyncio
+async def test_direction_in_tolerates_seed_with_no_predecessors() -> None:
+    vec_store, graph_store = await _directional_stores()
+    # In `a`→`b`, `c`→`a`, node `c` has no in-edges (nobody cites c) →
+    # no expansion, no error.
+    retriever = Retriever(
+        store=vec_store,
+        embedder=_FakeEmbedder(dim=4),
+        top_k=1,
+        over_fetch_factor=1,
+        graph_expansion=GraphExpansion(store=graph_store, max_hops=2, direction="in", decay=0.5),
+    )
+    results = await retriever.retrieve("gamma")
+    assert [m.id for m in results] == ["c"]
 
 
 # ---------- Reranker layering ----------

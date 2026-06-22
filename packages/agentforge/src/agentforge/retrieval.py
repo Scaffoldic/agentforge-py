@@ -29,7 +29,7 @@ from typing import Any, Literal
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.vector_store import VectorStore
-from agentforge_core.values.graph import Path as GraphPath
+from agentforge_core.values.graph import GraphNode
 from agentforge_core.values.retrieval import GraphExpansion
 from agentforge_core.values.vector import VectorItem, VectorMatch
 from ulid import ULID
@@ -313,53 +313,44 @@ class Retriever:
         if not seeds:
             return []
 
-        async def _traverse(seed: VectorMatch) -> tuple[VectorMatch, list[GraphPath]]:
+        async def _reach(seed: VectorMatch) -> tuple[VectorMatch, list[tuple[int, GraphNode]]]:
             try:
-                paths = await expansion.store.traverse(
-                    start_id=seed.id,
-                    edge_types=expansion.edge_types,
-                    max_depth=expansion.max_hops,
-                    limit=max(len(seeds), 1) * expansion.max_hops * 4,
-                )
+                if expansion.direction == "any":
+                    reaches = await self._reach_via_traverse(seed, expansion, n_seeds=len(seeds))
+                else:
+                    reaches = await self._reach_via_get_edges(seed, expansion)
             except Exception:
-                log.debug("graph traverse failed for seed %s", seed.id, exc_info=True)
+                log.debug("graph expansion failed for seed %s", seed.id, exc_info=True)
                 return seed, []
-            return seed, paths
+            return seed, reaches
 
-        results = await asyncio.gather(*(_traverse(s) for s in seeds))
+        results = await asyncio.gather(*(_reach(s) for s in seeds))
 
         seed_ids = {s.id for s in seeds}
-        # Keyed by node id; track best (highest) decayed score per id.
+        # Keyed by node id; track best (highest) decayed score per id —
+        # since score = decay**depth (decay <= 1), the lowest-depth reach
+        # wins, so this also picks the shortest path to each node.
         expanded_by_id: dict[str, tuple[float, int, VectorMatch]] = {}
-        for seed, paths in results:
-            if not paths:
-                log.debug("no graph paths found for seed %s", seed.id)
+        for seed, reaches in results:
+            if not reaches:
+                log.debug("no graph expansion found for seed %s", seed.id)
                 continue
-            for path in paths:
-                # path.nodes[0] is the seed; nodes[i] is at depth i.
-                for depth, node in enumerate(path.nodes):
-                    if depth == 0:
-                        continue
-                    if node.id in seed_ids:
-                        continue
-                    score = float(seed.score) * (float(expansion.decay) ** depth)
-                    prior = expanded_by_id.get(node.id)
-                    if prior is not None and prior[0] >= score:
-                        continue
-                    text = str(node.properties.get(expansion.text_property, ""))
-                    merged_meta: dict[str, Any] = dict(node.properties)
-                    merged_meta["agentforge.expanded_from"] = seed.id
-                    merged_meta["agentforge.hop"] = depth
-                    expanded_by_id[node.id] = (
-                        score,
-                        depth,
-                        VectorMatch(
-                            id=node.id,
-                            text=text,
-                            metadata=merged_meta,
-                            score=score,
-                        ),
-                    )
+            for depth, node in reaches:
+                if node.id in seed_ids:
+                    continue
+                score = float(seed.score) * (float(expansion.decay) ** depth)
+                prior = expanded_by_id.get(node.id)
+                if prior is not None and prior[0] >= score:
+                    continue
+                text = str(node.properties.get(expansion.text_property, ""))
+                merged_meta: dict[str, Any] = dict(node.properties)
+                merged_meta["agentforge.expanded_from"] = seed.id
+                merged_meta["agentforge.hop"] = depth
+                expanded_by_id[node.id] = (
+                    score,
+                    depth,
+                    VectorMatch(id=node.id, text=text, metadata=merged_meta, score=score),
+                )
 
         expansion_matches = sorted(
             (m for _, _, m in expanded_by_id.values()),
@@ -367,6 +358,62 @@ class Retriever:
             reverse=True,
         )
         return list(seeds) + expansion_matches
+
+    @staticmethod
+    async def _reach_via_traverse(
+        seed: VectorMatch,
+        expansion: GraphExpansion,
+        *,
+        n_seeds: int,
+    ) -> list[tuple[int, GraphNode]]:
+        """Undirected expansion (``direction="any"``) via the store's
+        native ``traverse`` — the original feat-023 path, unchanged."""
+        paths = await expansion.store.traverse(
+            start_id=seed.id,
+            edge_types=expansion.edge_types,
+            max_depth=expansion.max_hops,
+            limit=max(n_seeds, 1) * expansion.max_hops * 4,
+        )
+        # path.nodes[0] is the seed; nodes[i] is at depth i. Emit every
+        # (depth, node); the caller's best-score dedup keeps the shortest.
+        return [
+            (depth, node) for path in paths for depth, node in enumerate(path.nodes) if depth > 0
+        ]
+
+    @staticmethod
+    async def _reach_via_get_edges(
+        seed: VectorMatch,
+        expansion: GraphExpansion,
+    ) -> list[tuple[int, GraphNode]]:
+        """Directional expansion (``direction in {"out", "in"}``) via a
+        BFS over the locked ``get_edges(direction=...)`` primitive — no
+        ABC change (enh-005). ``out`` collects ``edge.dst``; ``in``
+        collects ``edge.src``."""
+        direction = expansion.direction
+        edge_types = expansion.edge_types or (None,)
+        visited: set[str] = {seed.id}
+        frontier: set[str] = {seed.id}
+        reaches: list[tuple[int, GraphNode]] = []
+        for depth in range(1, expansion.max_hops + 1):
+            neighbour_ids: set[str] = set()
+            for node_id in frontier:
+                for edge_type in edge_types:
+                    edges = await expansion.store.get_edges(
+                        node_id, edge_type=edge_type, direction=direction
+                    )
+                    for edge in edges:
+                        nbr = edge.dst if direction == "out" else edge.src
+                        if nbr not in visited:
+                            neighbour_ids.add(nbr)
+            if not neighbour_ids:
+                break
+            for nbr in neighbour_ids:
+                visited.add(nbr)
+                node = await expansion.store.get_node(nbr)
+                if node is not None:
+                    reaches.append((depth, node))
+            frontier = neighbour_ids
+        return reaches
 
     def _rrf_fuse(
         self,
