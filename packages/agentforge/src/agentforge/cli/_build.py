@@ -251,6 +251,7 @@ def build_retriever_from_config(config: AgentForgeConfig) -> Retriever | None:
             store=graph_store_instance,
             max_hops=ge_cfg.max_hops,
             edge_types=tuple(ge_cfg.edge_types) if ge_cfg.edge_types is not None else None,
+            direction=ge_cfg.direction,
             text_property=ge_cfg.text_property,
             decay=ge_cfg.decay,
         )

@@ -14,6 +14,16 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ### Added
 
+- **enh-005 — directional GraphRAG expansion.** `retrieval.graph_expansion`
+  (and the `GraphExpansion` value) gain `direction: in | out | any`, so graph
+  expansion can follow **asymmetric** edges the right way — `in` for callers /
+  who-cites-X / dependents, `out` for callees / what-X-cites / dependencies.
+  `any` (the default) is the original undirected `traverse` behaviour, so
+  existing agents are **byte-for-byte unchanged**. Directional expansion rides
+  the already-locked `GraphStore.get_edges(direction=...)` primitive via a BFS
+  in the `Retriever` — **no ABC change, no major bump, no new package**.
+  Improves feat-023. First piece of the 0.4 graph train (see the enh-005 spec).
+
 - **enh-006 — upgrade drift report (`agentforge upgrade --notes`).** After
   bumping the framework pin, a consumer can now see which fixes (and the
   issues they close) the bump shipped, so dead workarounds get cleaned up

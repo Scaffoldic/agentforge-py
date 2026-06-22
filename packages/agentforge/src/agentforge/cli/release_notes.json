@@ -7,6 +7,14 @@
       "entries": {
         "Added": [
           {
+            "label": "enh-005 — directional GraphRAG expansion.",
+            "closes": [],
+            "refs": [
+              "enh-005",
+              "feat-023"
+            ]
+          },
+          {
             "label": "enh-006 — upgrade drift report (`agentforge upgrade --notes`).",
             "closes": [],
             "refs": [

@@ -13,6 +13,8 @@ Pydantic model.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from agentforge_core.contracts.graph_store import GraphStore
@@ -32,6 +34,11 @@ class GraphExpansion(BaseModel):
             fan-out — tune cautiously.
         edge_types: If set, restricts traversal to these edge
             types. ``None`` means all edge types.
+        direction: Which way to follow edges during expansion
+            (enh-005). ``"out"`` follows ``src → dst`` (e.g.
+            callees, what-X-cites); ``"in"`` follows ``dst → src``
+            (e.g. callers, who-cites-X); ``"any"`` (default) is the
+            original undirected behaviour via ``store.traverse``.
         text_property: Graph-node property used to populate the
             synthesised ``VectorMatch.text``. Defaults to
             ``"text"``.
@@ -49,5 +56,6 @@ class GraphExpansion(BaseModel):
     store: GraphStore
     max_hops: int = Field(default=2, ge=1)
     edge_types: tuple[str, ...] | None = None
+    direction: Literal["out", "in", "any"] = "any"
     text_property: str = Field(default="text", min_length=1)
     decay: float = Field(default=0.5, gt=0.0, le=1.0)

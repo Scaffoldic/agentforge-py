@@ -15,7 +15,7 @@
 |---|---|
 | **ID** | enh-005 |
 | **Title** | `direction` on `GraphExpansion` (in / out / any) |
-| **Status** | accepted (targeted at the 0.4 train) |
+| **Status** | in-progress (implemented; targeting the 0.4 train) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-17 |
 | **Target version** | 0.4 |
@@ -201,11 +201,21 @@ scheduled.
 - `GraphStore` contract — `get_edges(direction=...)` (the locked primitive used).
 
 ## 11. Implementation status (Python)
-**Status: accepted, not yet implemented.** Suggested chunking:
-1. Spec + catalogue/roadmap pointer.
-2. `direction` on `GraphExpansion` + `GraphExpansionConfig`; `_expand_via_graph`
-   directional branch via `get_edges`; unit tests incl. backward-compat.
-3. Status flip + CHANGELOG + runbook note on feat-023.
+**Status: implemented (not yet released).** Shipped on the enh-005 branch:
+- `direction: Literal["out","in","any"] = "any"` on `GraphExpansion`
+  (`agentforge_core.values.retrieval`) and `GraphExpansionConfig`
+  (`agentforge_core.config.schema`); threaded by `build_retriever_from_config`.
+- `Retriever._expand_via_graph` now branches: `any` keeps the native
+  `traverse()` path (unchanged); `in`/`out` run a BFS over the locked
+  `get_edges(direction=...)` primitive (`_reach_via_get_edges`), collecting
+  `edge.dst` (`out`) or `edge.src` (`in`) and fetching each neighbour via
+  `get_node`. Merge/decay/dedup pipeline reused verbatim.
+- Tests in `test_retriever_graphrag.py`: out=successors, in=predecessors,
+  in surfaces what `traverse` cannot, multi-hop caller chain, edge-type
+  filtering, no-predecessor tolerance, value + config defaults / rejection,
+  and the existing feat-023 suite (backward-compat for `any`). Fully offline.
+
+Remaining: flip Status → shipped + roadmap row when the 0.4 train tags.
 
 ## 12. Runbook
 

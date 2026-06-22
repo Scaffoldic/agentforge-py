@@ -164,6 +164,10 @@ class GraphExpansionConfig(BaseModel):
     """Edge-type filter. YAML lists deserialize to `list[str]`;
     converted to a tuple by `build_retriever_from_config` before
     constructing the `GraphExpansion` value."""
+    direction: Literal["out", "in", "any"] = "any"
+    """Edge direction to follow during expansion (enh-005): `out`
+    (callees / what-X-cites), `in` (callers / who-cites-X), or `any`
+    (default — the original undirected `traverse` behaviour)."""
     text_property: str = "text"
     decay: float = Field(default=0.5, gt=0.0, le=1.0)
 
