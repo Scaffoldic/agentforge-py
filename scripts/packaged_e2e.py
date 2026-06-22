@@ -395,6 +395,110 @@ def _check_version(py: Path) -> None:
     )
 
 
+def _run_probe(py: Path, workdir: Path, name: str, body: str, marker: str, message: str) -> None:
+    """Write a small probe script, run it on the venv python, and assert it
+    prints `marker`. Surfaces the probe's stderr on failure."""
+    script = workdir / name
+    script.write_text(body, encoding="utf-8")
+    out = _capture([str(py), str(script)])
+    if out.returncode != 0 or marker not in out.stdout:
+        print(out.stdout)
+        print(out.stderr, file=sys.stderr)
+    _expect(out.returncode == 0 and marker in out.stdout, message)
+
+
+def _check_upgrade_notes(py: Path, workdir: Path) -> None:
+    """enh-006 — `agentforge upgrade --notes` prints the drift report from
+    the `release_notes.json` shipped *inside* the wheel (proves the
+    generated notes artefact is packaged, not just present in the repo)."""
+    print("\n=== enh-006: agentforge upgrade --notes (drift report from the wheel) ===")
+    af = _bin(py, "agentforge")
+    proj = workdir / "scaffold"
+    out = _capture([str(af), "upgrade", "--notes", "0.2.4..0.3.0"], cwd=proj)
+    _expect(
+        out.returncode == 0 and "drift from 0.2.4" in out.stdout and "closes #" in out.stdout,
+        "upgrade --notes prints the drift report (release_notes.json shipped in wheel) (enh-006)",
+    )
+
+
+def _check_kuzu(py: Path, dist_dir: Path, workdir: Path) -> None:
+    """feat-027 — the embedded Kùzu GraphStore installs (native wheel) and
+    round-trips a real graph from the built wheel, offline, no server."""
+    print("\n=== feat-027: embedded Kùzu GraphStore (offline graph round-trip) ===")
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(py),
+            str(_wheel(dist_dir, "agentforge_memory_kuzu")),
+        ]
+    )
+    _run_probe(
+        py,
+        workdir,
+        "kuzu_probe.py",
+        "import asyncio, os, tempfile\n"
+        "from agentforge_core.resolver import Resolver\n"
+        "from agentforge_core.values.graph import GraphEdge, GraphNode\n"
+        "from agentforge_memory_kuzu import KuzuGraphStore\n"
+        "async def main():\n"
+        "    assert Resolver.global_().resolve('graph_stores', 'kuzu') is KuzuGraphStore\n"
+        "    store = await KuzuGraphStore.from_path(os.path.join(tempfile.mkdtemp(), 'g.ckg'))\n"
+        "    await store.add_node(GraphNode(id='a', properties={'text': 'alpha'}))\n"
+        "    await store.add_node(GraphNode(id='b', properties={'text': 'beta'}))\n"
+        "    await store.add_edge(GraphEdge(src='a', dst='b', edge_type='CALLS'))\n"
+        "    assert [e.src for e in await store.get_edges('b', direction='in')] == ['a']\n"
+        "    assert any(p.nodes[-1].id == 'b' for p in await store.traverse('a', max_depth=1))\n"
+        "    await store.close()\n"
+        "    print('KUZU_OK')\n"
+        "asyncio.run(main())\n",
+        "KUZU_OK",
+        "Kùzu graph store installs (native wheel) + resolves + round-trips offline (feat-027)",
+    )
+
+
+def _check_governance(py: Path, dist_dir: Path, workdir: Path) -> None:
+    """feat-029 — the governance identity package installs and issues +
+    verifies a Principal from a `governance.identity` config, from the wheel."""
+    print("\n=== feat-029: governance identity (offline principal + config) ===")
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(py),
+            str(_wheel(dist_dir, "agentforge_governance")),
+        ]
+    )
+    _run_probe(
+        py,
+        workdir,
+        "governance_probe.py",
+        "import asyncio\n"
+        "from agentforge.cli._build import build_identity_from_config\n"
+        "from agentforge_core.config.schema import AgentForgeConfig\n"
+        "from agentforge_core.resolver import Resolver\n"
+        "from agentforge_governance import LocalIdentityProvider\n"
+        "async def main():\n"
+        "    resolved = Resolver.global_().resolve('identity_providers', 'local')\n"
+        "    assert resolved is LocalIdentityProvider\n"
+        "    cfg = AgentForgeConfig.model_validate(\n"
+        "        {'governance': {'identity': {'provider': 'local', 'name': 'reconciler',\n"
+        "         'owner': 'finance', 'attributes': {'env': 'prod'}}}})\n"
+        "    idp = await build_identity_from_config(cfg)\n"
+        "    p = await idp.resolve('agentforge:agent:local/reconciler@1')\n"
+        "    assert p is not None and p.owner == 'finance' and p.metadata['env'] == 'prod'\n"
+        "    assert (await idp.verify(await idp.credential(p))).id == p.id\n"
+        "    print('GOV_OK')\n"
+        "asyncio.run(main())\n",
+        "GOV_OK",
+        "governance identity installs + issues/verifies a principal from config (feat-029)",
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--skip-build", action="store_true", help="reuse an existing dist/")
@@ -423,6 +527,9 @@ def main() -> int:
         _check_86(py, workdir)
         _check_85(py, workdir)
         _check_configured_runtime(py, workdir)
+        _check_upgrade_notes(py, workdir)
+        _check_kuzu(py, dist_dir, workdir)
+        _check_governance(py, dist_dir, workdir)
     except GateError as exc:
         print(f"\nPACKAGED E2E FAILED: {exc}", file=sys.stderr)
         return 1
@@ -431,7 +538,7 @@ def main() -> int:
 
     print(
         "\nPACKAGED E2E PASSED — the built wheels scaffold + validate + add-module + "
-        "run a configured agent cleanly."
+        "run a configured agent + drive the Kùzu graph store + governance identity cleanly."
     )
     return 0
 
