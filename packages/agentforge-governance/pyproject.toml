@@ -1,0 +1,50 @@
+[project]
+name = "agentforge-governance"
+version = "0.3.1"
+description = "Governance spine for AgentForge — identity (feat-029) and, as they land, registry / policy / audit drivers"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "governance", "identity", "registry", "policy", "audit"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core ~= 0.3.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.identity_providers"]
+local = "agentforge_governance.identity.local:LocalIdentityProvider"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_governance"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_governance",
+    "tests",
+    "README.md",
+    "LICENSE",
+]

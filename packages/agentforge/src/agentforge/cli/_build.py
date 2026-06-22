@@ -30,6 +30,7 @@ from agentforge_core.config.schema import AgentForgeConfig
 from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import Evaluator
 from agentforge_core.contracts.graph_store import GraphStore
+from agentforge_core.contracts.identity import IdentityProvider
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.protocol_bridge import ProtocolBridge
@@ -114,6 +115,31 @@ async def build_agent_from_config(
         # leak the open transports / spawned subprocesses.
         await _close_bridges(protocol_bridges)
         raise
+
+
+async def build_identity_from_config(
+    config: AgentForgeConfig,
+) -> IdentityProvider | None:
+    """Resolve + construct `governance.identity` (feat-029).
+
+    Returns the configured `IdentityProvider`, or None when no identity is
+    declared. When `name` + `owner` are set, the agent's principal is issued
+    eagerly so it exists before the first action.
+    """
+    ident = config.governance.identity
+    if ident is None:
+        return None
+    cls = _resolve_class("identity_providers", ident.provider)
+    provider = await _ainstantiate_memory(cls, ident.config)
+    if not isinstance(provider, IdentityProvider):
+        msg = (
+            f"Resolved identity provider {ident.provider!r} "
+            f"({cls.__name__}) does not implement IdentityProvider."
+        )
+        raise ModuleError(msg)
+    if ident.name and ident.owner:
+        await provider.issue(name=ident.name, owner=ident.owner, attributes=ident.attributes)
+    return provider
 
 
 async def build_memory_from_config(config: AgentForgeConfig) -> MemoryStore | None:

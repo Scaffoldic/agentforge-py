@@ -13,6 +13,7 @@ from agentforge_core.contracts.embedding import EmbeddingClient
 from agentforge_core.contracts.evaluator import EvalResult, Evaluator
 from agentforge_core.contracts.finding import Finding
 from agentforge_core.contracts.graph_store import GraphStore
+from agentforge_core.contracts.identity import IdentityError, IdentityProvider
 from agentforge_core.contracts.llm import LLMClient
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.migrator import (
@@ -38,6 +39,8 @@ __all__ = [
     "FindingRenderer",
     "GraphStore",
     "HistoryTruncationStrategy",
+    "IdentityError",
+    "IdentityProvider",
     "LLMClient",
     "MemoryStore",
     "Migration",

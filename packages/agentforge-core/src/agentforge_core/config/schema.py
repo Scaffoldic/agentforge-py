@@ -460,6 +460,34 @@ class OutputConfig(BaseModel):
     thresholds: dict[str, list[str]] = Field(default_factory=dict)
 
 
+class IdentityConfig(BaseModel):
+    """`governance.identity:` — the agent's identity (feat-029).
+
+    `provider` resolves against the `identity_providers` entry-point
+    category; `name` / `owner` / `attributes` describe the principal the
+    framework issues for this agent; `config` is provider-specific (issuer
+    URL, trust domain, role_arn, …)."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    provider: str = "local"
+    name: str | None = None
+    owner: str | None = None
+    attributes: dict[str, str] = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+class GovernanceConfig(BaseModel):
+    """`governance:` — the governance spine (feat-029+).
+
+    Identity ships first; `registry` / `policy` / `audit` sub-blocks are
+    added as those pillars land."""
+
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    identity: IdentityConfig | None = None
+
+
 class AgentForgeConfig(BaseModel):
     """Root model — `agentforge.yaml` shape.
 
@@ -476,6 +504,7 @@ class AgentForgeConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     guardrail_policy: GuardrailPolicy = Field(default_factory=GuardrailPolicy)
+    governance: GovernanceConfig = Field(default_factory=GovernanceConfig)
     app: dict[str, Any] = Field(default_factory=dict)
     """Reserved namespace for **application** config (enh-002, feat-026
     Phase 1). The framework accepts this subtree but does not interpret
