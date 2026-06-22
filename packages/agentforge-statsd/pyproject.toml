@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-statsd"
-version = "0.3.1"
+version = "0.4.0"
 description = "StatsD metrics emitter hook for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -29,7 +29,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.1",
+    "agentforge-core ~= 0.4.0",
 ]
 
 [project.optional-dependencies]

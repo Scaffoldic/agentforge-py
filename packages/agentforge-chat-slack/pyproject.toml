@@ -8,7 +8,7 @@
 
 [project]
 name = "agentforge-chat-slack"
-version = "0.3.1"
+version = "0.4.0"
 description = "Slack reference channel adapter for AgentForge"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.1",
-    "agentforge-chat ~= 0.3.1",
+    "agentforge-core ~= 0.4.0",
+    "agentforge-chat ~= 0.4.0",
     "slack-bolt>=1.20",
     "slack-sdk>=3.30",
 ]

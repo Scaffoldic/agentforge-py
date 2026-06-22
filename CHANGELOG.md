@@ -12,6 +12,14 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-23
+
+"Graph + governance foundation." Embedded zero-ops graph storage and
+directional GraphRAG; an offline upgrade-drift report; the first governance
+pillar (identity); and the `agentforge upgrade` data-loss fix. Two new
+packages — `agentforge-memory-kuzu` and `agentforge-governance`. Every
+workspace member bumped to `0.4.0`.
+
 ### Added
 
 - **feat-029 — governance: identity (pillar 1).** First pillar of the governance

@@ -6,7 +6,7 @@
 
 [project]
 name = "agentforge-guard-llmguard"
-version = "0.3.1"
+version = "0.4.0"
 description = "LLM Guard scanners for AgentForge guardrails"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.1",
+    "agentforge-core ~= 0.4.0",
 ]
 
 [project.urls]
