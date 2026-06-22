@@ -7,6 +7,13 @@
       "entries": {
         "Added": [
           {
+            "label": "feat-029 — governance: identity (pillar 1).",
+            "closes": [],
+            "refs": [
+              "feat-029"
+            ]
+          },
+          {
             "label": "feat-027 — embedded `KuzuGraphStore`.",
             "closes": [],
             "refs": [

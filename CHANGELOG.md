@@ -14,6 +14,19 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ### Added
 
+- **feat-029 — governance: identity (pillar 1).** First pillar of the governance
+  spine (ADR-0023): every agent gets a stable, portable `Principal` so every
+  action has a name. New `IdentityProvider` contract (`issue` / `resolve` /
+  `verify` / `credential` / `rotate`) + `run_identity_conformance` in
+  `agentforge-core`; the existing `Principal` is widened additively with `kind`
+  / `owner` (backward compatible — one principal for `auth` + identity). New
+  `agentforge-governance` package ships the offline `local` driver
+  (`LocalIdentityProvider`, in-process HMAC-signed credentials, URN ids
+  `agentforge:agent:<org>/<name>@<version>`). `governance.identity` config block
+  + `build_identity_from_config`. The `Agent(identity=)` wiring + runtime
+  stamping follow with the audit pillar. Registry / policy / audit pillars land
+  on the 0.5 train.
+
 - **feat-027 — embedded `KuzuGraphStore`.** A zero-ops, file-backed, in-process
   `GraphStore` driver — `path: .ckg` and the store exists, no server (the graph
   analogue of the SQLite `MemoryStore`). New `agentforge-memory-kuzu` package,

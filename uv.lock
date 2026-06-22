@@ -23,6 +23,7 @@ members = [
     "agentforge-core",
     "agentforge-eval-geval",
     "agentforge-evidently",
+    "agentforge-governance",
     "agentforge-guard-llamaguard",
     "agentforge-guard-llmguard",
     "agentforge-guard-nemo",
@@ -250,6 +251,17 @@ requires-dist = [
     { name = "evidently", marker = "extra == 'evidently'", specifier = ">=0.5" },
 ]
 provides-extras = ["evidently"]
+
+[[package]]
+name = "agentforge-governance"
+version = "0.3.1"
+source = { editable = "packages/agentforge-governance" }
+dependencies = [
+    { name = "agentforge-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "agentforge-core", editable = "packages/agentforge-core" }]
 
 [[package]]
 name = "agentforge-guard-llamaguard"
@@ -878,6 +890,7 @@ dependencies = [
     { name = "agentforge-core" },
     { name = "agentforge-eval-geval" },
     { name = "agentforge-evidently" },
+    { name = "agentforge-governance" },
     { name = "agentforge-guard-llamaguard" },
     { name = "agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo" },
@@ -933,6 +946,7 @@ requires-dist = [
     { name = "agentforge-core", editable = "packages/agentforge-core" },
     { name = "agentforge-eval-geval", editable = "packages/agentforge-eval-geval" },
     { name = "agentforge-evidently", editable = "packages/agentforge-evidently" },
+    { name = "agentforge-governance", editable = "packages/agentforge-governance" },
     { name = "agentforge-guard-llamaguard", editable = "packages/agentforge-guard-llamaguard" },
     { name = "agentforge-guard-llmguard", editable = "packages/agentforge-guard-llmguard" },
     { name = "agentforge-guard-nemo", editable = "packages/agentforge-guard-nemo" },

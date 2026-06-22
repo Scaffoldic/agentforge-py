@@ -47,6 +47,7 @@ dependencies = [
     "agentforge-langfuse",
     "agentforge-phoenix",
     "agentforge-evidently",
+    "agentforge-governance",
     "agentforge-reranker-sentence-transformers",
     "agentforge-reranker-cohere",
     "agentforge-reranker-voyage",
@@ -88,6 +89,7 @@ agentforge-statsd = { workspace = true }
 agentforge-langfuse = { workspace = true }
 agentforge-phoenix = { workspace = true }
 agentforge-evidently = { workspace = true }
+agentforge-governance = { workspace = true }
 agentforge-reranker-sentence-transformers = { workspace = true }
 agentforge-reranker-cohere = { workspace = true }
 agentforge-reranker-voyage = { workspace = true }
@@ -508,6 +510,7 @@ testpaths = [
     "packages/agentforge-langfuse/tests",
     "packages/agentforge-phoenix/tests",
     "packages/agentforge-evidently/tests",
+    "packages/agentforge-governance/tests",
     "packages/agentforge-reranker-sentence-transformers/tests",
     "packages/agentforge-reranker-cohere/tests",
     "packages/agentforge-reranker-voyage/tests",
@@ -577,6 +580,7 @@ source = [
     "packages/agentforge-langfuse/src",
     "packages/agentforge-phoenix/src",
     "packages/agentforge-evidently/src",
+    "packages/agentforge-governance/src",
     "packages/agentforge-reranker-sentence-transformers/src",
     "packages/agentforge-reranker-cohere/src",
     "packages/agentforge-reranker-voyage/src",

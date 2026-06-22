@@ -32,6 +32,7 @@ from agentforge_core.contracts.guardrails import (
     OutputValidator,
     ToolCallGate,
 )
+from agentforge_core.contracts.identity import IdentityError, IdentityProvider
 from agentforge_core.contracts.memory import MemoryStore
 from agentforge_core.contracts.reranker import Reranker
 from agentforge_core.contracts.strategy import ReasoningStrategy
@@ -1162,3 +1163,74 @@ async def run_hybrid_search_conformance(store: VectorStore) -> None:
         )
     finally:
         await store.delete(["a", "b", "c"])
+
+
+# ----------------------------------------------------------------------
+# Identity (feat-029)
+# ----------------------------------------------------------------------
+
+
+async def run_identity_conformance(provider: IdentityProvider) -> None:
+    """Assert an `IdentityProvider` honours the locked contract.
+
+    The provider must start empty of the principals issued here. Covers
+    issue→resolve round-trip + idempotency, credential/verify round-trip,
+    rotation, and the unknown/invalid paths.
+    """
+    # 1. issue → resolve round-trip; issued fields are preserved.
+    p = await provider.issue(
+        name="invoice-reconciler",
+        owner="finance-platform",
+        attributes={"env": "prod"},
+    )
+    assert p.id, "issued principal must have a non-empty id"
+    assert p.owner == "finance-platform", "issue must preserve owner"
+    assert p.metadata.get("env") == "prod", "issue must preserve attributes"
+
+    resolved = await provider.resolve(p.id)
+    assert resolved is not None, "resolve must find an issued principal"
+    assert resolved.id == p.id, "resolve must return the same id"
+
+    # 2. issue is idempotent on name — same name → same id.
+    again = await provider.issue(name="invoice-reconciler", owner="finance-platform")
+    assert again.id == p.id, "issue must be idempotent on name (stable id)"
+
+    # 3. resolve of an unknown id returns None (no raise).
+    assert await provider.resolve("agentforge:agent:nobody@0") is None, (
+        "resolve of an unknown id must return None"
+    )
+
+    # 4. credential → verify round-trip yields the same principal.
+    token = await provider.credential(p)
+    assert isinstance(token, str), "credential must return a string"
+    assert token, "credential must return a non-empty token"
+    verified = await provider.verify(token)
+    assert verified.id == p.id, "verify(credential(p)) must round-trip to p"
+
+    # 5. verify of a bogus credential raises IdentityError.
+    raised = False
+    try:
+        await provider.verify("not-a-real-credential")
+    except IdentityError:
+        raised = True
+    assert raised, "verify of an invalid credential must raise IdentityError"
+
+    # 6. rotation keeps the id but invalidates prior credentials.
+    rotated = await provider.rotate(p.id)
+    assert rotated.id == p.id, "rotate must keep the principal id"
+    stale = False
+    try:
+        await provider.verify(token)
+    except IdentityError:
+        stale = True
+    assert stale, "a credential minted before rotate() must stop verifying"
+    fresh = await provider.credential(rotated)
+    assert (await provider.verify(fresh)).id == p.id, "post-rotation credential must verify"
+
+    # 7. rotate of an unknown principal raises IdentityError.
+    unknown = False
+    try:
+        await provider.rotate("agentforge:agent:nobody@0")
+    except IdentityError:
+        unknown = True
+    assert unknown, "rotate of an unknown principal must raise IdentityError"
