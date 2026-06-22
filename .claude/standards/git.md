@@ -108,6 +108,31 @@ Required PR contents:
 - Bugs carried section (per pipeline §5; "None" if no fix-while-feature)
 - Pre-commit hook output (✅ all green)
 
+## Changelog — issue traceability
+
+`CHANGELOG.md` is the user-facing record; a downstream consumer reads
+the slice between their old and new pin to learn what changed. To make
+that slice answer **"which of my filed issues does this version
+resolve?"** without re-reading source (issue #115):
+
+- **Every entry that closes a tracked GitHub issue ends with
+  `(closes #NN)`.** Multiple: `(closes #114, #116)`.
+- Entries that fix a catalogued framework bug/enh keep the
+  `bug-NNN` / `enh-NNN` reference in the lead, *and* add `(closes #NN)`
+  when an issue tracks it.
+- A consumer who worked around a now-fixed seam can `grep '(closes #'`
+  the `[Unreleased]`→latest range and see exactly which workarounds are
+  safe to delete.
+
+Example:
+
+```
+### Fixed
+
+- **bug-025 (P1) — `agentforge upgrade` overwrote forked files…** …
+  (closes #114)
+```
+
 ## Merging
 
 - **Squash merge** to main with the PR title as the squashed commit.

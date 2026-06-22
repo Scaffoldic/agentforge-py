@@ -116,10 +116,12 @@ def _run_new(args: argparse.Namespace) -> int:
     # feat-019: inject shared runbooks + AGENTS.md / CLAUDE.md /
     # .cursorrules / .github/copilot-instructions.md into every
     # scaffolded agent.
-    shared_count = inject_shared_scaffold(
-        dst,
-        template_name=args.template,
-        template_version=template_version,
+    shared_count = len(
+        inject_shared_scaffold(
+            dst,
+            template_name=args.template,
+            template_version=template_version,
+        ).written
     )
     if shared_count:
         sys.stdout.write(f"  → wrote {shared_count} shared scaffold files (runbooks + AI rules)\n")

@@ -7,6 +7,9 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 The framework follows a coordinated release train (per ADR-0015): every
 release tag bumps every workspace member to the same minor version.
 
+Entries that resolve a tracked issue end with `(closes #NN)` — diff the
+slice between two versions to see which of your filed issues a bump fixes.
+
 ## [Unreleased]
 
 ### Changed
@@ -17,6 +20,20 @@ release tag bumps every workspace member to the same minor version.
   only `httpx` is installed. `httpx2 >= 2.4` is now in the dev dependency
   group so the a2a / chat-http / mcp test suites import `TestClient` cleanly;
   runtime HTTP clients are unchanged (still `httpx`). Unblocks dependabot #105.
+
+### Fixed
+
+- **bug-025 (P1) — `agentforge upgrade` overwrote forked files and erased
+  `agentforge:custom` blocks** (data loss). The shared-scaffold re-injection
+  pass (`AGENTS.md` / `CLAUDE.md` / `.cursorrules` / copilot-instructions /
+  the runbooks) wrote every file wholesale, ignoring fork status and replacing
+  the developer-owned custom section — which the runbooks promise survives an
+  upgrade — with the template default. Re-injection (and the Pass-1 managed
+  refresh) now skip forked files and preserve the `agentforge:custom` tail via
+  the existing three-section merge. `agentforge upgrade --dry-run` now prints a
+  per-file plan instead of a one-line summary, so the changes are visible
+  before any write. Found by a downstream consumer on a real 0.2.4 → 0.3.1
+  upgrade. (closes #114)
 
 ## [0.3.1] — 2026-06-17
 
