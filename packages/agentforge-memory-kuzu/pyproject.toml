@@ -1,0 +1,52 @@
+[project]
+name = "agentforge-memory-kuzu"
+version = "0.3.1"
+description = "Embedded, file-backed GraphStore for AgentForge (Kùzu)"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    {name = "The AgentForge Authors"},
+]
+keywords = ["ai", "agent", "graph", "kuzu", "cypher", "embedded", "knowledge-graph"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    "agentforge-core ~= 0.3.1",
+    "kuzu>=0.11.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/Scaffoldic/agentforge-py"
+Repository = "https://github.com/Scaffoldic/agentforge-py"
+Documentation = "https://github.com/Scaffoldic/agentforge-py"
+Changelog = "https://github.com/Scaffoldic/agentforge-py/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Scaffoldic/agentforge-py/issues"
+
+[project.entry-points."agentforge.graph_stores"]
+kuzu = "agentforge_memory_kuzu:KuzuGraphStore"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentforge_memory_kuzu"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/agentforge_memory_kuzu",
+    "tests",
+    "README.md",
+    "LICENSE",
+]
