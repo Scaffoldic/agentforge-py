@@ -112,3 +112,14 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # enh-006: `release_notes.json` is generated from CHANGELOG.md and
+      # shipped in the wheel. Catch a stale artifact at commit time (the
+      # `test_committed_release_notes_is_current` unit test is the CI
+      # mirror). Triggers only when the changelog or notes machinery moves.
+      - id: release-notes-current
+        name: release_notes.json matches CHANGELOG
+        entry: uv run python scripts/gen_release_notes.py --check
+        language: system
+        pass_filenames: false
+        files: '^(CHANGELOG\.md|scripts/gen_release_notes\.py|packages/agentforge/src/agentforge/cli/(_notes\.py|release_notes\.json))$'

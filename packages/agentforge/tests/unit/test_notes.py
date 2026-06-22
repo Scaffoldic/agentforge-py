@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from agentforge import _deprecation
+from agentforge._deprecation import Deprecation
 from agentforge.cli._notes import (
     format_drift_report,
     load_notes,
@@ -111,6 +114,50 @@ def test_format_drift_report_empty_range() -> None:
     report = format_drift_report(notes, "0.3.0", "0.3.0")
     assert "No tracked fixes in this range." in report
     assert "0 fix(es), 0 deprecation(s)" in report
+
+
+def test_format_report_lists_deprecations_in_range(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _deprecation,
+        "_REGISTRY",
+        {"Old.api": Deprecation("Old.api", since="0.3.0", replacement="New.api", ref="enh-006")},
+    )
+    notes = parse_changelog(_SAMPLE)
+    report = format_drift_report(notes, "0.2.4", "Unreleased")
+    assert "Deprecated (workarounds you can retire):" in report
+    assert "Old.api → use New.api  (since 0.3.0, enh-006)" in report
+    assert "1 deprecation(s)" in report
+
+
+def test_format_report_excludes_out_of_range_deprecation(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _deprecation,
+        "_REGISTRY",
+        {"Future.api": Deprecation("Future.api", since="9.9.9", replacement="x", ref="enh-006")},
+    )
+    notes = parse_changelog(_SAMPLE)
+    report = format_drift_report(notes, "0.2.4", "0.3.0")
+    assert "Deprecated" not in report
+    assert "0 deprecation(s)" in report
+
+
+def test_slice_tolerates_non_numeric_version_segment() -> None:
+    notes = {
+        "versions": [
+            {"version": "0.3.0rc1", "date": None, "entries": {}},
+            {"version": "0.2.4", "date": None, "entries": {}},
+        ]
+    }
+    # `0rc1` isn't an int — _vkey degrades it to 0 rather than raising.
+    sliced = [v["version"] for v in slice_versions(notes, "0.2.4", "0.4.0")]
+    assert sliced == ["0.3.0rc1"]
+
+
+def test_parse_skips_whitespace_only_bullet() -> None:
+    md = "## [0.1.0]\n\n### Fixed\n\n-  \n- real entry\n"
+    notes = parse_changelog(md)
+    fixed = notes["versions"][0]["entries"]["Fixed"]
+    assert [e["label"] for e in fixed] == ["real entry"]
 
 
 # ----------------------------------------------------------------------

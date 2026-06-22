@@ -86,6 +86,23 @@ def test_notes_malformed_range_errors(tmp_path: Path, capsys: pytest.CaptureFixt
     assert "Could not determine a version range" in capsys.readouterr().err
 
 
+def test_notes_auto_without_recorded_pin_errors(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    dst = _scaffold(tmp_path)
+    # Drop the recorded pin so AUTO can't resolve a "from".
+    path = dst / ".agentforge-state" / "answers.yml"
+    answers = yaml.safe_load(path.read_text(encoding="utf-8"))
+    answers.pop("_template_version", None)
+    path.write_text(yaml.safe_dump(answers), encoding="utf-8")
+    capsys.readouterr()
+
+    rc = _run_upgrade(_upgrade_args(notes="AUTO"), cwd=dst)
+
+    assert rc == 1
+    assert "Could not determine a version range" in capsys.readouterr().err
+
+
 def test_auto_drift_summary_after_real_upgrade(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
