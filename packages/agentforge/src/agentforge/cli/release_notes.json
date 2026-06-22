@@ -1,0 +1,1111 @@
+{
+  "generated_from": "CHANGELOG.md",
+  "versions": [
+    {
+      "version": "Unreleased",
+      "date": null,
+      "entries": {
+        "Added": [
+          {
+            "label": "enh-006 — upgrade drift report (`agentforge upgrade --notes`).",
+            "closes": [],
+            "refs": [
+              "enh-006"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "starlette 1.0.1 → 1.3.1",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Fixed": [
+          {
+            "label": "bug-025 (P1) — `agentforge upgrade` overwrote forked files and erased `agentforge:custom` blocks",
+            "closes": [
+              114
+            ],
+            "refs": [
+              "bug-025"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.1",
+      "date": "2026-06-17",
+      "entries": {
+        "Fixed": [
+          {
+            "label": "bug-024 (P3) — version reporting.",
+            "closes": [],
+            "refs": [
+              "bug-024"
+            ]
+          }
+        ],
+        "Security": [
+          {
+            "label": "pyjwt 2.12.1 → 2.13.0",
+            "closes": [],
+            "refs": [
+              "enh-003"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "Dependency bumps",
+            "closes": [],
+            "refs": []
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.0",
+      "date": "2026-06-16",
+      "entries": {
+        "Added": [
+          {
+            "label": "enh-004 — provider `config:` passthrough + Bedrock STS assume-role.",
+            "closes": [
+              92
+            ],
+            "refs": [
+              "enh-004"
+            ]
+          },
+          {
+            "label": "enh-003 — MCP HTTP transport middleware seam.",
+            "closes": [
+              93
+            ],
+            "refs": [
+              "enh-003"
+            ]
+          },
+          {
+            "label": "feat-026 Phase 3 — `imports:` config directive (multi-file config).",
+            "closes": [],
+            "refs": [
+              "feat-026"
+            ]
+          },
+          {
+            "label": "enh-002 / feat-026 Phase 1 — reserved `app:` namespace.",
+            "closes": [
+              86
+            ],
+            "refs": [
+              "enh-002",
+              "feat-026"
+            ]
+          },
+          {
+            "label": "feat-026 Phase 2 — registered, validated `app:` sections.",
+            "closes": [],
+            "refs": [
+              "feat-026"
+            ]
+          }
+        ],
+        "Fixed": [
+          {
+            "label": "bug-023 (P2):",
+            "closes": [],
+            "refs": [
+              "bug-022",
+              "bug-023"
+            ]
+          },
+          {
+            "label": "bug-022 (P2):",
+            "closes": [],
+            "refs": [
+              "bug-022"
+            ]
+          },
+          {
+            "label": "bug-021 (P1):",
+            "closes": [],
+            "refs": [
+              "bug-021"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.4",
+      "date": "2026-06-03",
+      "entries": {
+        "Added": [
+          {
+            "label": "`agentforge_core.contracts.protocol_bridge.ProtocolBridge`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`Agent(protocol_bridges=...)`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`MCPBridge.attach_local_tools(tools)` + `MCPServer.set_tools(tools)`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`agentforge_core.contracts.tool.validate_tool_name` + `ToolNameInvalidError`",
+            "closes": [],
+            "refs": [
+              "bug-017"
+            ]
+          },
+          {
+            "label": "`ChatHistoryStore.create_session(session_id, *, owner=None, metadata=None)`",
+            "closes": [],
+            "refs": [
+              "bug-018"
+            ]
+          },
+          {
+            "label": "MCP server-side HTTP transport (enh-001).",
+            "closes": [],
+            "refs": [
+              "enh-001"
+            ]
+          },
+          {
+            "label": "bug-011 (filed, not fixed)",
+            "closes": [],
+            "refs": [
+              "bug-011"
+            ]
+          }
+        ],
+        "Fixed": [
+          {
+            "label": "bug-008 — scaffolds recorded `_template_version: 0.0.0+unknown`.",
+            "closes": [],
+            "refs": [
+              "bug-008"
+            ]
+          },
+          {
+            "label": "bug-013 — `MCPServer.from_stdio` / `from_http` served an empty tool list.",
+            "closes": [],
+            "refs": [
+              "bug-013"
+            ]
+          },
+          {
+            "label": "bug-018 — `POST /sessions` 500'd on a fresh SQLite/Postgres/Redis store.",
+            "closes": [],
+            "refs": [
+              "bug-018"
+            ]
+          },
+          {
+            "label": "bug-019 — documented terse config syntax for evaluators/guardrails was rejected.",
+            "closes": [],
+            "refs": [
+              "bug-019"
+            ]
+          },
+          {
+            "label": "bug-015 — `agentforge-py` extras didn't pull their vendor SDKs.",
+            "closes": [],
+            "refs": [
+              "bug-015"
+            ]
+          },
+          {
+            "label": "bug-017 — provider tool-name charset was undocumented and unchecked.",
+            "closes": [],
+            "refs": [
+              "bug-017",
+              "feat-003"
+            ]
+          },
+          {
+            "label": "bug-012 — MCP tool names used a `.` separator, which every provider rejected.",
+            "closes": [],
+            "refs": [
+              "bug-012"
+            ]
+          },
+          {
+            "label": "bug-020 — runtime never wired `modules.protocols.mcp`.",
+            "closes": [],
+            "refs": [
+              "bug-020"
+            ]
+          },
+          {
+            "label": "bug-014 — `MCPBridge.from_config` raised inside a running event loop.",
+            "closes": [],
+            "refs": [
+              "bug-014"
+            ]
+          },
+          {
+            "label": "bug-010 — `ChatSession` dropped intermediate tool steps from persisted history.",
+            "closes": [],
+            "refs": [
+              "bug-010"
+            ]
+          },
+          {
+            "label": "bug-009 — ReAct dropped `tool_calls` on assistant turns; Bedrock rejected every tool-using prompt on iteration 2.",
+            "closes": [],
+            "refs": [
+              "bug-009"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.3",
+      "date": "2026-05-21",
+      "entries": {
+        "Fixed": [
+          {
+            "label": "bug-007 — `agentforge upgrade` was non-functional.",
+            "closes": [],
+            "refs": [
+              "bug-007"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "34 workspace packages bumped to `0.2.3`.",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Added": [
+          {
+            "label": "`docs/bugs/bug-007-upgrade-non-functional.md` — full reproduction + root-cause analysis for both halves of the bug.",
+            "closes": [],
+            "refs": [
+              "bug-007"
+            ]
+          },
+          {
+            "label": "Three new regression tests in `packages/agentforge/tests/unit/test_scaffold_state.py`: `test_new_writes_answers_yml`, `test_upgrade_refresh…",
+            "closes": [],
+            "refs": []
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.2",
+      "date": "2026-05-21",
+      "entries": {
+        "Fixed": [
+          {
+            "label": "bug-001 — Scaffolded `pyproject.toml` missing provider package + SDK extra.",
+            "closes": [],
+            "refs": [
+              "bug-001"
+            ]
+          },
+          {
+            "label": "bug-002 — Scaffolded `agentforge.yaml` missing required `agent.strategy`.",
+            "closes": [],
+            "refs": [
+              "bug-002"
+            ]
+          },
+          {
+            "label": "bug-003 — Scaffold README documented `python -m <pkg>` but no `__main__.py` shipped.",
+            "closes": [],
+            "refs": [
+              "bug-003"
+            ]
+          },
+          {
+            "label": "bug-004 — Stale `(when feat-002 ships)` parenthetical",
+            "closes": [],
+            "refs": [
+              "bug-004",
+              "feat-002"
+            ]
+          },
+          {
+            "label": "bug-005 — Install hints referenced `agentforge[<extra>]` but the PyPI distribution is `agentforge-py`.",
+            "closes": [],
+            "refs": [
+              "bug-005"
+            ]
+          },
+          {
+            "label": "bug-006 — Scaffolded `.env.example` → `.env` never loaded.",
+            "closes": [],
+            "refs": [
+              "bug-006"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "`agentforge-py[<provider>]` extras chain to provider SDK extras.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "All 34 workspace members bumped to `0.2.2`.",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Added": [
+          {
+            "label": "`docs/bugs/` directory",
+            "closes": [],
+            "refs": [
+              "bug-001"
+            ]
+          },
+          {
+            "label": "`test_scaffold_resolves_runnable_end_to_end`",
+            "closes": [],
+            "refs": [
+              "bug-001"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.1",
+      "date": "2026-05-15",
+      "entries": {
+        "Changed": [
+          {
+            "label": "Distribution rename.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "Cross-package deps pinned.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "All 34 workspace members bumped to `0.2.1`.",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Added": [
+          {
+            "label": "PyPI release workflow",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`scripts/testpypi_dry_run.py`",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Fixed": [
+          {
+            "label": "Wheel build duplicate-file bug",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "Missing optional-dependencies declarations on `agentforge-py`.",
+            "closes": [],
+            "refs": []
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.0",
+      "date": "2026-05-14",
+      "entries": {
+        "Highlights": [
+          {
+            "label": "5 first-party LLM provider sister packages",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "5 new runbooks",
+            "closes": [],
+            "refs": [
+              "feat-019"
+            ]
+          },
+          {
+            "label": "Sentence-window streaming guardrails",
+            "closes": [],
+            "refs": [
+              "feat-020"
+            ]
+          },
+          {
+            "label": "Native lexical paths on every shipped vector store",
+            "closes": [],
+            "refs": [
+              "feat-022",
+              "feat-025"
+            ]
+          },
+          {
+            "label": "Schema migrations framework",
+            "closes": [],
+            "refs": [
+              "feat-024"
+            ]
+          },
+          {
+            "label": "GraphRAG retrieval",
+            "closes": [],
+            "refs": [
+              "feat-023"
+            ]
+          },
+          {
+            "label": "Reranker ABC + 4 vendor sister packages",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "Production protocol runners",
+            "closes": [],
+            "refs": [
+              "feat-013",
+              "feat-014"
+            ]
+          },
+          {
+            "label": "Vendor observability backends",
+            "closes": [],
+            "refs": [
+              "feat-009"
+            ]
+          },
+          {
+            "label": "All 34 workspace members",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "v0.2.0 → v0.3.0": [
+          {
+            "label": "`down` migrations / schema rollback (feat-024 v0.3+).",
+            "closes": [],
+            "refs": [
+              "feat-024"
+            ]
+          },
+          {
+            "label": "Native single-Cypher / SurrealQL graph-augmented retrieval (feat-023 sister-package follow-ups).",
+            "closes": [],
+            "refs": [
+              "feat-023"
+            ]
+          },
+          {
+            "label": "Multi-cluster Redlock for `RedisSessionLock` (feat-020 v0.3+).",
+            "closes": [],
+            "refs": [
+              "feat-020"
+            ]
+          },
+          {
+            "label": "True streaming-aware `stream-then-redact` (feat-020 v0.3+).",
+            "closes": [],
+            "refs": [
+              "feat-020"
+            ]
+          },
+          {
+            "label": "Evidently real-time drift dashboards via Cloud (feat-009 v0.3+).",
+            "closes": [],
+            "refs": [
+              "feat-009"
+            ]
+          },
+          {
+            "label": "Optional eval adapters (`agentforge-eval-ragas` / `-deepeval` / `-toxicity` / `-codeexec`).",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "TypeScript port of the v0.2 surface.",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Added": [
+          {
+            "label": "feat-003 v0.2 — first-party LLM provider sister packages.",
+            "closes": [],
+            "refs": [
+              "feat-003"
+            ]
+          },
+          {
+            "label": "feat-019 v0.2 — GitHub Copilot scaffold support.",
+            "closes": [],
+            "refs": [
+              "feat-019"
+            ]
+          },
+          {
+            "label": "README + release notes",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-019 v0.2 polish — 5 new runbooks",
+            "closes": [],
+            "refs": [
+              "feat-019"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "All workspace members bumped to `0.2.0`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`agentforge.providers` resolver category",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`ChatSessionConfig.safety_mode`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-025 — Neo4jVectorStore + SurrealDB native `lexical_search`.",
+            "closes": [],
+            "refs": [
+              "feat-024",
+              "feat-025"
+            ]
+          },
+          {
+            "label": "`SurrealVectorStore.capabilities()`",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-024 v0.3 polish — parameterized migrations.",
+            "closes": [],
+            "refs": [
+              "feat-024"
+            ]
+          },
+          {
+            "label": "All four per-driver migrators",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-024 — Schema migrations framework.",
+            "closes": [],
+            "refs": [
+              "feat-022",
+              "feat-024"
+            ]
+          },
+          {
+            "label": "`init_schema()` on every persistent-store driver now delegates to the migration framework's `apply_pending()`.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-023 — GraphRAG hybrid retrieval.",
+            "closes": [],
+            "refs": [
+              "feat-023"
+            ]
+          },
+          {
+            "label": "`RetrievalConfig` gains `graph_expansion: GraphExpansionConfig | None = None` (additive — existing YAML keeps working unchanged).",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-022 v0.2 follow-up — native hybrid for Postgres + SQLite.",
+            "closes": [],
+            "refs": [
+              "feat-022"
+            ]
+          },
+          {
+            "label": "feat-022 — BM25 + vector hybrid search.",
+            "closes": [],
+            "refs": [
+              "feat-022"
+            ]
+          },
+          {
+            "label": "feat-002 + feat-009 v0.3.x strategy follow-ups bundle.",
+            "closes": [],
+            "refs": [
+              "feat-002",
+              "feat-009"
+            ]
+          },
+          {
+            "label": "feat-002 + feat-009 v0.3 polish + feat-021 follow-up bundle.",
+            "closes": [],
+            "refs": [
+              "feat-002",
+              "feat-009",
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-021 v0.2 follow-up — vendor reranker sister packages.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "Three new `agentforge.rerankers` entry-points:",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-021 v0.2 follow-up — `retrieval:` YAML block + builder.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-021 — Reranker ABC + SentenceTransformers default + Retriever integration.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-009 v0.2 — vendor observability backends.",
+            "closes": [],
+            "refs": [
+              "feat-009",
+              "feat-020"
+            ]
+          },
+          {
+            "label": "Four new `agentforge.hooks` entry-points:",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-014 v0.3 — A2A per-token streaming.",
+            "closes": [],
+            "refs": [
+              "feat-014",
+              "feat-020"
+            ]
+          },
+          {
+            "label": "feat-014 v0.3 — unified `StreamingChunkKind`.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "feat-013 v0.2 — production MCP runner.",
+            "closes": [],
+            "refs": [
+              "feat-013"
+            ]
+          },
+          {
+            "label": "`agentforge-mcp[mcp]` optional extra.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`live` pytest marker description",
+            "closes": [],
+            "refs": [
+              "feat-013"
+            ]
+          },
+          {
+            "label": "feat-014 v0.2 — production A2A runner.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "feat-014 v0.2 — A2A discovery.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "feat-014 v0.2 — A2A bi-directional streaming.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "Three new live integration tests",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-020 v0.2 — chat agents follow-ups.",
+            "closes": [],
+            "refs": [
+              "feat-020"
+            ]
+          },
+          {
+            "label": "feat-021 v0.2 follow-up — `_instantiate()` factory helper.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-021 v0.2 follow-up — `modules.retriever` legacy block.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-021 — `Retriever.__init__` signature.",
+            "closes": [],
+            "refs": [
+              "feat-021"
+            ]
+          },
+          {
+            "label": "feat-014 v0.3 — `A2AChunkKind` aliased to `StreamingChunkKind`.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "feat-014 v0.3 — A2A streaming chunk shape.",
+            "closes": [],
+            "refs": [
+              "feat-014"
+            ]
+          },
+          {
+            "label": "CI: new non-gating `live` job.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`A2AResponse.findings` model config drops `strict=True`.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "`ReasoningStrategy` ABC gains a non-abstract `stream()` default.",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "CI: live job extended with Postgres + Redis services.",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Added (accumulated during the v0.2 cycle)": [
+          {
+            "label": "feat-020 v0.3 polish — sentence-window streaming output guardrails.",
+            "closes": [],
+            "refs": [
+              "feat-020"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-05-12",
+      "entries": {
+        "Added": [
+          {
+            "label": "feat-014 — A2A protocol (full spec).",
+            "closes": [],
+            "refs": [
+              "feat-013",
+              "feat-014",
+              "feat-020"
+            ]
+          },
+          {
+            "label": "feat-020 — Chat agents (Python v0.2 scope).",
+            "closes": [],
+            "refs": [
+              "feat-014",
+              "feat-020"
+            ]
+          },
+          {
+            "label": "feat-015 — Pipeline & deterministic tasks (full spec).",
+            "closes": [],
+            "refs": [
+              "feat-015"
+            ]
+          },
+          {
+            "label": "feat-013 — MCP integration (full spec).",
+            "closes": [],
+            "refs": [
+              "feat-013"
+            ]
+          },
+          {
+            "label": "feat-019 — Developer experience + AI rules.",
+            "closes": [],
+            "refs": [
+              "feat-019"
+            ]
+          },
+          {
+            "label": "feat-018 — Safety & security guardrails (full surface).",
+            "closes": [],
+            "refs": [
+              "feat-018"
+            ]
+          },
+          {
+            "label": "feat-016 — Testing framework (full surface).",
+            "closes": [],
+            "refs": [
+              "feat-016"
+            ]
+          },
+          {
+            "label": "feat-017 — CLI runtime (full operator surface).",
+            "closes": [],
+            "refs": [
+              "feat-010",
+              "feat-011",
+              "feat-017"
+            ]
+          },
+          {
+            "label": "feat-011 — Scaffolding & upgrade.",
+            "closes": [],
+            "refs": [
+              "feat-011"
+            ]
+          },
+          {
+            "label": "feat-010 destructive CLI (sub-feat completion).",
+            "closes": [],
+            "refs": [
+              "feat-010",
+              "feat-012"
+            ]
+          },
+          {
+            "label": "feat-012 — Configuration system.",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-003",
+              "feat-004",
+              "feat-006",
+              "feat-010",
+              "feat-012"
+            ]
+          },
+          {
+            "label": "feat-010 — Module discovery & resolution (runtime + read-only CLI).",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-003",
+              "feat-004",
+              "feat-006",
+              "feat-010",
+              "feat-012"
+            ]
+          },
+          {
+            "label": "feat-009 — Observability (OTel only).",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-004",
+              "feat-009",
+              "feat-010"
+            ]
+          },
+          {
+            "label": "feat-006 — Evaluators & benchmarks.",
+            "closes": [],
+            "refs": [
+              "feat-002",
+              "feat-006",
+              "feat-010",
+              "feat-012",
+              "feat-017"
+            ]
+          },
+          {
+            "label": "feat-008 — Findings & output shapes.",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-008"
+            ]
+          },
+          {
+            "label": "feat-007 — Production rails (`FallbackChain` only).",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-007",
+              "feat-011",
+              "feat-019"
+            ]
+          },
+          {
+            "label": "feat-004 — Tools system.",
+            "closes": [],
+            "refs": [
+              "feat-004",
+              "feat-018"
+            ]
+          },
+          {
+            "label": "feat-008 — `agentforge-memory-postgres` (production persistence).",
+            "closes": [],
+            "refs": [
+              "feat-007",
+              "feat-008",
+              "feat-009"
+            ]
+          },
+          {
+            "label": "feat-009 — `GraphStore` ABC + Neo4j and SurrealDB drivers.",
+            "closes": [],
+            "refs": [
+              "feat-009"
+            ]
+          },
+          {
+            "label": "feat-007 — Persistent memory + vector search + RAG.",
+            "closes": [],
+            "refs": [
+              "feat-007",
+              "feat-008"
+            ]
+          },
+          {
+            "label": "feat-003 — `agentforge-bedrock` provider + capability extensions.",
+            "closes": [],
+            "refs": [
+              "feat-003"
+            ]
+          },
+          {
+            "label": "feat-002 — Reasoning strategies (all four stable).",
+            "closes": [],
+            "refs": [
+              "feat-002",
+              "feat-006"
+            ]
+          },
+          {
+            "label": "Repository bootstrap: uv workspace, ruff/mypy/pytest/coverage tooling, GitHub Actions CI, pre-commit hook, Apache 2.0 license, AGENTS.md, R…",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "feat-001 — Core contracts & `Agent` orchestrator.",
+            "closes": [],
+            "refs": [
+              "feat-001"
+            ]
+          }
+        ],
+        "Changed": [
+          {
+            "label": "Project structure made self-contained for AI assistants.",
+            "closes": [],
+            "refs": [
+              "feat-005"
+            ]
+          },
+          {
+            "label": "Documentation made self-contained for the public OSS repo: removed `../../` references to a private design workspace from `AGENTS.md`, `REA…",
+            "closes": [],
+            "refs": []
+          }
+        ],
+        "Docs": [
+          {
+            "label": "Runbook sections backfilled for shipped features.",
+            "closes": [],
+            "refs": [
+              "feat-001",
+              "feat-002",
+              "feat-003",
+              "feat-004",
+              "feat-005",
+              "feat-006",
+              "feat-007",
+              "feat-011",
+              "feat-012",
+              "feat-018",
+              "feat-020"
+            ]
+          }
+        ],
+        "Fixed": [
+          {
+            "label": "Repository placeholder URLs replaced with the live remote (`github.com/Scaffoldic/agentforge-py`).",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "Workspace `pyproject.toml` migrated from deprecated `[tool.uv] dev-dependencies` to `[dependency-groups] dev`; root declares workspace memb…",
+            "closes": [],
+            "refs": []
+          },
+          {
+            "label": "Pre-commit `bandit` hook now passes `-c pyproject.toml` so it reads `[tool.bandit]` (skips B101 — assert is the legitimate conformance-suit…",
+            "closes": [],
+            "refs": []
+          }
+        ]
+      }
+    }
+  ]
+}
