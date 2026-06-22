@@ -50,7 +50,7 @@ def test_upgrade_preserves_custom_block_in_shared_file(tmp_path: Path) -> None:
     agents_md = dst / "AGENTS.md"
     _put_custom_note(agents_md, SENTINEL)
 
-    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False), cwd=dst)
+    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False, notes=None), cwd=dst)
 
     assert code == 0
     out = agents_md.read_text(encoding="utf-8")
@@ -67,7 +67,7 @@ def test_upgrade_skips_forked_file(tmp_path: Path) -> None:
     assert _run_fork(argparse.Namespace(path="docs/runbooks/02-add-a-tool.md"), cwd=dst) == 0
     runbook.write_text("# Completely my own runbook now\n", encoding="utf-8")
 
-    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False), cwd=dst)
+    code = _run_upgrade(argparse.Namespace(to=None, dry_run=False, notes=None), cwd=dst)
 
     assert code == 0
     assert runbook.read_text(encoding="utf-8") == "# Completely my own runbook now\n"
@@ -81,7 +81,7 @@ def test_upgrade_dry_run_writes_nothing_and_lists_files(
     _put_custom_note(agents_md, SENTINEL)
     before = agents_md.read_text(encoding="utf-8")
 
-    code = _run_upgrade(argparse.Namespace(to=None, dry_run=True), cwd=dst)
+    code = _run_upgrade(argparse.Namespace(to=None, dry_run=True, notes=None), cwd=dst)
 
     assert code == 0
     # Nothing written.

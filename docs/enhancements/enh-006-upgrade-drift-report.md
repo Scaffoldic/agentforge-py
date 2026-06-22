@@ -16,7 +16,7 @@
 |---|---|
 | **ID** | enh-006 |
 | **Title** | Upgrade drift report (`agentforge upgrade --notes` + deprecation registry) |
-| **Status** | `proposed` |
+| **Status** | `in-progress` (part 1 shipped in bug-025; parts 2-3 implemented, targeting 0.4) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-22 |
 | **Target version** | 0.4 |
@@ -177,6 +177,29 @@ Fully additive.
   `filterwarnings=error` opt into seeing them (which is the point).
 - Packaging `CHANGELOG.md` / a notes artifact only *adds* a file to the
   wheel.
+
+## 5.5 Implementation status
+
+Parts 2 and 3 are implemented (part 1 — the `(closes #NN)` convention —
+shipped in bug-025):
+
+- **§4.1 decision: option (B) taken.** `scripts/gen_release_notes.py`
+  parses `CHANGELOG.md` → committed `agentforge/cli/release_notes.json`
+  (hatchling ships it; no force-include). A source-tree drift test
+  (`test_notes.py::test_committed_release_notes_is_current`) fails if the
+  JSON is stale; the parser is reused by the generator and the test.
+- **§4.2 decision: `upgrade --notes` + auto-summary, no `doctor`.**
+  `agentforge upgrade --notes [FROM..TO]` is report-only (prints, doesn't
+  upgrade); a real upgrade prints the summary for the range it crossed.
+  The "from" defaults to the lock/answers `_template_version`.
+- **Part 3:** `agentforge/_deprecation.py` ships the `@deprecated` decorator
+  + registry + `iter_deprecations()`, wired into the report. No real
+  framework seam is deprecated yet — `test_deprecation.py` guards that an
+  empty default registry ships (a real deprecation must come with a note).
+- **Known limitation:** a deprecation appears in the offline report only
+  once its defining module is imported; when the first real seam is
+  deprecated, import it from `agentforge/__init__.py` so the registry is
+  complete. The CHANGELOG slice is fully offline regardless.
 
 ## 6. Implementation sketch
 

@@ -12,6 +12,21 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ## [Unreleased]
 
+### Added
+
+- **enh-006 — upgrade drift report (`agentforge upgrade --notes`).** After
+  bumping the framework pin, a consumer can now see which fixes (and the
+  issues they close) the bump shipped, so dead workarounds get cleaned up
+  instead of lingering. `agentforge upgrade --notes [FROM..TO]` prints the
+  drift report for a version range (bare `--notes` = your current pin → the
+  installed version); a real `agentforge upgrade` also prints the summary for
+  the range it just crossed. Works offline from a `release_notes.json`
+  generated from this changelog at build time (`scripts/gen_release_notes.py`)
+  and shipped in the wheel. Ships the deprecation machinery too — a
+  `@deprecated(since=, replacement=, ref=)` decorator that warns at runtime
+  and feeds the report (no framework seams are deprecated yet). Builds on the
+  `(closes #NN)` convention. (refs #115)
+
 ### Changed
 
 - **starlette 1.0.1 → 1.3.1** (transitive, via fastapi / arize-phoenix).

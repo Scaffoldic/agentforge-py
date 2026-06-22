@@ -50,6 +50,18 @@ def register_upgrade_cmds(sub: argparse._SubParsersAction) -> None:  # type: ign
         action="store_true",
         help="Show what would change without writing.",
     )
+    upgrade.add_argument(
+        "--notes",
+        nargs="?",
+        const="AUTO",
+        default=None,
+        metavar="FROM..TO",
+        help=(
+            "Print the drift report (fixes + deprecations) for a version range "
+            "instead of upgrading. Bare `--notes` uses your current pin → the "
+            "installed version; or pass an explicit `FROM..TO`."
+        ),
+    )
     upgrade.set_defaults(_handler=_run_upgrade)
 
     fork = sub.add_parser("fork", help="Claim a managed file — future upgrades skip it.")
@@ -123,8 +135,19 @@ def _run_upgrade(
         return 1
 
     template_version = args.to if args.to else _template_version()
+    # The version this agent was last scaffolded/upgraded to — the "from"
+    # for the drift report (enh-006). `_template_version` survives the
+    # earlier `_template_name` pop.
+    from_version = str(answers.get("_template_version") or "")
+
+    # `--notes` is a report-only query: print the drift report, don't upgrade.
+    # `getattr` keeps the handler callable from a partial Namespace.
+    notes_arg = getattr(args, "notes", None)
+    if notes_arg is not None:
+        return _run_notes_query(notes_arg, from_version=from_version, installed=template_version)
+
     try:
-        return _do_upgrade(
+        rc = _do_upgrade(
             work_dir,
             template_name=template_name,
             template_root=template_root,
@@ -135,6 +158,49 @@ def _run_upgrade(
     except ModuleError as exc:
         sys.stderr.write(f"upgrade failed: {exc}\n")
         return 1
+
+    # After a real upgrade that moved versions, show the drift report for
+    # the range just crossed (enh-006) — the moment a consumer learns which
+    # workarounds the bump retired.
+    if rc == 0 and not args.dry_run and from_version and from_version != template_version:
+        sys.stdout.write("\n")
+        _emit_drift_report(from_version, template_version)
+    return rc
+
+
+def _run_notes_query(spec: str, *, from_version: str, installed: str) -> int:
+    """Handle `agentforge upgrade --notes` — print the drift report for the
+    resolved range, or error if the range can't be determined."""
+    rng = _resolve_notes_range(spec, from_version=from_version, installed=installed)
+    if rng is None:
+        sys.stderr.write(
+            "Could not determine a version range for --notes. Pass an explicit "
+            "range, e.g. `agentforge upgrade --notes 0.2.4..0.3.1`.\n"
+        )
+        return 1
+    _emit_drift_report(*rng)
+    return 0
+
+
+def _resolve_notes_range(spec: str, *, from_version: str, installed: str) -> tuple[str, str] | None:
+    """Resolve the `--notes` argument to a `(from, to)` version range.
+
+    `"AUTO"` (bare `--notes`) → current pin → installed version; an
+    explicit `"FROM..TO"` is split. Returns `None` when the range can't be
+    determined (e.g. AUTO with no recorded pin, or a malformed spec).
+    """
+    if spec == "AUTO":
+        return (from_version, installed) if from_version else None
+    frm, sep, to = spec.partition("..")
+    if not sep or not frm.strip() or not to.strip():
+        return None
+    return (frm.strip(), to.strip())
+
+
+def _emit_drift_report(frm: str, to: str) -> None:
+    from agentforge.cli._notes import format_drift_report, load_notes  # noqa: PLC0415
+
+    sys.stdout.write(format_drift_report(load_notes(), frm, to))
 
 
 def _read_answers(work_dir: Path) -> dict[str, object]:
