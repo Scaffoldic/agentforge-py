@@ -38,9 +38,11 @@ durable state. Today `Agent.run` executes the entire reasoning loop inside a
 single `await self._strategy.run(state)` — if that coroutine dies, the run is
 gone, and there is no interception point to pause it for approval.
 
-This is precisely the control-plane capability the managed platforms charge
-for (Bedrock AgentCore, Temporal Cloud, Step Functions). Building it **open and
-vendor-neutral** is the strategic white space.
+It is foundational execution infrastructure: hard to implement correctly
+(checkpoint consistency, exactly-once side effects, budget-correct resume,
+suspend/resume control flow) and needed by essentially every production agent
+— which is exactly why it belongs in the framework rather than in each agent
+(see §2.5).
 
 ## 2. Why it must ship as framework
 
