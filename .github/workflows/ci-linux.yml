@@ -27,7 +27,7 @@ jobs:
       matrix:
         python-version: ["3.13"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -56,7 +56,7 @@ jobs:
       matrix:
         python-version: ["3.13"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -121,7 +121,7 @@ jobs:
       # (builds a real uv project + spawns `uv add`). uv is on PATH here.
       RUN_LIVE_UV: "1"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -145,7 +145,7 @@ jobs:
     if: github.event_name == 'pull_request'
     needs: [test]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Run coverage ratchet
         run: |
           if [ -f scripts/coverage_ratchet.py ]; then
