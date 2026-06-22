@@ -10,7 +10,7 @@
 
 [project]
 name = "agentforge-anthropic"
-version = "0.3.1"
+version = "0.4.0"
 description = "Anthropic native LLM provider for AgentForge — Claude with caching, extended thinking, streaming"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "agentforge-core ~= 0.3.1",
+    "agentforge-core ~= 0.4.0",
 ]
 
 [project.optional-dependencies]
