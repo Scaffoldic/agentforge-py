@@ -14,6 +14,18 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ### Added
 
+- **feat-027 — embedded `KuzuGraphStore`.** A zero-ops, file-backed, in-process
+  `GraphStore` driver — `path: .ckg` and the store exists, no server (the graph
+  analogue of the SQLite `MemoryStore`). New `agentforge-memory-kuzu` package,
+  registered as `kuzu` under the `graph_stores` entry-point category. Implements
+  the locked `GraphStore` ABC and passes `run_graph_conformance`, so it's
+  swap-compatible with the Neo4j / SurrealDB drivers; makes the whole graph +
+  GraphRAG path testable offline. Mutations + `get_node`/`get_edges` use native
+  openCypher (`MERGE` upserts); `traverse`/`match` run as Python algorithms over
+  those primitives for exact contract semantics. `kuzu>=0.11.3` (native; ships
+  cp313 wheels for the CI matrix). Purely additive — existing configs and
+  drivers untouched.
+
 - **enh-005 — directional GraphRAG expansion.** `retrieval.graph_expansion`
   (and the `GraphExpansion` value) gain `direction: in | out | any`, so graph
   expansion can follow **asymmetric** edges the right way — `in` for callers /

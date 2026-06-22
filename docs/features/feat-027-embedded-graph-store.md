@@ -6,7 +6,7 @@
 |---|---|
 | **ID** | feat-027 |
 | **Title** | `KuzuGraphStore` — embedded, file-backed `GraphStore` driver |
-| **Status** | accepted (targeted at the 0.4 train) |
+| **Status** | in-progress (implemented; targeting the 0.4 train) |
 | **Owner** | kjoshi |
 | **Created** | 2026-06-17 |
 | **Target version** | 0.4 |
@@ -203,12 +203,34 @@ mirrors this 1:1 when scheduled.
   `get_edges(direction=...)` for the embedded path).
 
 ## 11. Implementation status (Python)
-**Status: accepted, not yet implemented.** Suggested chunking when built:
-1. Spec + catalogue row + roadmap pointer.
-2. `KuzuGraphStore` class + entry-point registration + `from_path`/`from_config`
-   + conformance pass (offline).
-3. Capability gating (`fulltext`/`transactions` as honoured) + runbook.
-4. Status flip + catalogue + roadmap + CHANGELOG.
+**Status: implemented (not yet released).** Shipped in `agentforge-memory-kuzu`:
+- `KuzuGraphStore` over one generic node table `AfNode(id, labels, props)` +
+  one generic rel table `AfEdge(etype, props)` (labels/props as JSON strings
+  so the schemaless contract maps onto Kùzu's typed schema). `from_path` /
+  `from_config` factories + `__aenter__`/`__aexit__`/`close`. Registered as
+  `kuzu` under the `graph_stores` entry-point category.
+- **Idempotent upserts** via Cypher `MERGE` (node on `id`, edge on
+  `(src,dst,etype)`); `add_edge` pre-checks both endpoints and raises
+  `ValueError` on an unknown node. `get_node`/`get_edges` are native Cypher.
+- **`traverse` / `match` run as Python algorithms over those native
+  primitives** (mirroring `InMemoryGraphStore`): Kùzu's recursive-path Cypher
+  rejects a bound parameter inside an `all(...)` predicate over a recursive
+  variable (engine assertion), and client-side traversal keeps the path
+  semantics (per-hop prefixes, cycle avoidance) exactly contract-correct.
+- **Concurrency:** Kùzu is embedded single-writer and its `Connection` isn't
+  thread-safe; every call is dispatched via `asyncio.to_thread` under an
+  `asyncio.Lock`, so access is serialised (documented constraint).
+- `capabilities()` returns `{"cypher"}` (openCypher); `transactions`/`fulltext`
+  deferred until honoured.
+- **Tests** (`tests/unit/test_kuzu_graph.py`): `run_graph_conformance` against
+  a real embedded DB in a temp dir (no server, offline) + persistence across
+  reopen, idempotency, edge-integrity, `get_edges` direction/filter, traverse
+  depth/cycle/edge-type, `match`, deletes. `kuzu>=0.11.3` ships cp313 wheels
+  for the CI matrix (Linux x86_64/aarch64, macOS, Windows).
+
+Remaining: flip Status → shipped + roadmap row when the 0.4 train tags. A
+`KuzuVectorStore` (one file serving graph **and** vector) stays out of scope
+(§9).
 
 ## 12. Runbook
 

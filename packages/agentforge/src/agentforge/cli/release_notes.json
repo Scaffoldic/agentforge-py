@@ -7,6 +7,13 @@
       "entries": {
         "Added": [
           {
+            "label": "feat-027 — embedded `KuzuGraphStore`.",
+            "closes": [],
+            "refs": [
+              "feat-027"
+            ]
+          },
+          {
             "label": "enh-005 — directional GraphRAG expansion.",
             "closes": [],
             "refs": [

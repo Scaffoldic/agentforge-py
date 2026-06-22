@@ -26,6 +26,7 @@ dependencies = [
     "agentforge-bedrock",
     "agentforge-memory-sqlite",
     "agentforge-memory-neo4j",
+    "agentforge-memory-kuzu",
     "agentforge-memory-surrealdb",
     "agentforge-memory-postgres",
     "agentforge-eval-geval",
@@ -66,6 +67,7 @@ agentforge-py = { workspace = true }
 agentforge-bedrock = { workspace = true }
 agentforge-memory-sqlite = { workspace = true }
 agentforge-memory-neo4j = { workspace = true }
+agentforge-memory-kuzu = { workspace = true }
 agentforge-memory-surrealdb = { workspace = true }
 agentforge-memory-postgres = { workspace = true }
 agentforge-eval-geval = { workspace = true }
@@ -222,7 +224,7 @@ disable_error_code = ["no-any-unimported"]
 # Allow imports without stubs so mypy --strict still passes; the
 # driver's public surface is still typed at our layer.
 [[tool.mypy.overrides]]
-module = ["neo4j", "neo4j.*", "surrealdb", "surrealdb.*"]
+module = ["neo4j", "neo4j.*", "surrealdb", "surrealdb.*", "kuzu", "kuzu.*"]
 ignore_missing_imports = true
 follow_imports = "skip"
 disable_error_code = ["no-any-unimported"]
@@ -230,7 +232,11 @@ disable_error_code = ["no-any-unimported"]
 # Same suppression on our own neo4j and surrealdb packages — driver
 # types leak Any into helper signatures we type ourselves.
 [[tool.mypy.overrides]]
-module = ["agentforge_memory_neo4j.*", "agentforge_memory_surrealdb.*"]
+module = [
+    "agentforge_memory_neo4j.*",
+    "agentforge_memory_surrealdb.*",
+    "agentforge_memory_kuzu.*",
+]
 disable_error_code = ["no-any-unimported"]
 
 # asyncpg and pgvector ship without py.typed markers. Allow imports
@@ -481,6 +487,7 @@ testpaths = [
     "packages/agentforge-bedrock/tests",
     "packages/agentforge-memory-sqlite/tests",
     "packages/agentforge-memory-neo4j/tests",
+    "packages/agentforge-memory-kuzu/tests",
     "packages/agentforge-memory-surrealdb/tests",
     "packages/agentforge-memory-postgres/tests",
     "packages/agentforge-eval-geval/tests",
@@ -549,6 +556,7 @@ source = [
     "packages/agentforge-bedrock/src",
     "packages/agentforge-memory-sqlite/src",
     "packages/agentforge-memory-neo4j/src",
+    "packages/agentforge-memory-kuzu/src",
     "packages/agentforge-memory-surrealdb/src",
     "packages/agentforge-memory-postgres/src",
     "packages/agentforge-eval-geval/src",
