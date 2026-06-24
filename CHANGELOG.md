@@ -12,7 +12,7 @@ slice between two versions to see which of your filed issues a bump fixes.
 
 ## [Unreleased]
 
-## [0.4.0] — 2026-06-23
+## [0.4.0] — 2026-06-24
 
 "Graph + governance foundation." Embedded zero-ops graph storage and
 directional GraphRAG; an offline upgrade-drift report; the first governance
