@@ -123,7 +123,7 @@ dev = [
     # feat-013 v0.2: live MCP integration test needs the SDK in the
     # venv. The package itself keeps `mcp` as an optional extra
     # (`agentforge-mcp[mcp]`); see packages/agentforge-mcp/pyproject.toml.
-    "mcp>=1.0,<2",
+    "mcp>=1.0,<3",
 ]
 
 # ----------------------------------------------------------------------
